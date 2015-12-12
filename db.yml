@@ -1,0 +1,56 @@
+conversation:
+  - id
+  - creator
+  - timestamp
+  - signature
+  - status
+  - expiration
+  - subject
+  - labels - array
+  - current_version - jsonb
+participant:
+  - conversation_id
+  - email
+  - display_name
+  - hidden
+  - permissions
+message:
+  - conversation_id
+  - id
+  - author
+  - timestamp
+  - body
+  - status
+  - updates - array of hstores
+comment:
+  - message_id
+  - id
+  - author
+  - timestamp
+  - body
+  - status
+  - updates - array of hstores
+  - ref
+attachments:
+  - conversation_id
+  - name
+  - path
+  - hash
+  - key
+  - expires
+  - updates - array of hstores
+extra:
+  - conversation_id
+  - id
+  - author
+  - timestamp
+  - type
+  - name
+  - description
+  - data - jsonb
+  - questions - array of hstores
+  - updates - array of hstores
+responses:
+  - author
+  - timestamp
+  - response - hstore
