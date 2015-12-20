@@ -1,6 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, DateTime, func, Text, ForeignKey, Boolean, Enum, Sequence
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.ext.declarative import declared_attr
 
 Base = declarative_base()
 TIMESTAMPTZ = DateTime(timezone=True)
@@ -32,7 +33,7 @@ class Update(Base):
     __tablename__ = 'updates'
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     id = Column(Integer, Sequence('con_id_seq'), primary_key=True, nullable=False)
-    author = Column(String(255), nullable=False)
+    author = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     action = Column(String(64))
     value = Column(Text, nullable=False)
@@ -49,9 +50,9 @@ PARTICIPANT_PERMISSIONS = Enum(
 
 class Participant(Base):
     __tablename__ = 'participants'
-    conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'),
-                          nullable=False, primary_key=True)
-    email = Column(String(255), nullable=False, primary_key=True)
+    id = Column(Integer, Sequence('part_id_seq'), primary_key=True, nullable=False)
+    conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
+    email = Column(String(255), nullable=False)
     display_name = Column(String(255))
     hidden = Column(Boolean, default=False)
     permissions = Column(PARTICIPANT_PERMISSIONS)
@@ -66,10 +67,13 @@ MSGCMT_STATUS = Enum(
 
 class MsgCmt:
     id = Column(String(40), primary_key=True)
-    author = Column(String(255), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     body = Column(Text, nullable=False)
     status = Column(MSGCMT_STATUS)
+
+    @declared_attr
+    def author(cls):
+        return Column(Integer, ForeignKey('participants.id'), nullable=False)
 
 
 class Message(MsgCmt, Base):
@@ -98,7 +102,7 @@ class Extra(Base):
     __tablename__ = 'extras'
     id = Column(String(40), primary_key=True)
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
-    author = Column(String(255), nullable=False)
+    author = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     type = Column(String(40))
     name = Column(String(255))
@@ -111,6 +115,6 @@ class Response(Base):
     __tablename__ = 'responses'
     id = Column(Integer, Sequence('response_id_seq'), primary_key=True, nullable=False)
     extra = Column(String(40), ForeignKey('extras.id', ondelete='CASCADE'), nullable=False)
-    author = Column(String(255), nullable=False)
+    author = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     response = Column(JSONB, nullable=False)
