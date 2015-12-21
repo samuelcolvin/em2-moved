@@ -1,27 +1,25 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence
+from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
 from .model_extras import TIMESTAMPTZ, RichEnum
+from .base import Conversations, Action
 
 Base = declarative_base()
 
 
-class ConversationStatus(RichEnum):
-    PENDING = 'pending'
-    ACTIVE = 'active'
-    EXPIRED = 'expired'
-    DELETED = 'deleted'
-
-
 class Conversation(Base):
     __tablename__ = 'conversations'
+
+    class Status(Conversations.Status, RichEnum):
+        pass
+
     id = Column(Integer, Sequence('con_id_seq'), primary_key=True, nullable=False)
     global_id = Column(String(64), index=True, nullable=False)
     creator = Column(String(255), nullable=False)
-    timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
+    timestamp = Column(TIMESTAMPTZ, nullable=False)
     signature = Column(Text)
-    status = Column(ConversationStatus.enum(), server_default=ConversationStatus.PENDING)
+    status = Column(Status.enum(), nullable=False)
     expiration = Column(TIMESTAMPTZ)
     subject = Column(String(255), nullable=False)
     labels = Column(ARRAY(String(64)))
@@ -30,41 +28,61 @@ class Conversation(Base):
 
 class Update(Base):
     __tablename__ = 'updates'
+
+    class Focus(RichEnum):
+        MESSAGE = 'message'
+        COMMENT = 'comment'
+        PARTICIPANT = 'participant'
+        LABEL = 'label'
+        SUBJECT = 'subject'
+        EXPIRY = 'expiry'
+        ATTACHMENT = 'attachment'
+        EXTRA = 'extra'
+        RESPONSE = 'response'
+
+    class ActionEnum(Action, RichEnum):
+        pass
+
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
-    id = Column(Integer, Sequence('con_id_seq'), primary_key=True, nullable=False)
+    id = Column(Integer, Sequence('update_id_seq'), primary_key=True, nullable=False)
     author = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
-    action = Column(String(64))
-    value = Column(Text, nullable=False)
+    focus = Column(Focus.enum(), nullable=False)
+    focus_id = Column(String(40))
+    action = Column(ActionEnum.enum(), nullable=False)
 
-
-class ParticipantPermissions(RichEnum):
-    FULL = 'full'
-    WRITE = 'write'
-    COMMENT = 'comment'
-    READ = 'read'
+    value = Column(Text)
 
 
 class Participant(Base):
     __tablename__ = 'participants'
-    id = Column(Integer, Sequence('part_id_seq'), primary_key=True, nullable=False)
+
+    class Permissions(RichEnum):
+        FULL = 'full'
+        WRITE = 'write'
+        COMMENT = 'comment'
+        READ = 'read'
+
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
+    id = Column(Integer, Sequence('part_id_seq'), primary_key=True, nullable=False)
     email = Column(String(255), nullable=False)
     display_name = Column(String(255))
     hidden = Column(Boolean, default=False)
-    permissions = Column(ParticipantPermissions.enum())
-
-
-class MsgCmtStatus(RichEnum):
-    ACTIVE = 'active'
-    DELETED = 'deleted'
+    permissions = Column(Permissions.enum())
+    __table_args__ = (
+        UniqueConstraint('conversation', 'email', name='_con_email_uc'),
+    )
 
 
 class MsgCmt:
+    class Status(RichEnum):
+        ACTIVE = 'active'
+        DELETED = 'deleted'
+
     id = Column(String(40), primary_key=True)
-    timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
+    timestamp = Column(TIMESTAMPTZ, nullable=False)
     body = Column(Text, nullable=False)
-    status = Column(MsgCmtStatus.enum())
+    status = Column(Status.enum(), server_default=Status.ACTIVE)
 
     @declared_attr
     def author(cls):
@@ -74,6 +92,7 @@ class MsgCmt:
 class Message(MsgCmt, Base):
     __tablename__ = 'messages'
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
+    parent = Column(String(40), ForeignKey('messages.id', ondelete='CASCADE'))
     locked = Column(Boolean, default=False)
 
 
@@ -85,8 +104,9 @@ class Comment(MsgCmt, Base):
 
 class Attachment(Base):
     __tablename__ = 'attachments'
-    id = Column(String(40), primary_key=True)
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
+    id = Column(String(40), primary_key=True)
+    author = Column(Integer, ForeignKey('participants.id'), nullable=False)
     name = Column(String(255), nullable=False)
     path = Column(String(255), nullable=False)
     hash = Column(String(64), nullable=False)
@@ -96,10 +116,10 @@ class Attachment(Base):
 
 class Extra(Base):
     __tablename__ = 'extras'
-    id = Column(String(40), primary_key=True)
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
+    id = Column(String(40), primary_key=True)
     author = Column(Integer, ForeignKey('participants.id'), nullable=False)
-    timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
+    timestamp = Column(TIMESTAMPTZ, nullable=False)
     type = Column(String(40))
     name = Column(String(255))
     description = Column(Text)
@@ -109,8 +129,8 @@ class Extra(Base):
 
 class Response(Base):
     __tablename__ = 'responses'
-    id = Column(Integer, Sequence('response_id_seq'), primary_key=True, nullable=False)
+    id = Column(String(40), primary_key=True)
     extra = Column(String(40), ForeignKey('extras.id', ondelete='CASCADE'), nullable=False)
     author = Column(Integer, ForeignKey('participants.id'), nullable=False)
-    timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
+    timestamp = Column(TIMESTAMPTZ, nullable=False)
     response = Column(JSONB, nullable=False)

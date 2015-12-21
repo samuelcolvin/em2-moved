@@ -4,7 +4,7 @@ TIMESTAMPTZ = DateTime(timezone=True)
 
 
 class RichEnum:
-    OPTIONS = ()
+    OPTIONS = None
 
     @classmethod
     def enum(cls):
@@ -14,5 +14,5 @@ class RichEnum:
                 if isinstance(v, str):
                     return v
 
-        cls.OPTIONS = tuple(filter(bool, map(check_option, dir(cls))))
+        cls.OPTIONS = cls.OPTIONS or tuple(filter(bool, map(check_option, dir(cls))))
         return Enum(*cls.OPTIONS, name=cls.__name__.lower())

@@ -1,3 +1,4 @@
+import datetime
 import pytest
 
 import psycopg2
@@ -57,5 +58,7 @@ def conversation_factory(Session):
         global_id = factory.Sequence(lambda n: 'con_{}'.format(n))
         creator = factory.Sequence(lambda n: 'user{}@example.com'.format(n))
         subject = factory.Sequence(lambda n: 'conversation {}'.format(n))
+        timestamp = factory.Sequence(lambda n: datetime.datetime.now())
+        status = 'draft'
 
     return ConversationFactory
