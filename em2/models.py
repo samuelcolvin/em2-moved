@@ -1,18 +1,17 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime, func, Text, ForeignKey, Boolean, Enum, Sequence
+from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
+from .model_extras import TIMESTAMPTZ, RichEnum
 
 Base = declarative_base()
-TIMESTAMPTZ = DateTime(timezone=True)
 
-CONVERSATION_STATUS = Enum(
-    'pending'
-    'active',
-    'expired',
-    'deleted',
-    name='conversation_status'
-)
+
+class ConversationStatus(RichEnum):
+    PENDING = 'pending'
+    ACTIVE = 'active'
+    EXPIRED = 'expired'
+    DELETED = 'deleted'
 
 
 class Conversation(Base):
@@ -22,7 +21,7 @@ class Conversation(Base):
     creator = Column(String(255), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     signature = Column(Text)
-    status = Column(CONVERSATION_STATUS)
+    status = Column(ConversationStatus.enum(), server_default=ConversationStatus.PENDING)
     expiration = Column(TIMESTAMPTZ)
     subject = Column(String(255), nullable=False)
     labels = Column(ARRAY(String(64)))
@@ -39,13 +38,11 @@ class Update(Base):
     value = Column(Text, nullable=False)
 
 
-PARTICIPANT_PERMISSIONS = Enum(
-    'full'
-    'write',
-    'comment',
-    'read',
-    name='participant_permission'
-)
+class ParticipantPermissions(RichEnum):
+    FULL = 'full'
+    WRITE = 'write'
+    COMMENT = 'comment'
+    READ = 'read'
 
 
 class Participant(Base):
@@ -55,21 +52,19 @@ class Participant(Base):
     email = Column(String(255), nullable=False)
     display_name = Column(String(255))
     hidden = Column(Boolean, default=False)
-    permissions = Column(PARTICIPANT_PERMISSIONS)
+    permissions = Column(ParticipantPermissions.enum())
 
 
-MSGCMT_STATUS = Enum(
-    'active'
-    'deleted',
-    name='msgcmt_status'
-)
+class MsgCmtStatus(RichEnum):
+    ACTIVE = 'active'
+    DELETED = 'deleted'
 
 
 class MsgCmt:
     id = Column(String(40), primary_key=True)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     body = Column(Text, nullable=False)
-    status = Column(MSGCMT_STATUS)
+    status = Column(MsgCmtStatus.enum())
 
     @declared_attr
     def author(cls):
@@ -79,6 +74,7 @@ class MsgCmt:
 class Message(MsgCmt, Base):
     __tablename__ = 'messages'
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
+    locked = Column(Boolean, default=False)
 
 
 class Comment(MsgCmt, Base):

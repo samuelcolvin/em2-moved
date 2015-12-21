@@ -1,0 +1,12 @@
+machine:
+  python:
+    version: 3.5.0
+  services:
+    - postgresql
+
+test:
+  override:
+    - ./lint.sh
+    - py.test --cov=em2 tests/
+  post:
+    - coverage combine

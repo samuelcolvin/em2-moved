@@ -1,0 +1,16 @@
+[run]
+source = em2
+branch = True
+concurrency = multiprocessing
+
+parallel = True
+
+[report]
+exclude_lines =
+    pragma: no cover
+
+    def __repr__
+    def __str__
+
+    raise AssertionError
+    raise NotImplementedError
