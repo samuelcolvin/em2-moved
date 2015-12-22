@@ -29,15 +29,34 @@ class DataStore:
     def create_conversation(self, **kwargs):
         raise NotImplementedError()
 
-    def create_component(self, model, **kwargs):
+    def create_component(self, model, conversation, **kwargs):
         raise NotImplementedError()
 
-    def record_change(self, conversation, author, action, focus_id, focus):
+    def update_component(self, model, conversation, item_id, **kwargs):
+        raise NotImplementedError()
+
+    def event(self, conversation, author, action, data, timestamp, focus_id, focus):
+        """
+        Record and propagate update of conversations and creation, update and deletion or conversation components.
+
+        :param conversation: local id of conversation event occurred on
+        :param author: participant id of event author
+        :param action: see base.Action
+        :param data: extra information associated with the update
+        :param timestamp: datetime the update occurred
+        :param focus_id: id of item created or modified
+        :param focus: model name of item being updated
+        :return: None
+        """
         # changes are always recorded but can be cleared before publish
         logger.debug('change occurred on %d: author: "%s", action: "%s", focus: %s %s',
                      conversation, author, action, focus, focus_id)
+        self.save_event(conversation, author, action, data, timestamp, focus_id, focus)
         if self.change_handler:
-            self.change_handler(author, action, focus, focus_id)
+            self.change_handler(conversation, author, action, timestamp, focus_id, focus)
+
+    def save_event(self, *args):
+        raise NotImplementedError()
 
     def get_message_count(self, con):
         """
@@ -51,8 +70,8 @@ class DataStore:
         """
         raise NotImplementedError()
 
-    def get_participant_id(self, con, participant_email):
+    def get_participant_id(self, con, participant_addre):
         """
-        Get id of participant by email, should raise ComponentNotFound if participant is not on the conversation.
+        Get id of participant by addre, should raise ComponentNotFound if participant is not on the conversation.
         """
         raise NotImplementedError()

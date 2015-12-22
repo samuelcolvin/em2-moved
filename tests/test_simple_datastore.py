@@ -1,101 +1,8 @@
-import logging
-import json
 import datetime
 
 import hashlib
-import itertools
-from em2.base import Conversations, logger
-from em2.data_store import DataStore
-from em2.exceptions import ConversationNotFound, ComponentNotFound
-
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(message)s'))
-logger.addHandler(handler)
-# logger.setLevel(logging.DEBUG)
-
-
-class UniversalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        try:
-            return super(UniversalEncoder, self).default(obj)
-        except TypeError:
-            return repr(obj)
-
-
-class SimpleDataStore(DataStore):
-    def __init__(self, *args, **kwargs):
-        self.conversation_counter = itertools.count()
-        self.data = {}
-        super(SimpleDataStore, self).__init__(*args, **kwargs)
-
-    def create_conversation(self, **kwargs):
-        id = next(self.conversation_counter)
-        self.data[id] = dict(
-            participant_counter=itertools.count(),  # special case with uses sequence id
-            updates=[],
-            **kwargs
-        )
-        return id
-
-    def create_component(self, model, **kwargs):
-        con_id = kwargs['conversation']
-        if model not in self.data[con_id]:
-            self.data[con_id][model] = {}
-        if model == 'participants':
-            id = next(self.data[con_id]['participant_counter'])
-        else:
-            id = kwargs['id']
-        self.data[con_id][model][id] = kwargs
-        return id
-
-    def record_change(self, conversation, author, action, focus_id, focus):
-        con_obj = self._get_con(conversation)
-        con_obj['updates'].append({
-            'author': author,
-            'action': action,
-            'focus_id': focus_id,
-            'focus': focus,
-        })
-        return super(SimpleDataStore, self).record_change(conversation, author, action, focus_id, focus)
-
-    def _get_con(self, con_id):
-        conversation = self.data.get(con_id)
-        if conversation is None:
-            raise ConversationNotFound('conversation {} not found in {} '
-                                       'existing conversations'.format(con_id, len(self.data)))
-        return conversation
-
-    def get_message_count(self, con):
-        con_obj = self._get_con(con)
-        return len(con_obj.get('messages', {}))
-
-    def check_message_exists(self, con, message_id):
-        con_obj = self._get_con(con)
-        msgs = con_obj.get('messages', {})
-        msg = msgs.get(message_id)
-        if msg is None:
-            raise ComponentNotFound('message {} not found in {}'.format(message_id, msgs.keys()))
-
-    def get_participant_id(self, con, participant_email):
-        con_obj = self._get_con(con)
-        prtis = con_obj.get('participants', {})
-        for k, v in prtis.items():
-            if v['email'] == participant_email:
-                return k
-        raise ComponentNotFound('participant {} not found in {}'.format(participant_email, prtis.keys()))
-
-    @property
-    def live_data(self):
-        """
-        Returns: non empty elements of self.data
-        """
-        return [v for v in self.data.values() if v]
-
-    def print_pretty(self):
-        print(json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder))
+from em2.base import Conversations
+from .py_datastore import SimpleDataStore
 
 
 def test_create_basic_conversation():
@@ -124,3 +31,58 @@ def test_create_conversation_with_message():
     assert len(con['participants']) == 1
     assert len(con['messages']) == 1
     assert len(con['updates']) == 2
+
+
+def test_conversation_extra_participant():
+    ds = SimpleDataStore()
+    conversations = Conversations(ds)
+    con_id = conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+    assert len(ds.data) == 1
+    con = ds.data[0]
+    assert len(con['participants']) == 1
+    write_access = conversations.participants.Permissions.WRITE
+    conversations.participants.create(con_id, 'someone_different@example.com', write_access)
+    assert len(con['participants']) == 2
+
+
+def test_conversation_add_message():
+    ds = SimpleDataStore()
+    conversations = Conversations(ds)
+    con_id = conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+    assert len(ds.data) == 1
+    con = ds.data[0]
+    assert len(con['messages']) == 1
+    assert len(con['updates']) == 2
+    msg1_id = list(con['messages'])[0]
+    conversations.messages.create(con_id, 'text@example.com', 'I am find thanks.', msg1_id)
+    assert len(con['messages']) == 2
+    assert len(con['updates']) == 3
+    last_update = con['updates'][-1]
+    assert last_update['action'] == 'create'
+    assert last_update['author'] == 'text@example.com'
+    assert last_update['focus'] == 'messages'
+    assert last_update['data'] == {}
+    msg2_id = list(con['messages'])[1]
+    assert last_update['focus_id'] == msg2_id
+
+
+def test_conversation_edit_message():
+    ds = SimpleDataStore()
+    conversations = Conversations(ds)
+    con_id = conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+    assert len(ds.data) == 1
+    con = ds.data[0]
+    assert len(con['messages']) == 1
+    assert len(con['updates']) == 2
+    msg1_id = list(con['messages'])[0]
+    msg1 = con['messages'][msg1_id]
+    assert msg1['body'] == 'hi, how are you?'
+    conversations.messages.update(con_id, 'text@example.com', 'hi, how are you again?', msg1_id)
+    assert msg1['body'] == 'hi, how are you again?'
+    assert len(con['updates']) == 3
+    last_update = con['updates'][-1]
+    assert last_update['action'] == 'update'
+    assert last_update['author'] == 'text@example.com'
+    assert last_update['focus'] == 'messages'
+    assert last_update['data'] == {'value': 'hi, how are you again?'}
+    assert last_update['focus_id'] == msg1_id

@@ -62,12 +62,12 @@ class Participant(Base):
 
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     id = Column(Integer, Sequence('part_id_seq'), primary_key=True, nullable=False)
-    email = Column(String(255), nullable=False)
+    address = Column(String(255), nullable=False)
     display_name = Column(String(255))
     hidden = Column(Boolean, default=False)
     permissions = Column(Permissions.enum())
     __table_args__ = (
-        UniqueConstraint('conversation', 'email', name='_con_email_uc'),
+        UniqueConstraint('conversation', 'address', name='_con_email_uc'),
     )
 
 

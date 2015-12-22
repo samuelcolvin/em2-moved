@@ -16,7 +16,7 @@ class Action:
 
 class Conversations:
     model = 'conversations'
-    record_change = None
+    event = None
 
     def __init__(self, data_store):
         self.ds = data_store
@@ -42,7 +42,7 @@ class Conversations:
         )
         logger.info('created conversation: %s..., id: %d, creator: "%s", subject: "%s"',
                     global_id[:6], local_id, creator, subject)
-        self.participants.create(local_id, creator)
+        self.participants.create(local_id, creator, Participants.Permissions.FULL)
         if body is not None:
             self.messages.create(local_id, creator, body)
         return local_id
@@ -60,15 +60,22 @@ class _Components:
     def __init__(self, data_store):
         self.ds = data_store
 
-    def record_change(self, con, author, action, focus_id=None):
-        self.ds.record_change(con, author, action, focus_id, focus=self.model)
+    def event(self, con, author, action, ts=None, focus_id=None, **data):
+        self.ds.event(
+            conversation=con,
+            author=author,
+            action=action,
+            data=data,
+            timestamp=ts or self.ds.now_tz(),
+            focus_id=focus_id,
+            focus=self.model
+        )
 
     def _create(self, conversation, **kwargs):
-        return self.ds.create_component(
-            self.model,
-            conversation=conversation,
-            **kwargs
-        )
+        return self.ds.create_component(self.model, conversation, **kwargs)
+
+    def _update(self, conversation, id, **kwargs):
+        return self.ds.update_component(self.model, conversation, id, **kwargs)
 
 
 class Messages(_Components):
@@ -79,7 +86,7 @@ class Messages(_Components):
             existing_messages = self.ds.get_message_count(con)
             assert existing_messages == 0, '%d existing messages with blank parent' % existing_messages
         else:
-            assert self.ds.check_message_exists(con, parent)
+            self.ds.check_message_exists(con, parent)
         timestamp = self.ds.now_tz()
         id = self.ds.hash(author, timestamp.isoformat(), body, parent)
         self._create(
@@ -91,7 +98,17 @@ class Messages(_Components):
             parent=parent,
         )
         logger.info('created message on %d: %s..., author: "%s", parent: "%s"', con, id[:6], author, parent)
-        self.record_change(con, author, Action.CREATE, id)
+        self.event(con, author, Action.CREATE, ts=timestamp, focus_id=id)
+
+    def update(self, con, author, body, message_id):
+        self.ds.check_message_exists(con, message_id)
+        self._update(
+            con,
+            message_id,
+            body=body,
+        )
+        logger.info('updated message on %d: %s..., author: "%s"', con, message_id[:6], author)
+        self.event(con, author, Action.UPDATE, focus_id=message_id, value=body)
 
 
 class Participants(_Components):
@@ -103,12 +120,11 @@ class Participants(_Components):
         COMMENT = 'comment'
         READ = 'read'
 
-    def create(self, con, email, permissions=None):
-        permissions = permissions or self.Permissions.FULL
+    def create(self, con, email, permissions):
         self._create(
             con,
             email=email,
             permissions=permissions,
         )
         logger.info('created participant on %d: email: "%s", permissions: "%s"', con, email, permissions)
-        self.record_change(con, email, Action.CREATE)
+        self.event(con, email, Action.CREATE)
