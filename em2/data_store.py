@@ -64,14 +64,28 @@ class DataStore:
         """
         raise NotImplementedError()
 
-    async def check_message_exists(self, con, message_id):
+    async def get_participant_count(self, con):
         """
-        Check a message with given id exists, should raise ComponentNotFound if not. return True if it does.
+        Find the number of participants in a conversation.
         """
         raise NotImplementedError()
 
-    async def get_participant_id(self, con, participant_addre):
+    async def get_message_author(self, con, message_id):
         """
-        Get id of participant by addre, should raise ComponentNotFound if participant is not on the conversation.
+        Find message author by global id, should raise ComponentNotFound if not.
+        :param con: local id of conversation
+        :param message_id: id of message
+        :return: participant id of message
+        """
+        # TODO, may be better to update this method to return more information
+        raise NotImplementedError()
+
+    async def get_participant(self, con, participant_address):
+        """
+        Find a participant by address returning id and permissions, should raise ComponentNotFound if
+        participant is not in the conversation.
+        :param con: local id of conversation
+        :param participant_address: public address of participant to find
+        :return: tuple (id - local id participant, permissions - participants permissions)
         """
         raise NotImplementedError()

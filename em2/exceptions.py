@@ -14,3 +14,7 @@ class ConversationNotFound(Em2NotFoundException):
 
 class ComponentNotFound(Em2NotFoundException):
     pass
+
+
+class InsufficientPermissions(Em2Exception):
+    pass

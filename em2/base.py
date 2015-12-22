@@ -3,6 +3,8 @@ Synchronous interface to em2
 """
 import logging
 
+from em2.exceptions import InsufficientPermissions
+
 logger = logging.getLogger('em2')
 
 
@@ -42,7 +44,7 @@ class Conversations:
         )
         logger.info('created conversation: %s..., id: %d, creator: "%s", subject: "%s"',
                     global_id[:6], local_id, creator, subject)
-        await self.participants.add(local_id, creator, Participants.Permissions.FULL)
+        await self.participants.add(local_id, creator, perms.FULL, None)
         if body is not None:
             await self.messages.add(local_id, creator, body)
         return local_id
@@ -84,31 +86,42 @@ class Messages(_Components):
     async def add(self, con, author, body, parent=None):
         if parent is None:
             existing_messages = await self.ds.get_message_count(con)
-            assert existing_messages == 0, '%d existing messages with blank parent' % existing_messages
+            assert existing_messages == 0, '{} existing messages with blank parent'.format(existing_messages)
         else:
-            await self.ds.check_message_exists(con, parent)
+            await self.ds.get_message_author(con, parent)
         timestamp = self.ds.now_tz()
         id = self.ds.hash(author, timestamp.isoformat(), body, parent)
+        participant_id, permissions = await self.ds.get_participant(con, author)
+        if permissions not in {perms.FULL, perms.WRITE}:
+            raise InsufficientPermissions('FULL or WRITE access required to add messages')
+
         await self._add(
             con,
             id=id,
-            author=await self.ds.get_participant_id(con, author),
+            author=participant_id,
             timestamp=timestamp,
             body=body,
             parent=parent,
         )
         logger.info('added message to %d: %s..., author: "%s", parent: "%s"', con, id[:6], author, parent)
-        await self.event(con, author, Action.ADD, ts=timestamp, focus_id=id)
+        await self.event(con, participant_id, Action.ADD, ts=timestamp, focus_id=id)
 
     async def edit(self, con, author, body, message_id):
-        await self.ds.check_message_exists(con, message_id)
+        participant_id, permissions = await self.ds.get_participant(con, author)
+        if permissions == perms.WRITE:
+            author_pid = await self.ds.get_message_author(con, message_id)
+            if author_pid == participant_id:
+                raise InsufficientPermissions('Editing a message authored by another participant '
+                                              'requires FULL permissions')
+        elif permissions != perms.FULL:
+            raise InsufficientPermissions('Editing a message requires FULL or WRITE permissions')
         await self._edit(
             con,
             message_id,
             body=body,
         )
         logger.info('edited message on %d: %s..., author: "%s"', con, message_id[:6], author)
-        await self.event(con, author, Action.EDIT, focus_id=message_id, value=body)
+        await self.event(con, participant_id, Action.EDIT, focus_id=message_id, value=body)
 
 
 class Participants(_Components):
@@ -120,11 +133,27 @@ class Participants(_Components):
         COMMENT = 'comment'
         READ = 'read'
 
-    async def add(self, con, email, permissions):
-        await self._add(
+    async def add(self, con, email, permissions, author):
+        participant_id = None
+        if author is None:
+            existing_ps = await self.ds.get_participant_count(con)
+            assert existing_ps == 0, ('we can only add a participant with no author if the conversation has no '
+                                      'participants, currently {}'.format(existing_ps))
+        else:
+            participant_id, a_permissions = await self.ds.get_participant(con, author)
+            if a_permissions not in {perms.FULL, perms.WRITE}:
+                raise InsufficientPermissions('FULL or WRITE permission are required to add participants')
+            if a_permissions == perms.WRITE and permissions == perms.FULL:
+                raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions.')
+        new_participant_id = await self._add(
             con,
             email=email,
             permissions=permissions,
         )
         logger.info('added participant to %d: email: "%s", permissions: "%s"', con, email, permissions)
-        await self.event(con, email, Action.ADD)
+        if participant_id is None:
+            participant_id = new_participant_id
+        await self.event(con, participant_id, Action.ADD)
+
+# shortcut
+perms = Participants.Permissions

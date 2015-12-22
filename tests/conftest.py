@@ -87,8 +87,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
 @pytest.mark.tryfirst
 def pytest_pyfunc_call(pyfuncitem):
     """
-    Run asyncio marked test functions in an event loop instead of a normal
-    function call.
+    Run coroutines in an event loop instead of a normal function call.
     """
     if asyncio.iscoroutinefunction(pyfuncitem.function):
         loop = asyncio.get_event_loop()

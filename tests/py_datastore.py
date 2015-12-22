@@ -46,9 +46,8 @@ class SimpleDataStore(DataStore):
         if model not in con_obj:
             con_obj[model] = OrderedDict()
         if model == 'participants':
-            id = next(con_obj['participant_counter'])
-        else:
-            id = kwargs['id']
+            kwargs['id'] = next(con_obj['participant_counter'])
+        id = kwargs['id']
         con_obj[model][id] = kwargs
         return id
 
@@ -84,21 +83,25 @@ class SimpleDataStore(DataStore):
         con_obj = self._get_con(con)
         return len(con_obj.get('messages', {}))
 
-    async def check_message_exists(self, con, message_id):
+    async def get_participant_count(self, con):
+        con_obj = self._get_con(con)
+        return len(con_obj.get('participants', {}))
+
+    async def get_message_author(self, con, message_id):
         con_obj = self._get_con(con)
         msgs = con_obj.get('messages', {})
         msg = msgs.get(message_id)
         if msg is None:
             raise ComponentNotFound('message {} not found in {}'.format(message_id, msgs.keys()))
-        return True
+        return msg['author']
 
-    async def get_participant_id(self, con, participant_email):
+    async def get_participant(self, con, participant_address):
         con_obj = self._get_con(con)
         prtis = con_obj.get('participants', {})
-        for k, v in prtis.items():
-            if v['email'] == participant_email:
-                return k
-        raise ComponentNotFound('participant {} not found in {}'.format(participant_email, prtis.keys()))
+        for v in prtis.values():
+            if v['email'] == participant_address:
+                return v['id'], v['permissions']
+        raise ComponentNotFound('participant {} not found in {}'.format(participant_address, prtis.keys()))
 
     def print_pretty(self):
         print(json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder))
