@@ -15,9 +15,9 @@ class DataStore:
     def hash(self, *args, **kwargs):
         method = kwargs.pop('method', 'sha1')
         assert len(kwargs) == 0, 'unexpected keywords args: {}'.format(kwargs)
-        function = getattr(hashlib, method)
+        func = getattr(hashlib, method)
         to_hash = '_'.join(map(str, args))
-        return function(to_hash.encode()).hexdigest()
+        return func(to_hash.encode()).hexdigest()
 
     @property
     def timezone(self):
@@ -26,16 +26,16 @@ class DataStore:
     def now_tz(self):
         return self.timezone.localize(datetime.datetime.utcnow())
 
-    def create_conversation(self, **kwargs):
+    async def create_conversation(self, **kwargs):
         raise NotImplementedError()
 
-    def create_component(self, model, conversation, **kwargs):
+    async def create_component(self, model, conversation, **kwargs):
         raise NotImplementedError()
 
-    def update_component(self, model, conversation, item_id, **kwargs):
+    async def update_component(self, model, conversation, item_id, **kwargs):
         raise NotImplementedError()
 
-    def event(self, conversation, author, action, data, timestamp, focus_id, focus):
+    async def event(self, conversation, author, action, data, timestamp, focus_id, focus):
         """
         Record and propagate update of conversations and creation, update and deletion or conversation components.
 
@@ -51,26 +51,26 @@ class DataStore:
         # changes are always recorded but can be cleared before publish
         logger.debug('change occurred on %d: author: "%s", action: "%s", focus: %s %s',
                      conversation, author, action, focus, focus_id)
-        self.save_event(conversation, author, action, data, timestamp, focus_id, focus)
+        await self.save_event(conversation, author, action, data, timestamp, focus_id, focus)
         if self.change_handler:
-            self.change_handler(conversation, author, action, timestamp, focus_id, focus)
+            await self.change_handler(conversation, author, action, timestamp, focus_id, focus)
 
-    def save_event(self, *args):
+    async def save_event(self, *args):
         raise NotImplementedError()
 
-    def get_message_count(self, con):
+    async def get_message_count(self, con):
         """
         Find the number of messages associated with a conversation.
         """
         raise NotImplementedError()
 
-    def check_message_exists(self, con, message_id):
+    async def check_message_exists(self, con, message_id):
         """
         Check a message with given id exists, should raise ComponentNotFound if not. return True if it does.
         """
         raise NotImplementedError()
 
-    def get_participant_id(self, con, participant_addre):
+    async def get_participant_id(self, con, participant_addre):
         """
         Get id of participant by addre, should raise ComponentNotFound if participant is not on the conversation.
         """
