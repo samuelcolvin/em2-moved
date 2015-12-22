@@ -41,7 +41,7 @@ class SimpleDataStore(DataStore):
         )
         return id
 
-    def create_component(self, model, conversation, **kwargs):
+    def add_component(self, model, conversation, **kwargs):
         con_obj = self._get_con(conversation)
         if model not in con_obj:
             con_obj[model] = OrderedDict()
@@ -52,7 +52,7 @@ class SimpleDataStore(DataStore):
         con_obj[model][id] = kwargs
         return id
 
-    def update_component(self, model, conversation, item_id, **kwargs):
+    def edit_component(self, model, conversation, item_id, **kwargs):
         con_obj = self._get_con(conversation)
         items = con_obj.get(model)
         if items is None:

@@ -41,7 +41,7 @@ def test_conversation_extra_participant():
     con = ds.data[0]
     assert len(con['participants']) == 1
     write_access = conversations.participants.Permissions.WRITE
-    conversations.participants.create(con_id, 'someone_different@example.com', write_access)
+    conversations.participants.add(con_id, 'someone_different@example.com', write_access)
     assert len(con['participants']) == 2
 
 
@@ -54,11 +54,11 @@ def test_conversation_add_message():
     assert len(con['messages']) == 1
     assert len(con['updates']) == 2
     msg1_id = list(con['messages'])[0]
-    conversations.messages.create(con_id, 'text@example.com', 'I am find thanks.', msg1_id)
+    conversations.messages.add(con_id, 'text@example.com', 'I am find thanks.', msg1_id)
     assert len(con['messages']) == 2
     assert len(con['updates']) == 3
     last_update = con['updates'][-1]
-    assert last_update['action'] == 'create'
+    assert last_update['action'] == 'add'
     assert last_update['author'] == 'text@example.com'
     assert last_update['focus'] == 'messages'
     assert last_update['data'] == {}
@@ -77,11 +77,11 @@ def test_conversation_edit_message():
     msg1_id = list(con['messages'])[0]
     msg1 = con['messages'][msg1_id]
     assert msg1['body'] == 'hi, how are you?'
-    conversations.messages.update(con_id, 'text@example.com', 'hi, how are you again?', msg1_id)
+    conversations.messages.edit(con_id, 'text@example.com', 'hi, how are you again?', msg1_id)
     assert msg1['body'] == 'hi, how are you again?'
     assert len(con['updates']) == 3
     last_update = con['updates'][-1]
-    assert last_update['action'] == 'update'
+    assert last_update['action'] == 'edit'
     assert last_update['author'] == 'text@example.com'
     assert last_update['focus'] == 'messages'
     assert last_update['data'] == {'value': 'hi, how are you again?'}
