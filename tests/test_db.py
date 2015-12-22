@@ -1,7 +1,7 @@
 from em2.models import Conversation
 
 
-def test_con_factory(Session, conversation_factory):
+def test_conversation_factory(Session, conversation_factory):
     session = Session()
     assert session.query(Conversation).count() == 0
     conversation = conversation_factory()

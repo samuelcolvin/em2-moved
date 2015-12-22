@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean,
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
 from .model_extras import TIMESTAMPTZ, RichEnum
-from .base import Conversations, Action
+from .base import Conversations, Action, Participants
 
 Base = declarative_base()
 
@@ -30,22 +30,22 @@ class Update(Base):
     __tablename__ = 'updates'
 
     class Focus(RichEnum):
-        MESSAGE = 'message'
-        COMMENT = 'comment'
-        PARTICIPANT = 'participant'
-        LABEL = 'label'
-        SUBJECT = 'subject'
+        MESSAGE = 'messages'
+        COMMENT = 'comments'
+        PARTICIPANT = 'participants'
+        LABEL = 'labels'
+        SUBJECT = 'subjects'
         EXPIRY = 'expiry'
-        ATTACHMENT = 'attachment'
-        EXTRA = 'extra'
-        RESPONSE = 'response'
+        ATTACHMENT = 'attachments'
+        EXTRA = 'extras'
+        RESPONSE = 'responses'
 
     class ActionEnum(Action, RichEnum):
         pass
 
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     id = Column(Integer, Sequence('update_id_seq'), primary_key=True, nullable=False)
-    author = Column(Integer, ForeignKey('participants.id'), nullable=False)
+    participant = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     focus = Column(Focus.enum(), nullable=False)
     focus_id = Column(String(40))
@@ -57,11 +57,8 @@ class Update(Base):
 class Participant(Base):
     __tablename__ = 'participants'
 
-    class Permissions(RichEnum):
-        FULL = 'full'
-        WRITE = 'write'
-        COMMENT = 'comment'
-        READ = 'read'
+    class Permissions(Participants.Permissions, RichEnum):
+        pass
 
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     id = Column(Integer, Sequence('part_id_seq'), primary_key=True, nullable=False)
