@@ -48,10 +48,10 @@ class Conversations:
         return local_id
 
     def publish(self):
-        pass
+        raise NotImplemented
 
     def get_by_global_id(self, id):
-        pass
+        raise NotImplemented
 
 
 class _Components:

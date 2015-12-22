@@ -1,7 +1,6 @@
 import logging
 import json
 import datetime
-from collections import OrderedDict
 
 import hashlib
 import itertools
