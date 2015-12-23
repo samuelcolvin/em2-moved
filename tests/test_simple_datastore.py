@@ -64,7 +64,7 @@ async def test_conversation_add_message():
     assert len(con['updates']) == 0
     msg1_id = list(con['messages'])[0]
     a = Action('text@example.com', con_id, Verbs.ADD, Components.MESSAGE)
-    await ctrl.act(a, body='I am find thanks.', parent=msg1_id)
+    await ctrl.act(a, parent_id=msg1_id, body='I am find thanks.')
     assert len(con['messages']) == 2
     assert len(con['updates']) == 1
 

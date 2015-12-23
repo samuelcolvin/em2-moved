@@ -129,24 +129,24 @@ class _Components:
 class Messages(_Components):
     name = 'messages'
 
-    async def add_basic(self, action, body, parent=None):
+    async def add_basic(self, action, body, parent_id=None):
         timestamp = self.ds.now_tz()
-        id = self.ds.hash(action.actor_addr, timestamp.isoformat(), body, parent)
+        id = self.ds.hash(action.actor_addr, timestamp.isoformat(), body, parent_id)
         await self._add(
             action.con,
             id=id,
             author=action.actor_id,
             timestamp=timestamp,
             body=body,
-            parent=parent,
+            parent=parent_id,
         )
         return id
 
-    async def add(self, action, body, parent):
-        await self.ds.get_message_author(action.con, parent)
+    async def add(self, action, parent_id, body):
+        await self.ds.get_message_author(action.con, parent_id)
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE access required to add messages')
-        id = await self.add_basic(action, body, parent)
+        id = await self.add_basic(action, body, parent_id)
         await self.ds.event(action, id)
 
     async def edit(self, action, id, body):
@@ -163,6 +163,18 @@ class Messages(_Components):
             body=body,
         )
         await self.ds.event(action, id, value=body)
+
+    async def delta_edit(self, action, id, body):
+        raise NotImplementedError()
+
+    async def delete(self, action, id):
+        raise NotImplementedError()
+
+    async def lock(self, action, id):
+        raise NotImplementedError()
+
+    async def unlock(self, action, id):
+        raise NotImplementedError()
 
 
 class Participants(_Components):
