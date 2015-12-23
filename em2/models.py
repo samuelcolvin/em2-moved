@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean,
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
 from .model_extras import TIMESTAMPTZ, RichEnum
-from .base import Conversations, Action, Participants
+from .base import Conversations, Verbs, Participants, Components
 
 Base = declarative_base()
 
@@ -29,27 +29,19 @@ class Conversation(Base):
 class Update(Base):
     __tablename__ = 'updates'
 
-    class Focus(RichEnum):
-        MESSAGE = 'messages'
-        COMMENT = 'comments'
-        PARTICIPANT = 'participants'
-        LABEL = 'labels'
-        SUBJECT = 'subjects'
-        EXPIRY = 'expiry'
-        ATTACHMENT = 'attachments'
-        EXTRA = 'extras'
-        RESPONSE = 'responses'
+    class ComponentEnum(Components, RichEnum):
+        pass
 
-    class ActionEnum(Action, RichEnum):
+    class VerbEnum(Verbs, RichEnum):
         pass
 
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     id = Column(Integer, Sequence('update_id_seq'), primary_key=True, nullable=False)
     participant = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
-    focus = Column(Focus.enum(), nullable=False)
-    focus_id = Column(String(40))
-    action = Column(ActionEnum.enum(), nullable=False)
+    component = Column(ComponentEnum.enum(), nullable=False)
+    component_id = Column(String(40))
+    verb = Column(VerbEnum.enum(), nullable=False)
 
     value = Column(Text)
 

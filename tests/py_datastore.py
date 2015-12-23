@@ -32,6 +32,17 @@ class SimpleDataStore(DataStore):
         self.data = {}
         super(SimpleDataStore, self).__init__(*args, **kwargs)
 
+    async def save_event(self, action, component_id, data, timestamp):
+        con_obj = self._get_con(action.con)
+        con_obj['updates'].append({
+            'actor': action.actor_id,
+            'verb': action.verb,
+            'component': action.component,
+            'component_id': component_id,
+            'data': data,
+            'timestamp': timestamp,
+        })
+
     async def create_conversation(self, **kwargs):
         id = next(self.conversation_counter)
         self.data[id] = dict(
@@ -60,17 +71,6 @@ class SimpleDataStore(DataStore):
         if item is None:
             raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, conversation))
         item.update(kwargs)
-
-    async def save_event(self, conversation, author, action, data, timestamp, focus_id, focus):
-        con_obj = self._get_con(conversation)
-        con_obj['updates'].append({
-            'author': author,
-            'action': action,
-            'timestamp': timestamp,
-            'focus_id': focus_id,
-            'focus': focus,
-            'data': data,
-        })
 
     def _get_con(self, con_id):
         conversation = self.data.get(con_id)

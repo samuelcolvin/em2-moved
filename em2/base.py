@@ -3,27 +3,77 @@ Synchronous interface to em2
 """
 import logging
 
-from em2.exceptions import InsufficientPermissions
+from .exceptions import InsufficientPermissions, ComponentNotFound, VerbNotFound
+from .model_extras import get_options
 
 logger = logging.getLogger('em2')
 
 
-class Action:
+class Verbs:
     ADD = 'add'
     EDIT = 'edit'
     DELTA_EDIT = 'delta_edit'
     DELETE = 'delete'
     LOCK = 'lock'
+    UNLOCK = 'unlock'
+
+
+class Components:
+    MESSAGE = 'messages'
+    COMMENT = 'comments'
+    PARTICIPANT = 'participants'
+    LABEL = 'labels'
+    SUBJECT = 'subjects'
+    EXPIRY = 'expiry'
+    ATTACHMENT = 'attachments'
+    EXTRA = 'extras'
+    RESPONSE = 'responses'
+
+
+class Action:
+    def __init__(self, actor, conversation, verb, component, item=None):
+        self.actor_addr = actor
+        self.actor_id = None
+        self.perm = None
+        self.con = conversation
+        self.verb = verb
+        self.component = component
+        self.item = item
+
+    async def set_actor(self, ds):
+        # TODO it may be possible to provide functionality to cache these results to reduce queries
+        self.actor_id, self.perm = await ds.get_participant(self.con, self.actor_addr)
+
+
+class Controller:
+    def __init__(self, data_store):
+        self.ds = data_store
+        self.conversations = Conversations(self)
+        components = [Messages, Participants]
+        self.components = {c.name: c(self) for c in components}
+        self.valid_verbs = set(get_options(Verbs))
+
+    async def act(self, action, **kwargs):
+        assert isinstance(action, Action)
+        await action.set_actor(self.ds)
+        component_cls = self.components.get(action.component)
+        if component_cls is None:
+            raise ComponentNotFound('{} is not a valid component'.format(action.component))
+
+        assert action.verb in self.valid_verbs, '{} not in verbs: {}'.format(action.verb, self.valid_verbs)
+        func = getattr(component_cls, action.verb, None)
+        if func is None:
+            raise VerbNotFound('{} is not an available verb on {}'.format(action.verb, action.component))
+        return await func(action, **kwargs)
 
 
 class Conversations:
-    model = 'conversations'
+    name = 'conversations'
     event = None
 
-    def __init__(self, data_store):
-        self.ds = data_store
-        self.messages = Messages(data_store)
-        self.participants = Participants(data_store)
+    def __init__(self, controller):
+        self.ctrl = controller
+        self.ds = self.ctrl.ds
 
     class Status:
         DRAFT = 'draft'
@@ -35,7 +85,7 @@ class Conversations:
     async def create(self, creator, subject, body=None):
         timestamp = self.ds.now_tz()
         global_id = self.ds.hash(creator, timestamp.isoformat(), subject, method='sha256')
-        local_id = await self.ds.create_conversation(
+        con_id = await self.ds.create_conversation(
             global_id=global_id,
             timestamp=timestamp,
             creator=creator,
@@ -43,11 +93,17 @@ class Conversations:
             status=self.Status.DRAFT,
         )
         logger.info('created conversation: %s..., id: %d, creator: "%s", subject: "%s"',
-                    global_id[:6], local_id, creator, subject)
-        await self.participants.add(local_id, creator, perms.FULL, None)
+                    global_id[:6], con_id, creator, subject)
+
+        participants = self.ctrl.components[Components.PARTICIPANT]
+        await participants.add_first(con_id, creator)
+
         if body is not None:
-            await self.messages.add(local_id, creator, body)
-        return local_id
+            messages = self.ctrl.components[Components.MESSAGE]
+            a = Action(creator, con_id, Verbs.ADD, Components.MESSAGE)
+            await a.set_actor(self.ds)
+            await messages.add_basic(a, body=body)
+        return con_id
 
     async def publish(self):
         raise NotImplemented
@@ -57,75 +113,60 @@ class Conversations:
 
 
 class _Components:
-    model = None
+    name = None
 
-    def __init__(self, data_store):
-        self.ds = data_store
-
-    async def event(self, con, author, action, ts=None, focus_id=None, **data):
-        return await self.ds.event(
-            conversation=con,
-            author=author,
-            action=action,
-            data=data,
-            timestamp=ts or self.ds.now_tz(),
-            focus_id=focus_id,
-            focus=self.model
-        )
+    def __init__(self, controller):
+        self.controller = controller
+        self.ds = self.controller.ds
 
     async def _add(self, conversation, **kwargs):
-        return await self.ds.add_component(self.model, conversation, **kwargs)
+        return await self.ds.add_component(self.name, conversation, **kwargs)
 
     async def _edit(self, conversation, id, **kwargs):
-        return await self.ds.edit_component(self.model, conversation, id, **kwargs)
+        return await self.ds.edit_component(self.name, conversation, id, **kwargs)
 
 
 class Messages(_Components):
-    model = 'messages'
+    name = 'messages'
 
-    async def add(self, con, author, body, parent=None):
-        if parent is None:
-            existing_messages = await self.ds.get_message_count(con)
-            assert existing_messages == 0, '{} existing messages with blank parent'.format(existing_messages)
-        else:
-            await self.ds.get_message_author(con, parent)
+    async def add_basic(self, action, body, parent=None):
         timestamp = self.ds.now_tz()
-        id = self.ds.hash(author, timestamp.isoformat(), body, parent)
-        participant_id, permissions = await self.ds.get_participant(con, author)
-        if permissions not in {perms.FULL, perms.WRITE}:
-            raise InsufficientPermissions('FULL or WRITE access required to add messages')
-
+        id = self.ds.hash(action.actor_addr, timestamp.isoformat(), body, parent)
         await self._add(
-            con,
+            action.con,
             id=id,
-            author=participant_id,
+            author=action.actor_id,
             timestamp=timestamp,
             body=body,
             parent=parent,
         )
-        logger.info('added message to %d: %s..., author: "%s", parent: "%s"', con, id[:6], author, parent)
-        await self.event(con, participant_id, Action.ADD, ts=timestamp, focus_id=id)
+        return id
 
-    async def edit(self, con, author, body, message_id):
-        participant_id, permissions = await self.ds.get_participant(con, author)
-        if permissions == perms.WRITE:
-            author_pid = await self.ds.get_message_author(con, message_id)
-            if author_pid == participant_id:
+    async def add(self, action, body, parent):
+        await self.ds.get_message_author(action.con, parent)
+        if action.perm not in {perms.FULL, perms.WRITE}:
+            raise InsufficientPermissions('FULL or WRITE access required to add messages')
+        id = await self.add_basic(action, body, parent)
+        await self.ds.event(action, id)
+
+    async def edit(self, action, id, body):
+        if action.perm == perms.WRITE:
+            author_pid = await self.ds.get_message_author(action.con, id)
+            if author_pid == action.actor_id:
                 raise InsufficientPermissions('Editing a message authored by another participant '
                                               'requires FULL permissions')
-        elif permissions != perms.FULL:
+        elif action.perm != perms.FULL:
             raise InsufficientPermissions('Editing a message requires FULL or WRITE permissions')
         await self._edit(
-            con,
-            message_id,
+            action.con,
+            id,
             body=body,
         )
-        logger.info('edited message on %d: %s..., author: "%s"', con, message_id[:6], author)
-        await self.event(con, participant_id, Action.EDIT, focus_id=message_id, value=body)
+        await self.ds.event(action, id, value=body)
 
 
 class Participants(_Components):
-    model = 'participants'
+    name = 'participants'
 
     class Permissions:
         FULL = 'full'
@@ -133,27 +174,28 @@ class Participants(_Components):
         COMMENT = 'comment'
         READ = 'read'
 
-    async def add(self, con, email, permissions, author):
-        participant_id = None
-        if author is None:
-            existing_ps = await self.ds.get_participant_count(con)
-            assert existing_ps == 0, ('we can only add a participant with no author if the conversation has no '
-                                      'participants, currently {}'.format(existing_ps))
-        else:
-            participant_id, a_permissions = await self.ds.get_participant(con, author)
-            if a_permissions not in {perms.FULL, perms.WRITE}:
-                raise InsufficientPermissions('FULL or WRITE permission are required to add participants')
-            if a_permissions == perms.WRITE and permissions == perms.FULL:
-                raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions.')
+    async def add_first(self, con, email):
         new_participant_id = await self._add(
             con,
             email=email,
+            permissions=perms.FULL,
+        )
+        logger.info('first participant added to %d: email: "%s"', con, email)
+        return new_participant_id
+
+    async def add(self, action, email, permissions):
+        if action.perm not in {perms.FULL, perms.WRITE}:
+            raise InsufficientPermissions('FULL or WRITE permission are required to add participants')
+        if action.perm == perms.WRITE and permissions == perms.FULL:
+            raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions.')
+        new_participant_id = await self._add(
+            action.con,
+            email=email,
             permissions=permissions,
         )
-        logger.info('added participant to %d: email: "%s", permissions: "%s"', con, email, permissions)
-        if participant_id is None:
-            participant_id = new_participant_id
-        await self.event(con, participant_id, Action.ADD)
+        logger.info('added participant to %d: email: "%s", permissions: "%s"', action.con, email, permissions)
+        await self.ds.event(action, new_participant_id)
+        return new_participant_id
 
 # shortcut
 perms = Participants.Permissions

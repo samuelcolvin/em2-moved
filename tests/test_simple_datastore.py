@@ -1,20 +1,18 @@
 import datetime
-import pytest
 
 import hashlib
-from em2.base import Conversations, perms
+from em2.base import Controller, perms, Action, Verbs, Components
 from .py_datastore import SimpleDataStore
 
 
-@pytest.mark.asyncio
 async def test_create_basic_conversation():
     ds = SimpleDataStore()
-    conversations = Conversations(ds)
-    await conversations.create('text@example.com', 'foo bar')
+    ctrl = Controller(ds)
+    await ctrl.conversations.create('text@example.com', 'foo bar')
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['participants']) == 1
-    assert len(con['updates']) == 1
+    assert len(con['updates']) == 0
     assert con['creator'] == 'text@example.com'
     assert con['status'] == 'draft'
     assert con['subject'] == 'foo bar'
@@ -26,71 +24,78 @@ async def test_create_basic_conversation():
 
 async def test_create_conversation_with_message():
     ds = SimpleDataStore()
-    conversations = Conversations(ds)
-    await conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+    ctrl = Controller(ds)
+    await ctrl.conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['participants']) == 1
     assert len(con['messages']) == 1
-    assert len(con['updates']) == 2
+    assert len(con['updates']) == 0
     msg = list(con['messages'].values())[0]
     assert msg['parent'] is None
     assert msg['author'] == 0
     assert msg['body'] == 'hi, how are you?'
+    hash_data = bytes('{}_{}_{}_None'.format(con['creator'], msg['timestamp'].isoformat(), msg['body']), 'utf8')
+    msg_id = hashlib.sha1(hash_data).hexdigest()
+    assert msg['id'] == msg_id
 
 
 async def test_conversation_extra_participant():
     ds = SimpleDataStore()
-    conversations = Conversations(ds)
-    con_id = await conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+    ctrl = Controller(ds)
+    con_id = await ctrl.conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['participants']) == 1
-    write_access = perms.WRITE
-    await conversations.participants.add(con_id, 'someone_different@example.com', write_access, 'text@example.com')
+    assert len(con['updates']) == 0
+    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANT)
+    await ctrl.act(a, email='someone_different@example.com', permissions=perms.WRITE)
     assert len(con['participants']) == 2
+    assert len(con['updates']) == 1
 
 
 async def test_conversation_add_message():
     ds = SimpleDataStore()
-    conversations = Conversations(ds)
-    con_id = await conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+    ctrl = Controller(ds)
+    con_id = await ctrl.conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['messages']) == 1
-    assert len(con['updates']) == 2
+    assert len(con['updates']) == 0
     msg1_id = list(con['messages'])[0]
-    await conversations.messages.add(con_id, 'text@example.com', 'I am find thanks.', msg1_id)
+    a = Action('text@example.com', con_id, Verbs.ADD, Components.MESSAGE)
+    await ctrl.act(a, body='I am find thanks.', parent=msg1_id)
     assert len(con['messages']) == 2
-    assert len(con['updates']) == 3
-    last_update = con['updates'][-1]
-    assert last_update['action'] == 'add'
-    assert last_update['author'] == 0
-    assert last_update['focus'] == 'messages'
-    assert last_update['data'] == {}
+    assert len(con['updates']) == 1
+
+    assert con['updates'][0]['verb'] == 'add'
+    assert con['updates'][0]['actor'] == 0
+    assert con['updates'][0]['component'] == 'messages'
+    assert con['updates'][0]['data'] == {}
+
     msg2_id = list(con['messages'])[1]
-    assert last_update['focus_id'] == msg2_id
+    assert con['updates'][0]['component_id'] == msg2_id
 
 
 async def test_conversation_edit_message():
     ds = SimpleDataStore()
-    conversations = Conversations(ds)
-    con_id = await conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+    ctrl = Controller(ds)
+    con_id = await ctrl.conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['messages']) == 1
-    assert len(con['updates']) == 2
+    assert len(con['updates']) == 0
     msg1_id = list(con['messages'])[0]
     msg1 = con['messages'][msg1_id]
     assert msg1['body'] == 'hi, how are you?'
     assert msg1['author'] == 0
-    await conversations.messages.edit(con_id, 'text@example.com', 'hi, how are you again?', msg1_id)
+    a = Action('text@example.com', con_id, Verbs.EDIT, Components.MESSAGE)
+    await ctrl.act(a, id=msg1_id, body='hi, how are you again?')
     assert msg1['body'] == 'hi, how are you again?'
     assert msg1['author'] == 0
-    assert len(con['updates']) == 3
-    last_update = con['updates'][-1]
-    assert last_update['action'] == 'edit'
-    assert last_update['author'] == 0
-    assert last_update['focus'] == 'messages'
-    assert last_update['data'] == {'value': 'hi, how are you again?'}
-    assert last_update['focus_id'] == msg1_id
+    assert len(con['updates']) == 1
+    assert con['updates'][0]['verb'] == 'edit'
+    assert con['updates'][0]['actor'] == 0
+    assert con['updates'][0]['component'] == 'messages'
+    assert con['updates'][0]['data'] == {'value': 'hi, how are you again?'}
+    assert con['updates'][0]['component_id'] == msg1_id

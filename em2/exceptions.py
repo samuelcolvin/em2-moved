@@ -16,5 +16,9 @@ class ComponentNotFound(Em2NotFoundException):
     pass
 
 
+class VerbNotFound(Em2NotFoundException):
+    pass
+
+
 class InsufficientPermissions(Em2Exception):
     pass
