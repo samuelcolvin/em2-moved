@@ -1,0 +1,9 @@
+SQLAlchemy==1.0.10
+coverage==4.0.3
+factory-boy==2.6.0
+flake8==2.5.1
+ipython==4.0.1
+psycopg2==2.6.1
+pytest==2.8.5
+pytest-cov==2.2.0
+-e git+https://github.com/em-2/em2-core.git#egg=em2-core == 0.01
