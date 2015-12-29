@@ -46,6 +46,10 @@ class Action:
 
 
 class Controller:
+    """
+    Top level class for accessing conversations and conversation components. Controller itself only
+    implements the "act" method which routes actions to the appropriate component executes the right verb.
+    """
     def __init__(self, data_store):
         self.ds = data_store
         self.conversations = Conversations(self)
@@ -112,7 +116,7 @@ class Conversations:
         raise NotImplemented
 
 
-class _Components:
+class _Component:
     name = None
 
     def __init__(self, controller):
@@ -125,8 +129,11 @@ class _Components:
     async def _edit(self, conversation, id, **kwargs):
         return await self.ds.edit_component(self.name, conversation, id, **kwargs)
 
+    async def _delete(self, conversation, id):
+        return await self.ds.delete_component(self.name, conversation, id)
 
-class Messages(_Components):
+
+class Messages(_Component):
     name = 'messages'
 
     async def add_basic(self, action, body, parent_id=None):
@@ -150,34 +157,37 @@ class Messages(_Components):
         await self.ds.event(action, id)
 
     async def edit(self, action, id, body):
-        if action.perm == perms.WRITE:
-            author_pid = await self.ds.get_message_author(action.con, id)
-            if author_pid == action.actor_id:
-                raise InsufficientPermissions('Editing a message authored by another participant '
-                                              'requires FULL permissions')
-        elif action.perm != perms.FULL:
-            raise InsufficientPermissions('Editing a message requires FULL or WRITE permissions')
-        await self._edit(
-            action.con,
-            id,
-            body=body,
-        )
+        await self._check_message_permissions(action, id)
+        await self._edit(action.con, id, body=body)
         await self.ds.event(action, id, value=body)
 
     async def delta_edit(self, action, id, body):
         raise NotImplementedError()
 
     async def delete(self, action, id):
-        raise NotImplementedError()
+        await self._check_message_permissions(action, id)
+        await self._delete(action.con, id)
+        await self.ds.event(action, id)
 
     async def lock(self, action, id):
-        raise NotImplementedError()
+        await self._check_message_permissions(action, id)
+        await self.ds.delete_component(self.name, action.con, id)
+        await self.ds.event(action, id)
 
     async def unlock(self, action, id):
         raise NotImplementedError()
 
+    async def _check_message_permissions(self, action, id):
+        if action.perm == perms.WRITE:
+            author_pid = await self.ds.get_message_author(action.con, id)
+            if author_pid == action.actor_id:
+                raise InsufficientPermissions('To {} a message authored by another participant '
+                                              'FULL permissions are requires'.format(action.verb))
+        elif action.perm != perms.FULL:
+            raise InsufficientPermissions('To {} a message requires FULL or WRITE permissions'.format(action.verb))
 
-class Participants(_Components):
+
+class Participants(_Component):
     name = 'participants'
 
     class Permissions:

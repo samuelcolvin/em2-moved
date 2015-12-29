@@ -48,6 +48,7 @@ class SimpleDataStore(DataStore):
         self.data[id] = dict(
             participant_counter=itertools.count(),  # special case with uses sequence id
             updates=[],
+            locked=set(),
             **kwargs
         )
         return id
@@ -63,21 +64,20 @@ class SimpleDataStore(DataStore):
         return id
 
     async def edit_component(self, model, conversation, item_id, **kwargs):
-        con_obj = self._get_con(conversation)
-        items = con_obj.get(model)
-        if items is None:
-            raise ComponentNotFound('model "{}" not found on conversation {}'.format(model, conversation))
-        item = items.get(item_id)
-        if item is None:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, conversation))
+        item = self._get_con_item(model, conversation, item_id)
         item.update(kwargs)
 
-    def _get_con(self, con_id):
-        conversation = self.data.get(con_id)
-        if conversation is None:
-            raise ConversationNotFound('conversation {} not found in {} '
-                                       'existing conversations'.format(con_id, len(self.data)))
-        return conversation
+    async def delete_component(self, model, conversation, item_id):
+        items = self._get_con_items(model, conversation)
+        try:
+            del items[item_id]
+        except KeyError:
+            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, conversation))
+
+    async def lock_component(self, model, conversation, item_id):
+        self._get_con_item(model, conversation, item_id)
+        con_obj = self._get_con(conversation)
+        con_obj['locked'].add()
 
     async def get_message_count(self, con):
         con_obj = self._get_con(con)
@@ -102,6 +102,27 @@ class SimpleDataStore(DataStore):
             if v['email'] == participant_address:
                 return v['id'], v['permissions']
         raise ComponentNotFound('participant {} not found in {}'.format(participant_address, prtis.keys()))
+
+    def _get_con(self, con_id):
+        conversation = self.data.get(con_id)
+        if conversation is None:
+            raise ConversationNotFound('conversation {} not found in {} '
+                                       'existing conversations'.format(con_id, len(self.data)))
+        return conversation
+
+    def _get_con_items(self, model, con_id):
+        con_obj = self._get_con(con_id)
+        items = con_obj.get(model)
+        if items is None:
+            raise ComponentNotFound('model "{}" not found on conversation {}'.format(model, con_id))
+        return items
+
+    def _get_con_item(self, model, con_id, item_id):
+        items = self._get_con_items(model, con_id)
+        item = items.get(item_id)
+        if item is None:
+            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, conversation))
+        return item
 
     def print_pretty(self):
         print(json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder))

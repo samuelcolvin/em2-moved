@@ -22,3 +22,7 @@ class VerbNotFound(Em2NotFoundException):
 
 class InsufficientPermissions(Em2Exception):
     pass
+
+
+class ComponentLocked(Em2Exception):
+    pass

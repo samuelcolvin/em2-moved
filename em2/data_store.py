@@ -28,7 +28,7 @@ class DataStore:
 
     async def event(self, action, component_id, timestamp=None, **data):
         """
-        Record and propagate update of conversations and creation, update and deletion or conversation components.
+        Record and propagate update of conversations and creation, update and deletion of conversation components.
 
         :param action: Action instance
         :param component_id: id of item created or modified
@@ -54,6 +54,15 @@ class DataStore:
         raise NotImplementedError()
 
     async def edit_component(self, model, conversation, item_id, **kwargs):
+        raise NotImplementedError()
+
+    async def delete_component(self, model, conversation, item_id):
+        raise NotImplementedError()
+
+    async def lock_component(self, model, conversation, item_id):
+        raise NotImplementedError()
+
+    async def unlock_component(self, model, conversation, item_id):
         raise NotImplementedError()
 
     async def get_message_count(self, con):

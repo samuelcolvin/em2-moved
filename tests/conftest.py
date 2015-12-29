@@ -8,9 +8,11 @@ import factory
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker, scoped_session
-from em2.models import Base
+from em2.models import Base, Conversation
 from em2 import settings
-from em2.models import Conversation
+from em2.base import Controller
+
+from .py_datastore import SimpleDataStore
 
 
 DB_NAME = 'em2_test'
@@ -66,18 +68,6 @@ def conversation_factory(Session):
     return ConversationFactory
 
 
-def pytest_configure(config):
-    config.addinivalue_line("markers",
-                            "asyncio: "
-                            "mark the test as a coroutine, it will be "
-                            "run using an asyncio event loop")
-    config.addinivalue_line("markers",
-                            "asyncio_process_pool: "
-                            "mark the test as a coroutine, it will be "
-                            "run using an asyncio event loop with a process "
-                            "pool")
-
-
 @pytest.mark.tryfirst
 def pytest_pycollect_makeitem(collector, name, obj):
     if collector.funcnamefilter(name) and asyncio.iscoroutinefunction(obj):
@@ -109,3 +99,13 @@ def loop():
     loop.close()
     gc.collect()
     asyncio.set_event_loop(None)
+
+
+@pytest.fixture
+def conversation():
+    async def get_conversation():
+        ds = SimpleDataStore()
+        ctrl = Controller(ds)
+        con_id = await ctrl.conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+        return ds, ctrl, con_id
+    return get_conversation
