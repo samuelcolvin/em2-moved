@@ -4,7 +4,7 @@ Synchronous interface to em2
 import logging
 
 from .exceptions import InsufficientPermissions, ComponentNotFound, VerbNotFound
-from .model_extras import get_options
+from .utils import get_options
 
 logger = logging.getLogger('em2')
 

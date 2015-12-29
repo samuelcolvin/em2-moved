@@ -1,16 +1,3 @@
-from sqlalchemy import DateTime, Enum
-
-TIMESTAMPTZ = DateTime(timezone=True)
-
-
-class RichEnum:
-    OPTIONS = None
-
-    @classmethod
-    def enum(cls):
-        cls.OPTIONS = get_options(cls)
-        return Enum(*cls.OPTIONS, name=cls.__name__.lower())
-
 
 def get_options(cls):
     options = getattr(cls, 'OPTIONS', None)
