@@ -6,7 +6,8 @@ machine:
 
 test:
   override:
-    - ./runtests.sh
+    - flake8 --max-line-length 120 em2/ tests/
+    - py.test --cov=em2 tests/
     - pip install -e .
   post:
     - coverage combine

@@ -1,7 +1,7 @@
 import hashlib
 import pytest
 from em2.base import perms, Action, Verbs, Components
-from em2.exceptions import InsufficientPermissions
+from em2.exceptions import InsufficientPermissions, ComponentLocked, ComponentNotLocked
 
 
 async def test_create_conversation_with_message(conversation):
@@ -96,6 +96,25 @@ async def test_lock_unlock_message(conversation):
     await ctrl.act(a)
     assert len(con['locked']) == 0
 
+
+async def test_lock_edit(conversation):
+    ds, ctrl, con_id = await conversation()
+    msg1_id = list(ds.data[0]['messages'])[0]
+    a = Action('text@example.com', con_id, Verbs.LOCK, Components.MESSAGES, item=msg1_id)
+    await ctrl.act(a)
+    a = Action('text@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
+    with pytest.raises(ComponentLocked) as excinfo:
+        await ctrl.act(a, body='hi, how are you again?')
+    assert 'ComponentLocked: messages with id = {} locked'.format(msg1_id) in str(excinfo)
+
+
+async def test_wrong_unlock(conversation):
+    ds, ctrl, con_id = await conversation()
+    msg1_id = list(ds.data[0]['messages'])[0]
+    a = Action('text@example.com', con_id, Verbs.UNLOCK, Components.MESSAGES, item=msg1_id)
+    with pytest.raises(ComponentNotLocked) as excinfo:
+        await ctrl.act(a)
+    assert 'ComponentNotLocked: messages with id = {} not locked'.format(msg1_id) in str(excinfo)
 
 async def test_add_message_missing_perms(conversation):
     ds, ctrl, con_id = await conversation()

@@ -3,7 +3,7 @@ Synchronous interface to em2
 """
 import logging
 
-from .exceptions import InsufficientPermissions, ComponentNotFound, VerbNotFound
+from .exceptions import InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked, ComponentLocked
 from .utils import get_options
 
 logger = logging.getLogger('em2')
@@ -158,7 +158,8 @@ class Messages(_Component):
         await self.ds.event(action, id)
 
     async def edit(self, action, body):
-        await self._check_message_permissions(action)
+        await self._check_permissions(action)
+        await self._check_locked(action)
         await self._edit(action.con, action.item, body=body)
         await self.ds.event(action, action.item, value=body)
 
@@ -166,22 +167,25 @@ class Messages(_Component):
         raise NotImplementedError()
 
     async def delete(self, action):
-        await self._check_message_permissions(action)
+        await self._check_permissions(action)
+        await self._check_locked(action)
         await self._delete(action.con, action.item)
         await self.ds.event(action, action.item)
 
     async def lock(self, action):
-        await self._check_message_permissions(action)
+        await self._check_permissions(action)
+        await self._check_locked(action)
         await self.ds.lock_component(self.name, action.con, action.item)
         await self.ds.event(action, action.item)
 
     async def unlock(self, action):
-        await self._check_message_permissions(action)
+        await self._check_permissions(action)
+        if not await self.ds.get_message_locked(self.name, action.con, action.item):
+            raise ComponentNotLocked('{} with id = {} not locked'.format(self.name, action.item))
         await self.ds.unlock_component(self.name, action.con, action.item)
         await self.ds.event(action, action.item)
 
-    async def _check_message_permissions(self, action):
-        print(action.perm)
+    async def _check_permissions(self, action):
         if action.perm == perms.WRITE:
             author_pid = await self.ds.get_message_author(action.con, action.item)
             if author_pid != action.actor_id:
@@ -189,6 +193,10 @@ class Messages(_Component):
                                               'FULL permissions are requires'.format(action.verb))
         elif action.perm != perms.FULL:
             raise InsufficientPermissions('To {} a message requires FULL or WRITE permissions'.format(action.verb))
+
+    async def _check_locked(self, action):
+        if await self.ds.get_message_locked(self.name, action.con, action.item):
+            raise ComponentLocked('{} with id = {} locked'.format(self.name, action.item))
 
 
 class Participants(_Component):

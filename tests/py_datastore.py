@@ -6,7 +6,7 @@ from collections import OrderedDict
 import itertools
 from em2.base import logger
 from em2.data_store import DataStore
-from em2.exceptions import ConversationNotFound, ComponentNotFound, ComponentNotLocked
+from em2.exceptions import ConversationNotFound, ComponentNotFound
 
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
@@ -82,10 +82,11 @@ class SimpleDataStore(DataStore):
 
     async def unlock_component(self, model, conversation, item_id):
         con_obj = self._get_con(conversation)
-        try:
-            con_obj['locked'].remove('{}:{}'.format(model, item_id))
-        except KeyError:
-            raise ComponentNotLocked('{} with id = {} not locked'.format(model, item_id))
+        con_obj['locked'].remove('{}:{}'.format(model, item_id))
+
+    async def get_message_locked(self, model, conversation, item_id):
+        con_obj = self._get_con(conversation)
+        return '{}:{}'.format(model, item_id) in con_obj['locked']
 
     async def get_message_count(self, con):
         con_obj = self._get_con(con)

@@ -65,33 +65,36 @@ class DataStore:
     async def unlock_component(self, model, conversation, item_id):
         raise NotImplementedError()
 
+    async def get_message_locked(self, model, conversation, item_id):
+        raise NotImplementedError()
+
     async def get_message_count(self, con):
         """
         Find the number of messages associated with a conversation.
         """
         raise NotImplementedError()
 
-    async def get_participant_count(self, con):
+    async def get_participant_count(self, conversation):
         """
         Find the number of participants in a conversation.
         """
         raise NotImplementedError()
 
-    async def get_message_author(self, con, message_id):
+    async def get_message_author(self, conversation, message_id):
         """
         Find message author by global id, should raise ComponentNotFound if not.
-        :param con: local id of conversation
+        :param conversation: local id of conversation
         :param message_id: id of message
         :return: participant id of message
         """
         # TODO, may be better to update this method to return more information
         raise NotImplementedError()
 
-    async def get_participant(self, con, participant_address):
+    async def get_participant(self, conversation, participant_address):
         """
         Find a participant by address returning id and permissions, should raise ComponentNotFound if
         participant is not in the conversation.
-        :param con: local id of conversation
+        :param conversation: local id of conversation
         :param participant_address: public address of participant to find
         :return: tuple (id - local id participant, permissions - participants permissions)
         """
