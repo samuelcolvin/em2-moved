@@ -13,10 +13,10 @@ def pytest_pyfunc_call(pyfuncitem):
     Run coroutines in an event loop instead of a normal function call.
     """
     if asyncio.iscoroutinefunction(pyfuncitem.function):
-        loop = asyncio.get_event_loop()
         funcargs = pyfuncitem.funcargs
+        loop = funcargs.get('loop') or asyncio.get_event_loop()
         testargs = {arg: funcargs[arg] for arg in pyfuncitem._fixtureinfo.argnames}
-        loop.run_until_complete(asyncio.ensure_future(pyfuncitem.obj(**testargs)))
+        loop.run_until_complete(loop.create_task(pyfuncitem.obj(**testargs)))
         return True
 
 

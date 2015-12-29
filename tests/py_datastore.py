@@ -115,8 +115,7 @@ class SimpleDataStore(DataStore):
     def _get_con(self, con_id):
         conversation = self.data.get(con_id)
         if conversation is None:
-            raise ConversationNotFound('conversation {} not found in {} '
-                                       'existing conversations'.format(con_id, len(self.data)))
+            raise ConversationNotFound('conversation {} not found'.format(con_id))
         return conversation
 
     def _get_con_items(self, model, con_id):

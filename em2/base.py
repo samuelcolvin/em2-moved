@@ -66,7 +66,7 @@ class Controller:
         Routes actions to the appropriate component and executes the right verb.
         :param action: action instance
         :param kwargs: extra key word arguments to pass to the method with action
-        :return: result of verb method
+        :return: result of method associated with verb
         """
         assert isinstance(action, Action)
         await action.set_actor(self.ds)
