@@ -64,7 +64,8 @@ class Controller:
         if component_cls is None:
             raise ComponentNotFound('{} is not a valid component'.format(action.component))
 
-        assert action.verb in self.valid_verbs, '{} not in verbs: {}'.format(action.verb, self.valid_verbs)
+        if action.verb not in self.valid_verbs:
+            raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, self.valid_verbs))
         func = getattr(component_cls, action.verb, None)
         if func is None:
             raise VerbNotFound('{} is not an available verb on {}'.format(action.verb, action.component))
