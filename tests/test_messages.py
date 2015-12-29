@@ -110,6 +110,19 @@ async def test_add_message_missing_perms(conversation):
     assert 'FULL or WRITE access required to add messages' in str(excinfo)
 
 
+async def test_edit_message_missing_perms(conversation):
+    ds, ctrl, con_id = await conversation()
+    msg1_id = list(ds.data[0]['messages'])[0]
+
+    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    await ctrl.act(a, email='readonly@example.com', permissions=perms.READ)
+
+    a = Action('readonly@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
+    with pytest.raises(InsufficientPermissions) as excinfo:
+        await ctrl.act(a, body='changed message')
+    assert 'To edit a message requires FULL or WRITE permissions' in str(excinfo)
+
+
 async def test_edit_message_right_person(conversation):
     ds, ctrl, con_id = await conversation()
     a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)

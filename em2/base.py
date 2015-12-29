@@ -181,6 +181,7 @@ class Messages(_Component):
         await self.ds.event(action, action.item)
 
     async def _check_message_permissions(self, action):
+        print(action.perm)
         if action.perm == perms.WRITE:
             author_pid = await self.ds.get_message_author(action.con, action.item)
             if author_pid != action.actor_id:
@@ -212,7 +213,7 @@ class Participants(_Component):
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE permission are required to add participants')
         if action.perm == perms.WRITE and permissions == perms.FULL:
-            raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions.')
+            raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions')
         new_participant_id = await self._add(
             action.con,
             email=email,

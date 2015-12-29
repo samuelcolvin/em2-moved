@@ -4,7 +4,7 @@ def get_options(cls):
     if options:
         return options
 
-    def check_option(at_name):  # pragma: no cover
+    def check_option(at_name):
         if at_name[0] != '_' and at_name != 'OPTIONS' and at_name.upper() == at_name:
             v = getattr(cls, at_name)
             if isinstance(v, str):
