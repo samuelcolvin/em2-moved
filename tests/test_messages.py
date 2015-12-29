@@ -49,8 +49,8 @@ async def test_conversation_edit_message(conversation):
     msg1 = con['messages'][msg1_id]
     assert msg1['body'] == 'hi, how are you?'
     assert msg1['author'] == 0
-    a = Action('text@example.com', con_id, Verbs.EDIT, Components.MESSAGES)
-    await ctrl.act(a, id=msg1_id, body='hi, how are you again?')
+    a = Action('text@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
+    await ctrl.act(a, body='hi, how are you again?')
     assert msg1['body'] == 'hi, how are you again?'
     assert msg1['author'] == 0
     assert len(con['updates']) == 1
@@ -68,8 +68,8 @@ async def test_conversation_delete_message(conversation):
     assert len(con['messages']) == 1
     assert len(con['updates']) == 0
     msg1_id = list(con['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.DELETE, Components.MESSAGES)
-    await ctrl.act(a, id=msg1_id)
+    a = Action('text@example.com', con_id, Verbs.DELETE, Components.MESSAGES, item=msg1_id)
+    await ctrl.act(a)
     assert len(con['messages']) == 0
     assert len(con['updates']) == 1
     assert con['updates'][0]['verb'] == 'delete'
@@ -84,12 +84,12 @@ async def test_conversation_lock_unlock_message(conversation):
     con = ds.data[0]
     assert len(con['messages']) == 1
     msg1_id = list(con['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.LOCK, Components.MESSAGES)
-    await ctrl.act(a, id=msg1_id)
+    a = Action('text@example.com', con_id, Verbs.LOCK, Components.MESSAGES, item=msg1_id)
+    await ctrl.act(a)
     assert len(con['locked']) == 1
     locked_v = list(con['locked'])[0]
     assert locked_v == 'messages:{}'.format(msg1_id)
 
-    a = Action('text@example.com', con_id, Verbs.UNLOCK, Components.MESSAGES)
-    await ctrl.act(a, id=msg1_id)
+    a = Action('text@example.com', con_id, Verbs.UNLOCK, Components.MESSAGES, item=msg1_id)
+    await ctrl.act(a)
     assert len(con['locked']) == 0

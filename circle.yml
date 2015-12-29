@@ -6,8 +6,7 @@ machine:
 
 test:
   override:
-    - ./lint.sh
-    - py.test --cov=em2 tests/
+    - ./runtests.sh
     - pip install -e .
   post:
     - coverage combine

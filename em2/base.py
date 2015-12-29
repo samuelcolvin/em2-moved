@@ -156,32 +156,32 @@ class Messages(_Component):
         id = await self.add_basic(action, body, parent_id)
         await self.ds.event(action, id)
 
-    async def edit(self, action, id, body):
-        await self._check_message_permissions(action, id)
-        await self._edit(action.con, id, body=body)
-        await self.ds.event(action, id, value=body)
+    async def edit(self, action, body):
+        await self._check_message_permissions(action)
+        await self._edit(action.con, action.item, body=body)
+        await self.ds.event(action, action.item, value=body)
 
-    async def delta_edit(self, action, id, body):
+    async def delta_edit(self, action, body):
         raise NotImplementedError()
 
-    async def delete(self, action, id):
-        await self._check_message_permissions(action, id)
-        await self._delete(action.con, id)
-        await self.ds.event(action, id)
+    async def delete(self, action):
+        await self._check_message_permissions(action)
+        await self._delete(action.con, action.item)
+        await self.ds.event(action, action.item)
 
-    async def lock(self, action, id):
-        await self._check_message_permissions(action, id)
-        await self.ds.lock_component(self.name, action.con, id)
-        await self.ds.event(action, id)
+    async def lock(self, action):
+        await self._check_message_permissions(action)
+        await self.ds.lock_component(self.name, action.con, action.item)
+        await self.ds.event(action, action.item)
 
-    async def unlock(self, action, id):
-        await self._check_message_permissions(action, id)
-        await self.ds.unlock_component(self.name, action.con, id)
-        await self.ds.event(action, id)
+    async def unlock(self, action):
+        await self._check_message_permissions(action)
+        await self.ds.unlock_component(self.name, action.con, action.item)
+        await self.ds.event(action, action.item)
 
-    async def _check_message_permissions(self, action, id):
+    async def _check_message_permissions(self, action):
         if action.perm == perms.WRITE:
-            author_pid = await self.ds.get_message_author(action.con, id)
+            author_pid = await self.ds.get_message_author(action.con, action.item)
             if author_pid == action.actor_id:
                 raise InsufficientPermissions('To {} a message authored by another participant '
                                               'FULL permissions are requires'.format(action.verb))
