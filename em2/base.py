@@ -183,7 +183,7 @@ class Messages(_Component):
     async def _check_message_permissions(self, action):
         if action.perm == perms.WRITE:
             author_pid = await self.ds.get_message_author(action.con, action.item)
-            if author_pid == action.actor_id:
+            if author_pid != action.actor_id:
                 raise InsufficientPermissions('To {} a message authored by another participant '
                                               'FULL permissions are requires'.format(action.verb))
         elif action.perm != perms.FULL:
