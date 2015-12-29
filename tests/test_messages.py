@@ -25,7 +25,7 @@ async def test_conversation_add_message(conversation):
     assert len(con['messages']) == 1
     assert len(con['updates']) == 0
     msg1_id = list(con['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.MESSAGE)
+    a = Action('text@example.com', con_id, Verbs.ADD, Components.MESSAGES)
     await ctrl.act(a, parent_id=msg1_id, body='I am find thanks.')
     assert len(con['messages']) == 2
     assert len(con['updates']) == 1
@@ -49,7 +49,7 @@ async def test_conversation_edit_message(conversation):
     msg1 = con['messages'][msg1_id]
     assert msg1['body'] == 'hi, how are you?'
     assert msg1['author'] == 0
-    a = Action('text@example.com', con_id, Verbs.EDIT, Components.MESSAGE)
+    a = Action('text@example.com', con_id, Verbs.EDIT, Components.MESSAGES)
     await ctrl.act(a, id=msg1_id, body='hi, how are you again?')
     assert msg1['body'] == 'hi, how are you again?'
     assert msg1['author'] == 0
@@ -68,7 +68,7 @@ async def test_conversation_delete_message(conversation):
     assert len(con['messages']) == 1
     assert len(con['updates']) == 0
     msg1_id = list(con['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.DELETE, Components.MESSAGE)
+    a = Action('text@example.com', con_id, Verbs.DELETE, Components.MESSAGES)
     await ctrl.act(a, id=msg1_id)
     assert len(con['messages']) == 0
     assert len(con['updates']) == 1
@@ -77,3 +77,19 @@ async def test_conversation_delete_message(conversation):
     assert con['updates'][0]['component'] == 'messages'
     assert con['updates'][0]['data'] == {}
     assert con['updates'][0]['component_id'] == msg1_id
+
+
+async def test_conversation_lock_unlock_message(conversation):
+    ds, ctrl, con_id = await conversation()
+    con = ds.data[0]
+    assert len(con['messages']) == 1
+    msg1_id = list(con['messages'])[0]
+    a = Action('text@example.com', con_id, Verbs.LOCK, Components.MESSAGES)
+    await ctrl.act(a, id=msg1_id)
+    assert len(con['locked']) == 1
+    locked_v = list(con['locked'])[0]
+    assert locked_v == 'messages:{}'.format(msg1_id)
+
+    a = Action('text@example.com', con_id, Verbs.UNLOCK, Components.MESSAGES)
+    await ctrl.act(a, id=msg1_id)
+    assert len(con['locked']) == 0

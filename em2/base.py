@@ -19,15 +19,15 @@ class Verbs:
 
 
 class Components:
-    MESSAGE = 'messages'
-    COMMENT = 'comments'
-    PARTICIPANT = 'participants'
-    LABEL = 'labels'
-    SUBJECT = 'subjects'
+    MESSAGES = 'messages'
+    COMMENTS = 'comments'
+    PARTICIPANTS = 'participants'
+    LABELS = 'labels'
+    SUBJECT = 'subject'
     EXPIRY = 'expiry'
-    ATTACHMENT = 'attachments'
-    EXTRA = 'extras'
-    RESPONSE = 'responses'
+    ATTACHMENTS = 'attachments'
+    EXTRAS = 'extras'
+    RESPONSES = 'responses'
 
 
 class Action:
@@ -99,12 +99,12 @@ class Conversations:
         logger.info('created conversation: %s..., id: %d, creator: "%s", subject: "%s"',
                     global_id[:6], con_id, creator, subject)
 
-        participants = self.ctrl.components[Components.PARTICIPANT]
+        participants = self.ctrl.components[Components.PARTICIPANTS]
         await participants.add_first(con_id, creator)
 
         if body is not None:
-            messages = self.ctrl.components[Components.MESSAGE]
-            a = Action(creator, con_id, Verbs.ADD, Components.MESSAGE)
+            messages = self.ctrl.components[Components.MESSAGES]
+            a = Action(creator, con_id, Verbs.ADD, Components.MESSAGES)
             await a.set_actor(self.ds)
             await messages.add_basic(a, body=body)
         return con_id
@@ -134,7 +134,7 @@ class _Component:
 
 
 class Messages(_Component):
-    name = 'messages'
+    name = Components.MESSAGES
 
     async def add_basic(self, action, body, parent_id=None):
         timestamp = self.ds.now_tz()
@@ -171,11 +171,13 @@ class Messages(_Component):
 
     async def lock(self, action, id):
         await self._check_message_permissions(action, id)
-        await self.ds.delete_component(self.name, action.con, id)
+        await self.ds.lock_component(self.name, action.con, id)
         await self.ds.event(action, id)
 
     async def unlock(self, action, id):
-        raise NotImplementedError()
+        await self._check_message_permissions(action, id)
+        await self.ds.unlock_component(self.name, action.con, id)
+        await self.ds.event(action, id)
 
     async def _check_message_permissions(self, action, id):
         if action.perm == perms.WRITE:
@@ -188,7 +190,7 @@ class Messages(_Component):
 
 
 class Participants(_Component):
-    name = 'participants'
+    name = Components.PARTICIPANTS
 
     class Permissions:
         FULL = 'full'

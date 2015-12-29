@@ -26,3 +26,7 @@ class InsufficientPermissions(Em2Exception):
 
 class ComponentLocked(Em2Exception):
     pass
+
+
+class ComponentNotLocked(Em2Exception):
+    pass
