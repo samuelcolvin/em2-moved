@@ -121,7 +121,7 @@ class SimpleDataStore(DataStore):
         items = self._get_con_items(model, con_id)
         item = items.get(item_id)
         if item is None:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, conversation))
+            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, con_id))
         return item
 
     def print_pretty(self):

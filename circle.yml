@@ -8,6 +8,7 @@ test:
   override:
     - ./lint.sh
     - py.test --cov=em2 tests/
+    - pip install -e .
   post:
     - coverage combine
     - coverage html
