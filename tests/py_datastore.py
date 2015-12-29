@@ -134,5 +134,5 @@ class SimpleDataStore(DataStore):
 
         return item
 
-    def print_pretty(self):
-        print(json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder))
+    def __repr__(self):
+        return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)

@@ -2,18 +2,12 @@ import pytest
 import asyncio
 import gc
 
-from em2.base import Controller
 
-from .py_datastore import SimpleDataStore
-
-
-@pytest.mark.tryfirst
 def pytest_pycollect_makeitem(collector, name, obj):
     if collector.funcnamefilter(name) and asyncio.iscoroutinefunction(obj):
         return list(collector._genfunctions(name, obj))
 
 
-@pytest.mark.tryfirst
 def pytest_pyfunc_call(pyfuncitem):
     """
     Run coroutines in an event loop instead of a normal function call.
@@ -38,13 +32,3 @@ def loop():
     loop.close()
     gc.collect()
     asyncio.set_event_loop(None)
-
-
-@pytest.fixture
-def conversation():
-    async def get_conversation():
-        ds = SimpleDataStore()
-        ctrl = Controller(ds)
-        con_id = await ctrl.conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
-        return ds, ctrl, con_id
-    return get_conversation

@@ -2,7 +2,7 @@ import datetime
 
 import hashlib
 from em2.base import Controller
-from .py_datastore import SimpleDataStore
+from tests.py_datastore import SimpleDataStore
 
 
 async def test_create_basic_conversation():
