@@ -23,4 +23,7 @@ setup(
     license='MIT',
     packages=['em2'],
     zip_safe=True,
+    install_requires=[
+        'pytz==2015.7'
+    ]
 )

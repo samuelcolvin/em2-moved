@@ -11,5 +11,4 @@ test:
     - pip install -e .
   post:
     - coverage combine
-    - coverage html
-    - mv htmlcov $CIRCLE_ARTIFACTS/
+    - codecov
