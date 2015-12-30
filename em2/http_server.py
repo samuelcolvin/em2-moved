@@ -16,6 +16,8 @@ def bad_request_response(msg=''):
 
 
 def json_bytes(data, pretty=False):
+    if data is None:
+        return b'\n'
     if pretty:
         s = json.dumps(data, indent=2) + '\n'
     else:
@@ -34,7 +36,7 @@ def get_ip(request):
 class Api:
     def __init__(self, app, em2_controller, url_root=''):
         self.app = app
-        self.em2 = em2_controller
+        self.em2_ctrl = em2_controller
         self.add_routes(url_root)
         self.add_middleware()
 
@@ -84,10 +86,15 @@ class Api:
                 return bad_request_response('request data is not a dictionary')
 
         actor = request.headers.get('Actor')
+        if actor is None:
+            logger.info('bad request: Actor None', extra=request.log_extra)
+            return bad_request_response('Actor not found in header')
+
         action = Action(actor, conversation, verb, component, item)
         try:
-            response = await self.em2.act(action, **kwargs)
+            response = await self.em2_ctrl.act(action, **kwargs)
         except Em2Exception as e:
+            logger.info('Em2Exception: %r', e, extra=request.log_extra)
             return bad_request_response('{}: {}'.format(e.__class__.__name__, e))
 
         return web.Response(body=json_bytes(response, True), status=201, content_type='application/json')

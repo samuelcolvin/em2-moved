@@ -26,7 +26,7 @@ def server(loop, port):
 
         ds = SimpleDataStore()
         ctrl = Controller(ds)
-        Api(app, ctrl)
+        api = Api(app, ctrl)
 
         handler = app.make_handler(debug=debug, keep_alive_on=False)
         srv = await loop.create_server(handler, '127.0.0.1', port, ssl=ssl_ctx)
@@ -34,7 +34,7 @@ def server(loop, port):
             proto += 's'
         url = '{}://127.0.0.1:{}'.format(proto, port)
         print('\nServer started at {}'.format(url))
-        return app, url
+        return api, url
 
     yield create
 
@@ -48,11 +48,12 @@ def server(loop, port):
 
 
 class Client:
-    def __init__(self, loop, url):
+    def __init__(self, loop, url, api):
         self._session = aiohttp.ClientSession(loop=loop)
         if not url.endswith('/'):
             url += '/'
         self.url = url
+        self.api = api
 
     def close(self):
         self._session.close()
@@ -78,8 +79,8 @@ class Client:
 
 @pytest.yield_fixture
 def client(loop, server):
-    app, url = loop.run_until_complete(server())
-    client = Client(loop, url=url)
+    api, url = loop.run_until_complete(server())
+    client = Client(loop, url, api)
     yield client
 
     client.close()

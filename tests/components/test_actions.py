@@ -1,11 +1,11 @@
 import pytest
 from em2.base import perms, Action, Verbs, Components
-from em2.exceptions import ComponentNotFound, VerbNotFound
+from em2.exceptions import ComponentNotFound, VerbNotFound, Em2TypeError
 
 
 async def test_correct_action(conversation):
     ds, ctrl, con_id = await conversation()
-    con = ds.data[0]
+    con = ds.data['0']
     msg1_id = list(con['messages'])[0]
     assert len(con['messages']) == 1
     a = Action('text@example.com', con_id, Verbs.ADD, Components.MESSAGES)
@@ -19,7 +19,7 @@ async def test_correct_action(conversation):
 
 async def test_wrong_component(conversation):
     ds, ctrl, con_id = await conversation()
-    con = ds.data[0]
+    con = ds.data['0']
     msg1_id = list(con['messages'])[0]
     a = Action('text@example.com', con_id, Verbs.ADD, 'foobar')
     with pytest.raises(ComponentNotFound):
@@ -42,6 +42,6 @@ async def test_wrong_verb(conversation):
 async def test_wrong_args(conversation):
     ds, ctrl, con_id = await conversation()
     a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(Em2TypeError) as excinfo:
         await ctrl.act(a, email='someone_different@example.com', foobar=True)
     assert 'add() got an unexpected keyword argument' in str(excinfo)

@@ -30,3 +30,7 @@ class ComponentLocked(Em2Exception):
 
 class ComponentNotLocked(Em2Exception):
     pass
+
+
+class Em2TypeError(Em2Exception, TypeError):
+    pass

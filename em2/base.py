@@ -6,7 +6,8 @@ import datetime
 
 import pytz
 
-from .exceptions import InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked, ComponentLocked
+from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
+                         ComponentLocked, Em2TypeError)
 from .utils import get_options
 
 logger = logging.getLogger('em2')
@@ -79,7 +80,10 @@ class Controller:
         func = getattr(component_cls, action.verb, None)
         if func is None:
             raise VerbNotFound('{} is not an available verb on {}'.format(action.verb, action.component))
-        return await func(action, **kwargs)
+        try:
+            return await func(action, **kwargs)
+        except TypeError as e:
+            raise Em2TypeError(str(e))
 
     @property
     def timezone(self):

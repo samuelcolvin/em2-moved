@@ -10,7 +10,7 @@ async def test_create_basic_conversation():
     ctrl = Controller(ds)
     await ctrl.conversations.create('text@example.com', 'foo bar')
     assert len(ds.data) == 1
-    con = ds.data[0]
+    con = ds.data['0']
     assert len(con['participants']) == 1
     assert len(con['updates']) == 0
     assert con['creator'] == 'text@example.com'
