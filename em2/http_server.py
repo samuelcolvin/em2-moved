@@ -87,8 +87,8 @@ class Api:
 
         actor = request.headers.get('Actor')
         if actor is None:
-            logger.info('bad request: Actor None', extra=request.log_extra)
-            return bad_request_response('Actor not found in header')
+            logger.info('bad request: Actor missing', extra=request.log_extra)
+            return bad_request_response('No "Actor" header found')
 
         action = Action(actor, conversation, verb, component, item)
         try:

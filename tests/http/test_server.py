@@ -21,6 +21,14 @@ async def test_no_auth_header(client):
     assert content == b'No "Authorization" header found\n'
 
 
+async def test_no_actor_header(client):
+    headers = {'Authorization': 'Token 321'}
+    r = await client.post('/123/messages/add/', headers=headers)
+    assert r.status == 400
+    content = await r.read()
+    assert content == b'No "Actor" header found\n'
+
+
 async def test_missing_conversation(client):
     headers = {'Authorization': 'Token 321', 'Actor': 'test@example.com'}
     r = await client.post('/123/messages/add/', headers=headers)
