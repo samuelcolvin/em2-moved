@@ -1,14 +1,16 @@
 machine:
   python:
     version: 3.5.0
-  services:
-    - postgresql
+
+
+dependencies:
+  override:
+    - python setup.py install
+    - pip install -r dev_requirements.txt
 
 test:
   override:
     - flake8 --max-line-length 120 em2/ tests/
     - py.test --cov=em2 tests/
-    - pip install -e .
   post:
-    - coverage combine
     - codecov

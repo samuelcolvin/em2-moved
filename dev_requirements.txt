@@ -1,9 +1,5 @@
-aiohttp==0.20.0
-cchardet==1.0.0
 coverage==4.0.3
 codecov
 flake8==2.5.1
-ipython==4.0.1
 pytest==2.8.5
 pytest-cov==2.2.0
-pytz==2015.7
