@@ -2,7 +2,6 @@ machine:
   python:
     version: 3.5.0
 
-
 dependencies:
   override:
     - python setup.py install

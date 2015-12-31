@@ -4,7 +4,7 @@ import datetime
 from collections import OrderedDict
 
 import itertools
-from em2.base import logger
+from em2.base import logger, Propagator
 from em2.data_store import DataStore
 from em2.exceptions import ConversationNotFound, ComponentNotFound
 
@@ -135,3 +135,14 @@ class SimpleDataStore(DataStore):
 
     def __repr__(self):
         return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)
+
+
+class NullPropagator(Propagator):
+    async def add_participant(self, action, participant_addr):
+        pass
+
+    async def remove_participant(self, action, participant_addr):
+        pass
+
+    async def propagate(self, action, item, data, timestamp):
+        pass

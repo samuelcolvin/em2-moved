@@ -2,12 +2,12 @@ import datetime
 
 import hashlib
 from em2.base import Controller
-from tests.py_datastore import SimpleDataStore
+from tests.fixtures_classes import SimpleDataStore, NullPropagator
 
 
 async def test_create_basic_conversation():
     ds = SimpleDataStore()
-    ctrl = Controller(ds)
+    ctrl = Controller(ds, NullPropagator())
     await ctrl.conversations.create('text@example.com', 'foo bar')
     assert len(ds.data) == 1
     con = ds.data['0']

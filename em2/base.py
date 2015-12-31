@@ -9,6 +9,7 @@ import pytz
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
                          ComponentLocked, Em2TypeError)
 from .utils import get_options
+from .data_store import DataStore
 
 logger = logging.getLogger('em2')
 
@@ -49,13 +50,26 @@ class Action:
         self.actor_id, self.perm = await ds.get_participant(self.con, self.actor_addr)
 
 
+class Propagator:
+    async def add_participant(self, action, participant_addr):
+        raise NotImplementedError()
+
+    async def remove_participant(self, action, participant_addr):
+        raise NotImplementedError()
+
+    async def propagate(self, action, item, data, timestamp):
+        raise NotImplementedError()
+
+
 class Controller:
     """
     Top level class for accessing conversations and conversation components.
     """
-    def __init__(self, data_store, event_handler=None, timezone_name='utc'):
+    def __init__(self, data_store, propagator, timezone_name='utc'):
+        assert isinstance(data_store, DataStore)
+        assert isinstance(propagator, Propagator)
         self.ds = data_store
-        self.event_handler = event_handler
+        self.prop = propagator
         self.timezone_name = timezone_name
         self.conversations = Conversations(self)
         components = [Messages, Participants]
@@ -92,24 +106,23 @@ class Controller:
     def now_tz(self):
         return self.timezone.localize(datetime.datetime.utcnow())
 
-    async def event(self, action, component_id, timestamp=None, **data):
+    async def event(self, action, item=None, timestamp=None, **data):
         """
         Record and propagate updates of conversations and conversation components.
 
         Events are always recorded but can be cleared before publish.
 
         :param action: Action instance
-        :param component_id: id of item created or modified
+        :param item: id of item created or modified, if none action.item is used
         :param timestamp: datetime the update occurred, if None this is set to now
         :param data: extra information associated with the update
-        :return: None
         """
+        item = action.item if item is None else item
         timestamp = timestamp or self.now_tz()
         logger.debug('change occurred on %d: author: "%s", action: "%s", component: %s %s',
-                     action.con, action.actor_addr, action.verb, action.component, component_id)
-        await self.ds.save_event(action, component_id, data, timestamp)
-        if self.event_handler:
-            await self.event_handler(action, component_id, data, timestamp)
+                     action.con, action.actor_addr, action.verb, action.component, item)
+        await self.ds.save_event(action, item, data, timestamp)
+        await self.prop.propagate(action, item, data, timestamp)
 
 
 class Conversations:
@@ -151,10 +164,10 @@ class Conversations:
         return con_id
 
     async def publish(self):
-        raise NotImplemented
+        raise NotImplementedError()
 
     async def get_by_global_id(self, id):
-        raise NotImplemented
+        raise NotImplementedError()
 
 
 class _Component:
@@ -204,7 +217,7 @@ class Messages(_Component):
         await self._check_permissions(action)
         await self._check_locked(action)
         await self._edit(action.con, action.item, body=body)
-        await self._event(action, action.item, value=body)
+        await self._event(action, value=body)
 
     async def delta_edit(self, action, body):
         raise NotImplementedError()
@@ -213,20 +226,20 @@ class Messages(_Component):
         await self._check_permissions(action)
         await self._check_locked(action)
         await self._delete(action.con, action.item)
-        await self._event(action, action.item)
+        await self._event(action)
 
     async def lock(self, action):
         await self._check_permissions(action)
         await self._check_locked(action)
         await self.ds.lock_component(self.name, action.con, action.item)
-        await self._event(action, action.item)
+        await self._event(action)
 
     async def unlock(self, action):
         await self._check_permissions(action)
         if not await self.ds.get_message_locked(self.name, action.con, action.item):
             raise ComponentNotLocked('{} with id = {} not locked'.format(self.name, action.item))
         await self.ds.unlock_component(self.name, action.con, action.item)
-        await self._event(action, action.item)
+        await self._event(action)
 
     async def _check_permissions(self, action):
         if action.perm == perms.WRITE:
@@ -271,6 +284,7 @@ class Participants(_Component):
             permissions=permissions,
         )
         logger.info('added participant to %d: email: "%s", permissions: "%s"', action.con, email, permissions)
+        await self.controller.prop.add_participant(action, email)
         await self._event(action, new_participant_id)
         return new_participant_id
 

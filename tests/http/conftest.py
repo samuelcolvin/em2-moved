@@ -6,7 +6,7 @@ from aiohttp import web
 
 from em2.base import Controller
 from em2.http_server import Api
-from tests.py_datastore import SimpleDataStore
+from tests.fixtures_classes import SimpleDataStore, NullPropagator
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def server(loop, port):
         app = web.Application(loop=loop)
 
         ds = SimpleDataStore()
-        ctrl = Controller(ds)
+        ctrl = Controller(ds, NullPropagator())
         api = Api(app, ctrl)
 
         handler = app.make_handler(debug=debug, keep_alive_on=False)
