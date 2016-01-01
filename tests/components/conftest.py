@@ -9,6 +9,6 @@ def conversation():
     async def get_conversation():
         ds = SimpleDataStore()
         ctrl = Controller(ds, NullPropagator())
-        con_id = await ctrl.conversations.create('text@example.com', 'foo bar', 'hi, how are you?')
+        con_id = await ctrl.conversations.create('test@example.com', 'foo bar', 'hi, how are you?')
         return ds, ctrl, con_id
     return get_conversation

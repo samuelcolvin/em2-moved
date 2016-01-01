@@ -4,7 +4,8 @@ import datetime
 from collections import OrderedDict
 
 import itertools
-from em2.base import logger, Propagator
+from em2.base import logger
+from em2.send import BasePropagator
 from em2.data_store import DataStore
 from em2.exceptions import ConversationNotFound, ComponentNotFound
 
@@ -53,6 +54,10 @@ class SimpleDataStore(DataStore):
             **kwargs
         )
         return id
+
+    async def set_status(self, conversation, status):
+        con_obj = self._get_con(conversation)
+        con_obj['status'] = status
 
     async def add_component(self, model, conversation, **kwargs):
         con_obj = self._get_con(conversation)
@@ -137,7 +142,7 @@ class SimpleDataStore(DataStore):
         return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)
 
 
-class NullPropagator(Propagator):
+class NullPropagator(BasePropagator):
     async def add_participant(self, action, participant_addr):
         pass
 

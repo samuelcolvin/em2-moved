@@ -10,6 +10,7 @@ from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFoun
                          ComponentLocked, Em2TypeError)
 from .utils import get_options
 from .data_store import DataStore
+from .send import BasePropagator
 
 logger = logging.getLogger('em2')
 
@@ -33,10 +34,11 @@ class Components:
     ATTACHMENTS = 'attachments'
     EXTRAS = 'extras'
     RESPONSES = 'responses'
+    CONVERSATIONS = 'conversations'
 
 
 class Action:
-    def __init__(self, actor, conversation, verb, component, item=None):
+    def __init__(self, actor, conversation, verb, component, item=None, remote=False):
         self.actor_addr = actor
         self.actor_id = None
         self.perm = None
@@ -44,21 +46,11 @@ class Action:
         self.verb = verb
         self.component = component
         self.item = item
+        self.remote = remote
 
     async def set_actor(self, ds):
         # TODO it may be possible to provide functionality to cache these results to reduce queries
         self.actor_id, self.perm = await ds.get_participant(self.con, self.actor_addr)
-
-
-class Propagator:
-    async def add_participant(self, action, participant_addr):
-        raise NotImplementedError()
-
-    async def remove_participant(self, action, participant_addr):
-        raise NotImplementedError()
-
-    async def propagate(self, action, item, data, timestamp):
-        raise NotImplementedError()
 
 
 class Controller:
@@ -67,7 +59,7 @@ class Controller:
     """
     def __init__(self, data_store, propagator, timezone_name='utc'):
         assert isinstance(data_store, DataStore)
-        assert isinstance(propagator, Propagator)
+        assert isinstance(propagator, BasePropagator)
         self.ds = data_store
         self.prop = propagator
         self.timezone_name = timezone_name
@@ -85,7 +77,11 @@ class Controller:
         """
         assert isinstance(action, Action)
         await action.set_actor(self.ds)
-        component_cls = self.components.get(action.component)
+        if action.component == Components.CONVERSATIONS:
+            component_cls = self.conversations
+        else:
+            component_cls = self.components.get(action.component)
+
         if component_cls is None:
             raise ComponentNotFound('{} is not a valid component'.format(action.component))
 
@@ -126,7 +122,7 @@ class Controller:
 
 
 class Conversations:
-    name = 'conversations'
+    name = Components.CONVERSATIONS
     event = None
 
     def __init__(self, controller):
@@ -163,8 +159,13 @@ class Conversations:
             await messages.add_basic(a, body=body)
         return con_id
 
-    async def publish(self):
-        raise NotImplementedError()
+    # async def add(self, action):
+    #     new_action = Action(creator, con_id, Verbs.ADD, Components.CONVERSATIONS, con_id)
+    #
+    # async def publish(self, action):
+    #     await self.ds.set_status(action.con, self.Status.ACTIVE)
+    #     new_action = Action(creator, con_id, Verbs.ADD, Components.CONVERSATIONS, con_id)
+    #     await self._event(action, id)
 
     async def get_by_global_id(self, id):
         raise NotImplementedError()
@@ -278,6 +279,7 @@ class Participants(_Component):
             raise InsufficientPermissions('FULL or WRITE permission are required to add participants')
         if action.perm == perms.WRITE and permissions == perms.FULL:
             raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions')
+        # TODO check the address is valid
         new_participant_id = await self._add(
             action.con,
             email=email,

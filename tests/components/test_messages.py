@@ -27,7 +27,7 @@ async def test_add_message(conversation):
     assert len(con['messages']) == 1
     assert len(con['updates']) == 0
     msg1_id = list(con['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.MESSAGES)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.MESSAGES)
     await ctrl.act(a, parent_id=msg1_id, body='I am fine thanks.')
     assert len(con['messages']) == 2
     assert len(con['updates']) == 1
@@ -51,7 +51,7 @@ async def test_edit_message(conversation):
     msg1 = con['messages'][msg1_id]
     assert msg1['body'] == 'hi, how are you?'
     assert msg1['author'] == 0
-    a = Action('text@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
+    a = Action('test@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
     await ctrl.act(a, body='hi, how are you again?')
     assert msg1['body'] == 'hi, how are you again?'
     assert msg1['author'] == 0
@@ -70,7 +70,7 @@ async def test_delete_message(conversation):
     assert len(con['messages']) == 1
     assert len(con['updates']) == 0
     msg1_id = list(con['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.DELETE, Components.MESSAGES, item=msg1_id)
+    a = Action('test@example.com', con_id, Verbs.DELETE, Components.MESSAGES, item=msg1_id)
     await ctrl.act(a)
     assert len(con['messages']) == 0
     assert len(con['updates']) == 1
@@ -86,13 +86,13 @@ async def test_lock_unlock_message(conversation):
     con = ds.data['0']
     assert len(con['messages']) == 1
     msg1_id = list(con['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.LOCK, Components.MESSAGES, item=msg1_id)
+    a = Action('test@example.com', con_id, Verbs.LOCK, Components.MESSAGES, item=msg1_id)
     await ctrl.act(a)
     assert len(con['locked']) == 1
     locked_v = list(con['locked'])[0]
     assert locked_v == 'messages:{}'.format(msg1_id)
 
-    a = Action('text@example.com', con_id, Verbs.UNLOCK, Components.MESSAGES, item=msg1_id)
+    a = Action('test@example.com', con_id, Verbs.UNLOCK, Components.MESSAGES, item=msg1_id)
     await ctrl.act(a)
     assert len(con['locked']) == 0
 
@@ -100,9 +100,9 @@ async def test_lock_unlock_message(conversation):
 async def test_lock_edit(conversation):
     ds, ctrl, con_id = await conversation()
     msg1_id = list(ds.data['0']['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.LOCK, Components.MESSAGES, item=msg1_id)
+    a = Action('test@example.com', con_id, Verbs.LOCK, Components.MESSAGES, item=msg1_id)
     await ctrl.act(a)
-    a = Action('text@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
+    a = Action('test@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
     with pytest.raises(ComponentLocked) as excinfo:
         await ctrl.act(a, body='hi, how are you again?')
     assert 'ComponentLocked: messages with id = {} locked'.format(msg1_id) in str(excinfo)
@@ -111,14 +111,14 @@ async def test_lock_edit(conversation):
 async def test_wrong_unlock(conversation):
     ds, ctrl, con_id = await conversation()
     msg1_id = list(ds.data['0']['messages'])[0]
-    a = Action('text@example.com', con_id, Verbs.UNLOCK, Components.MESSAGES, item=msg1_id)
+    a = Action('test@example.com', con_id, Verbs.UNLOCK, Components.MESSAGES, item=msg1_id)
     with pytest.raises(ComponentNotLocked) as excinfo:
         await ctrl.act(a)
     assert 'ComponentNotLocked: messages with id = {} not locked'.format(msg1_id) in str(excinfo)
 
 async def test_add_message_missing_perms(conversation):
     ds, ctrl, con_id = await conversation()
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='readonly@example.com', permissions=perms.READ)
 
     con = ds.data['0']
@@ -133,7 +133,7 @@ async def test_edit_message_missing_perms(conversation):
     ds, ctrl, con_id = await conversation()
     msg1_id = list(ds.data['0']['messages'])[0]
 
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='readonly@example.com', permissions=perms.READ)
 
     a = Action('readonly@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
@@ -144,7 +144,7 @@ async def test_edit_message_missing_perms(conversation):
 
 async def test_edit_message_right_person(conversation):
     ds, ctrl, con_id = await conversation()
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='writeonly@example.com', permissions=perms.WRITE)
 
     con = ds.data['0']
@@ -167,7 +167,7 @@ async def test_edit_message_wrong_person(conversation):
     ds, ctrl, con_id = await conversation()
     msg1_id = list(ds.data['0']['messages'])[0]
 
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='writeonly@example.com', permissions=perms.WRITE)
 
     a = Action('writeonly@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)

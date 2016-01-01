@@ -9,7 +9,7 @@ async def test_extra_participant(conversation):
     con = ds.data['0']
     assert len(con['participants']) == 1
     assert len(con['updates']) == 0
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='someone_different@example.com', permissions=perms.WRITE)
     assert len(con['participants']) == 2
     assert len(con['updates']) == 1
@@ -18,7 +18,7 @@ async def test_extra_participant(conversation):
 async def test_add_participant_readonly(conversation):
     ds, ctrl, con_id = await conversation()
     assert len(ds.data['0']['participants']) == 1
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='readonly@example.com', permissions=perms.READ)
     assert len(ds.data['0']['participants']) == 2
     a = Action('readonly@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
@@ -30,7 +30,7 @@ async def test_add_participant_readonly(conversation):
 async def test_add_participant_write_create_write(conversation):
     ds, ctrl, con_id = await conversation()
     assert len(ds.data['0']['participants']) == 1
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='writeonly@example.com', permissions=perms.WRITE)
     assert len(ds.data['0']['participants']) == 2
     a = Action('writeonly@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
@@ -40,7 +40,7 @@ async def test_add_participant_write_create_write(conversation):
 async def test_add_participant_write_create_full(conversation):
     ds, ctrl, con_id = await conversation()
     assert len(ds.data['0']['participants']) == 1
-    a = Action('text@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='writeonly@example.com', permissions=perms.WRITE)
     assert len(ds.data['0']['participants']) == 2
     a = Action('writeonly@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
