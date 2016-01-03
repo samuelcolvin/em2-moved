@@ -8,7 +8,7 @@ import pytz
 
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
                          ComponentLocked, Em2TypeError)
-from .utils import get_options
+from .utils import get_options, random_name
 from .data_store import DataStore
 from .send import BasePropagator
 
@@ -52,17 +52,22 @@ class Action:
         # TODO it may be possible to provide functionality to cache these results to reduce queries
         self.actor_id, self.perm = await ds.get_participant(self.con, self.actor_addr)
 
+    def __repr__(self):
+        attrs = ['actor_addr', 'actor_id', 'perm', 'con', 'verb', 'component', 'item', 'remote']
+        return 'Action({})'.format(', '.join('{}={}'.format(a, getattr(self, a)) for a in attrs))
+
 
 class Controller:
     """
     Top level class for accessing conversations and conversation components.
     """
-    def __init__(self, data_store, propagator, timezone_name='utc'):
+    def __init__(self, data_store, propagator, timezone_name='utc', ref=None):
         assert isinstance(data_store, DataStore)
         assert isinstance(propagator, BasePropagator)
         self.ds = data_store
         self.prop = propagator
         self.timezone_name = timezone_name
+        self.ref = ref if ref is not None else random_name()
         self.conversations = Conversations(self)
         components = [Messages, Participants]
         self.components = {c.name: c(self) for c in components}
@@ -76,7 +81,6 @@ class Controller:
         :return: result of method associated with verb
         """
         assert isinstance(action, Action)
-        await action.set_actor(self.ds)
         if action.component == Components.CONVERSATIONS:
             component_cls = self.conversations
         else:
@@ -87,9 +91,14 @@ class Controller:
 
         if action.verb not in self.valid_verbs:
             raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, self.valid_verbs))
+
         func = getattr(component_cls, action.verb, None)
         if func is None:
             raise VerbNotFound('{} is not an available verb on {}'.format(action.verb, action.component))
+
+        # FIXME this is ugly and there are probably more cases where we don't want to do this
+        if not (action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD):
+            await action.set_actor(self.ds)
         try:
             return await func(action, **kwargs)
         except TypeError as e:
@@ -102,23 +111,32 @@ class Controller:
     def now_tz(self):
         return self.timezone.localize(datetime.datetime.utcnow())
 
-    async def event(self, action, item=None, timestamp=None, **data):
+    def _subset(self, data, first_chars):
+        return {k[2:]: v for k, v in data.items() if k[0] in first_chars}
+
+    async def event(self, action, timestamp=None, **data):
         """
         Record and propagate updates of conversations and conversation components.
 
-        Events are always recorded but can be cleared before publish.
-
         :param action: Action instance
-        :param item: id of item created or modified, if none action.item is used
         :param timestamp: datetime the update occurred, if None this is set to now
-        :param data: extra information associated with the update
+        :param data: extra information to either be saved (s_*), propagated (p_*) or both (b_*)
         """
-        item = action.item if item is None else item
         timestamp = timestamp or self.now_tz()
-        logger.debug('change occurred on %d: author: "%s", action: "%s", component: %s %s',
-                     action.con, action.actor_addr, action.verb, action.component, item)
-        await self.ds.save_event(action, item, data, timestamp)
-        await self.prop.propagate(action, item, data, timestamp)
+        logger.debug('event on %d: author: "%s", action: "%s", component: %s %s',
+                     action.con, action.actor_addr, action.verb, action.component, action.item)
+        save_data = self._subset(data, 'sb')
+        await self.ds.save_event(action, save_data, timestamp)
+        if action.remote:
+            return
+        status = await self.ds.get_status(action.con)
+        if status == Conversations.Status.DRAFT:
+            return
+        propagate_data = self._subset(data, 'pb')
+        await self.prop.propagate(action, propagate_data, timestamp)
+
+    def __repr__(self):
+        return 'Controler({})'.format(self.ref)
 
 
 class Conversations:
@@ -159,13 +177,16 @@ class Conversations:
             await messages.add_basic(a, body=body)
         return con_id
 
-    # async def add(self, action):
-    #     new_action = Action(creator, con_id, Verbs.ADD, Components.CONVERSATIONS, con_id)
-    #
-    # async def publish(self, action):
-    #     await self.ds.set_status(action.con, self.Status.ACTIVE)
-    #     new_action = Action(creator, con_id, Verbs.ADD, Components.CONVERSATIONS, con_id)
-    #     await self._event(action, id)
+    async def add(self, action):
+        """
+        Add a new conversation created on another platform.
+        """
+        raise NotImplementedError()
+
+    async def publish(self, action):
+        await self.ds.set_status(action.con, self.Status.ACTIVE)
+        new_action = Action(action.actor_addr, action.con, Verbs.ADD, Components.CONVERSATIONS)
+        await self.controller.event(new_action)
 
     async def get_by_global_id(self, id):
         raise NotImplementedError()
@@ -207,18 +228,18 @@ class Messages(_Component):
         )
         return id
 
-    async def add(self, action, parent_id, body):
+    async def add(self, action, body, parent_id):
         await self.ds.get_message_author(action.con, parent_id)
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE access required to add messages')
-        id = await self.add_basic(action, body, parent_id)
-        await self._event(action, id)
+        action.item = await self.add_basic(action, body, parent_id)
+        await self._event(action, p_parent_id=parent_id, p_body=body)
 
     async def edit(self, action, body):
         await self._check_permissions(action)
         await self._check_locked(action)
         await self._edit(action.con, action.item, body=body)
-        await self._event(action, value=body)
+        await self._event(action, b_value=body)
 
     async def delta_edit(self, action, body):
         raise NotImplementedError()

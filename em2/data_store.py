@@ -26,6 +26,9 @@ class DataStore:
     async def set_status(self, conversation, status):
         raise NotImplementedError()
 
+    async def get_status(self, conversation):
+        raise NotImplementedError()
+
     async def add_component(self, model, conversation, **kwargs):
         raise NotImplementedError()
 

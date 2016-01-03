@@ -38,7 +38,7 @@ async def test_add_message(conversation):
     assert con['updates'][0]['data'] == {}
 
     msg2_id = list(con['messages'])[1]
-    assert con['updates'][0]['component_id'] == msg2_id
+    assert con['updates'][0]['item'] == msg2_id
 
 
 async def test_edit_message(conversation):
@@ -60,7 +60,7 @@ async def test_edit_message(conversation):
     assert con['updates'][0]['actor'] == 0
     assert con['updates'][0]['component'] == 'messages'
     assert con['updates'][0]['data'] == {'value': 'hi, how are you again?'}
-    assert con['updates'][0]['component_id'] == msg1_id
+    assert con['updates'][0]['item'] == msg1_id
 
 
 async def test_delete_message(conversation):
@@ -78,7 +78,7 @@ async def test_delete_message(conversation):
     assert con['updates'][0]['actor'] == 0
     assert con['updates'][0]['component'] == 'messages'
     assert con['updates'][0]['data'] == {}
-    assert con['updates'][0]['component_id'] == msg1_id
+    assert con['updates'][0]['item'] == msg1_id
 
 
 async def test_lock_unlock_message(conversation):

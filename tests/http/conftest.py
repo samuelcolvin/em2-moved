@@ -6,7 +6,7 @@ from aiohttp import web
 
 from em2.base import Controller
 from em2.receive import Api
-from tests.fixtures_classes import SimpleDataStore, NullPropagator
+from tests.fixture_classes import SimpleDataStore, NullPropagator
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import pytest
 
 from em2.base import Controller
-from tests.fixtures_classes import SimpleDataStore, NullPropagator
+from tests.fixture_classes import SimpleDataStore, NullPropagator
 
 
 @pytest.fixture

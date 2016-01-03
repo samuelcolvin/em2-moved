@@ -33,14 +33,8 @@ class SimplePropagator(BasePropagator):
         if platform not in self.addr_lookups[action.con].values():
             self.active_platforms[action.con].remove(platform)
 
-    async def propagate(self, action, item, data, timestamp):
+    async def propagate(self, action, data, timestamp):
         ctrls = self.active_platforms[action.con]
-        new_action = Action(action.actor_addr, action.con, action.verb, action.component, item, True)
+        new_action = Action(action.actor_addr, action.con, action.verb, action.component, action.item, True)
         for ctrl in ctrls:
             await ctrl.act(new_action)
-
-    # async def publish(self, con_id, creator, subject, body, participants, timestamp):
-    #     ctrls = self.active_platforms[con_id]
-    #     new_action = Action(creator, con_id,  action.con, action.verb, action.component, item, True)
-    #     for ctrl in ctrls:
-    #         await ctrl.act(new_action)

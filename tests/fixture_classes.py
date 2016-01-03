@@ -34,13 +34,13 @@ class SimpleDataStore(DataStore):
         self.data = {}
         super(SimpleDataStore, self).__init__(*args, **kwargs)
 
-    async def save_event(self, action, component_id, data, timestamp):
+    async def save_event(self, action, data, timestamp):
         con_obj = self._get_con(action.con)
         con_obj['updates'].append({
             'actor': action.actor_id,
             'verb': action.verb,
             'component': action.component,
-            'component_id': component_id,
+            'item': action.item,
             'data': data,
             'timestamp': timestamp,
         })
@@ -58,6 +58,10 @@ class SimpleDataStore(DataStore):
     async def set_status(self, conversation, status):
         con_obj = self._get_con(conversation)
         con_obj['status'] = status
+
+    async def get_status(self, conversation):
+        con_obj = self._get_con(conversation)
+        return con_obj['status']
 
     async def add_component(self, model, conversation, **kwargs):
         con_obj = self._get_con(conversation)
@@ -149,5 +153,5 @@ class NullPropagator(BasePropagator):
     async def remove_participant(self, action, participant_addr):
         pass
 
-    async def propagate(self, action, item, data, timestamp):
+    async def propagate(self, action, data, timestamp):
         pass
