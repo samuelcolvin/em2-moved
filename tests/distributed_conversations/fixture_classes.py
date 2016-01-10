@@ -13,6 +13,14 @@ class SimplePropagator(BasePropagator):
         assert domain not in self.all_platforms
         self.all_platforms[domain] = controller
 
+    @property
+    def all_platform_count(self):
+        return len(self.all_platforms)
+
+    @property
+    def active_platform_count(self):
+        return len(self.active_platforms)
+
     async def add_participant(self, action, participant_addr):
         domain = self.get_domain(participant_addr)
         if domain == self.local_domain:

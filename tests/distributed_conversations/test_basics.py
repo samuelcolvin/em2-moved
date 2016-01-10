@@ -23,15 +23,35 @@ async def test_create_basic_conversation():
     assert con['global_id'] == hash_result
 
 
-async def test_create_conversation_two_platforms():
+async def test_create_conversation_add_external_participant():
+    ds = SimpleDataStore()
+    propagator = SimplePropagator()
+    assert (propagator.all_platform_count, propagator.active_platform_count) == (0, 0)
+    ctrl = Controller(ds, propagator, ref='ctrl1')
+    remove_ctrl = Controller(SimpleDataStore(), NullPropagator(), ref='ctrl2')
+    propagator.add_platform('@remote.com', remove_ctrl)
+    assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 0)
+    con_id = await ctrl.conversations.create('sender@local.com', 'foo bar')
+    assert len(ds.data['0']['participants']) == 1
+    a = Action('sender@local.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    await ctrl.act(a, email='receiver@remote.com', permissions=perms.WRITE)
+    assert len(ds.data['0']['participants']) == 2
+    assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
+
+
+async def test_publish_conversation():
     ds = SimpleDataStore()
     propagator = SimplePropagator()
     ctrl = Controller(ds, propagator, ref='ctrl1')
     other_ds = SimpleDataStore()
     remove_ctrl = Controller(other_ds, NullPropagator(), ref='ctrl2')
     propagator.add_platform('@remote.com', remove_ctrl)
-    con_id = await ctrl.conversations.create('sender@local.com', 'foo bar')
-    assert len(ds.data['0']['participants']) == 1
+    con_id = await ctrl.conversations.create('sender@local.com', 'foo bar', 'the body')
     a = Action('sender@local.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='receiver@remote.com', permissions=perms.WRITE)
     assert len(ds.data['0']['participants']) == 2
+    assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
+
+    # print(ds)
+    # a = Action('sender@local.com', con_id, Verbs.PUBLISH, Components.CONVERSATIONS)
+    # await ctrl.act(a)

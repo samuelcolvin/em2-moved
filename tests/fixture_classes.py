@@ -4,7 +4,7 @@ import datetime
 from collections import OrderedDict
 
 import itertools
-from em2.base import logger
+from em2.base import logger, Components
 from em2.send import BasePropagator
 from em2.data_store import DataStore
 from em2.exceptions import ConversationNotFound, ComponentNotFound
@@ -48,66 +48,72 @@ class SimpleDataStore(DataStore):
     async def create_conversation(self, **kwargs):
         id = str(next(self.conversation_counter))
         self.data[id] = dict(
-            participant_counter=itertools.count(),  # special case with uses sequence id
             updates=[],
             locked=set(),
             **kwargs
         )
         return id
 
-    async def set_status(self, conversation, status):
-        con_obj = self._get_con(conversation)
+    async def set_status(self, con, status):
+        con_obj = self._get_con(con)
         con_obj['status'] = status
 
-    async def get_status(self, conversation):
-        con_obj = self._get_con(conversation)
+    async def get_status(self, con):
+        con_obj = self._get_con(con)
         return con_obj['status']
 
-    async def add_component(self, model, conversation, **kwargs):
-        con_obj = self._get_con(conversation)
+    async def add_component(self, model, con, **kwargs):
+        con_obj = self._get_con(con)
+        con_counter_key = model + '_counter'
         if model not in con_obj:
             con_obj[model] = OrderedDict()
-        if model == 'participants':
-            kwargs['id'] = next(con_obj['participant_counter'])
-        id = kwargs['id']
-        con_obj[model][id] = kwargs
+            con_obj[con_counter_key] = itertools.count()
+        # only participants uses counter as id
+        counter_key = 'id' if model == Components.PARTICIPANTS else 'counter'
+        kwargs[counter_key] = next(con_obj[con_counter_key])
+        component_id = kwargs['id']
+        con_obj[model][component_id] = kwargs
         return id
 
-    async def edit_component(self, model, conversation, item_id, **kwargs):
-        item = self._get_con_item(model, conversation, item_id)
+    async def edit_component(self, model, con, item_id, **kwargs):
+        item = self._get_con_item(model, con, item_id)
         item.update(kwargs)
 
-    async def delete_component(self, model, conversation, item_id):
-        items = self._get_con_items(model, conversation)
+    async def delete_component(self, model, con, item_id):
+        items = self._get_con_items(model, con)
         try:
             del items[item_id]
         except KeyError:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, conversation))
+            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, con))
 
-    async def lock_component(self, model, conversation, item_id):
-        self._get_con_item(model, conversation, item_id)
-        con_obj = self._get_con(conversation)
+    async def lock_component(self, model, con, item_id):
+        self._get_con_item(model, con, item_id)
+        con_obj = self._get_con(con)
         con_obj['locked'].add('{}:{}'.format(model, item_id))
 
-    async def unlock_component(self, model, conversation, item_id):
-        con_obj = self._get_con(conversation)
+    async def unlock_component(self, model, con, item_id):
+        con_obj = self._get_con(con)
         con_obj['locked'].remove('{}:{}'.format(model, item_id))
 
-    async def get_message_locked(self, model, conversation, item_id):
-        con_obj = self._get_con(conversation)
+    async def get_message_locked(self, model, con, item_id):
+        con_obj = self._get_con(con)
         return '{}:{}'.format(model, item_id) in con_obj['locked']
 
     async def get_message_count(self, con):
         con_obj = self._get_con(con)
         return len(con_obj.get('messages', {}))
 
+    # async def get_first_message(self, con):
+    #     con_obj = self._get_con(con)
+    #     messages = con_obj[Components.MESSAGES]
+
     async def get_participant_count(self, con):
         con_obj = self._get_con(con)
-        return len(con_obj.get('participants', {}))
+        return len(con_obj.get(Components.PARTICIPANTS, {}))
 
     async def get_message_author(self, con, message_id):
         con_obj = self._get_con(con)
-        msgs = con_obj.get('messages', {})
+        msgs = con_obj.get(Components.MESSAGES, {})
         msg = msgs.get(message_id)
         if msg is None:
             raise ComponentNotFound('message {} not found in {}'.format(message_id, msgs.keys()))
@@ -115,7 +121,7 @@ class SimpleDataStore(DataStore):
 
     async def get_participant(self, con, participant_address):
         con_obj = self._get_con(con)
-        prtis = con_obj.get('participants', {})
+        prtis = con_obj.get(Components.PARTICIPANTS, {})
         for v in prtis.values():
             if v['email'] == participant_address:
                 return v['id'], v['permissions']

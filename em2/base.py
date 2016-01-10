@@ -22,6 +22,9 @@ class Verbs:
     DELETE = 'delete'
     LOCK = 'lock'
     UNLOCK = 'unlock'
+    # is there anywhere we need this apparent from actually publishing conversations?
+    # seems ugly to have a verb for one use. let's wait and see
+    PUBLISH = 'publish'
 
 
 class Components:
@@ -54,7 +57,7 @@ class Action:
 
     def __repr__(self):
         attrs = ['actor_addr', 'actor_id', 'perm', 'con', 'verb', 'component', 'item', 'remote']
-        return 'Action({})'.format(', '.join('{}={}'.format(a, getattr(self, a)) for a in attrs))
+        return '<Action({})>'.format(', '.join('{}={}'.format(a, getattr(self, a)) for a in attrs))
 
 
 class Controller:
@@ -111,7 +114,7 @@ class Controller:
     def now_tz(self):
         return self.timezone.localize(datetime.datetime.utcnow())
 
-    def _subset(self, data, first_chars):
+    def _subdict(self, data, first_chars):
         return {k[2:]: v for k, v in data.items() if k[0] in first_chars}
 
     async def event(self, action, timestamp=None, **data):
@@ -125,18 +128,18 @@ class Controller:
         timestamp = timestamp or self.now_tz()
         logger.debug('event on %d: author: "%s", action: "%s", component: %s %s',
                      action.con, action.actor_addr, action.verb, action.component, action.item)
-        save_data = self._subset(data, 'sb')
+        save_data = self._subdict(data, 'sb')
         await self.ds.save_event(action, save_data, timestamp)
         if action.remote:
             return
         status = await self.ds.get_status(action.con)
         if status == Conversations.Status.DRAFT:
             return
-        propagate_data = self._subset(data, 'pb')
+        propagate_data = self._subdict(data, 'pb')
         await self.prop.propagate(action, propagate_data, timestamp)
 
     def __repr__(self):
-        return 'Controler({})'.format(self.ref)
+        return '<Controller({})>'.format(self.ref)
 
 
 class Conversations:
@@ -177,19 +180,24 @@ class Conversations:
             await messages.add_basic(a, body=body)
         return con_id
 
-    async def add(self, action):
-        """
-        Add a new conversation created on another platform.
-        """
-        raise NotImplementedError()
-
-    async def publish(self, action):
-        await self.ds.set_status(action.con, self.Status.ACTIVE)
-        new_action = Action(action.actor_addr, action.con, Verbs.ADD, Components.CONVERSATIONS)
-        await self.controller.event(new_action)
+    # async def add(self, action, subject, body):
+    #     """
+    #     Add a new conversation created on another platform.
+    #     """
+    #     print(self.controller)
+    #     print(self)
+    #     print(action)
+    #
+    # async def publish(self, action):
+    #     await self.ds.set_status(action.con, self.Status.ACTIVE)
+    #     new_action = Action(action.actor_addr, action.con, Verbs.ADD, Components.CONVERSATIONS)
+    #     await self.controller.event(new_action, p_subject, p_body)
 
     async def get_by_global_id(self, id):
         raise NotImplementedError()
+
+    def __repr__(self):
+        return '<Conversations on {}>'.format(self.controller)
 
 
 class _Component:
