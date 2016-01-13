@@ -24,7 +24,7 @@ setup(
     packages=['em2'],
     zip_safe=True,
     install_requires=[
-        'pytz==2015.7',
+        'pytz>=2015.7',
         'aiohttp==0.20.0',
         'cchardet==1.0.0',
     ]

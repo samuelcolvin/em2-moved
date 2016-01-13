@@ -46,12 +46,11 @@ async def test_publish_conversation():
     other_ds = SimpleDataStore()
     remove_ctrl = Controller(other_ds, NullPropagator(), ref='ctrl2')
     propagator.add_platform('@remote.com', remove_ctrl)
-    con_id = await ctrl.conversations.create('sender@local.com', 'foo bar', 'the body')
+    con_id = await ctrl.conversations.create('sender@local.com', 'the subject', 'the body')
     a = Action('sender@local.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='receiver@remote.com', permissions=perms.WRITE)
     assert len(ds.data['0']['participants']) == 2
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
 
-    # print(ds)
-    # a = Action('sender@local.com', con_id, Verbs.PUBLISH, Components.CONVERSATIONS)
-    # await ctrl.act(a)
+    a = Action('sender@local.com', con_id, Verbs.PUBLISH, Components.CONVERSATIONS)
+    await ctrl.act(a)

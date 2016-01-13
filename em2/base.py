@@ -158,6 +158,7 @@ class Conversations:
         DELETED = 'deleted'
 
     async def create(self, creator, subject, body=None):
+        # TODO this needs refactoring to work with add
         timestamp = self.controller.now_tz()
         global_id = self.ds.hash(creator, timestamp.isoformat(), subject, method='sha256')
         con_id = await self.ds.create_conversation(
@@ -180,18 +181,40 @@ class Conversations:
             await messages.add_basic(a, body=body)
         return con_id
 
-    # async def add(self, action, subject, body):
-    #     """
-    #     Add a new conversation created on another platform.
-    #     """
-    #     print(self.controller)
-    #     print(self)
-    #     print(action)
-    #
-    # async def publish(self, action):
-    #     await self.ds.set_status(action.con, self.Status.ACTIVE)
-    #     new_action = Action(action.actor_addr, action.con, Verbs.ADD, Components.CONVERSATIONS)
-    #     await self.controller.event(new_action, p_subject, p_body)
+    async def add(self, action, subject, body):
+        """
+        Add a new conversation created on another platform.
+        """
+        # TODO get timestamp from original conversation too
+        creator = action.actor_addr
+        timestamp = self.controller.now_tz()
+        global_id = self.ds.hash(creator, timestamp.isoformat(), subject, method='sha256')
+        con_id = await self.ds.create_conversation(
+            global_id=global_id,
+            timestamp=timestamp,
+            creator=creator,
+            subject=subject,
+            status=self.Status.PENDING,
+        )
+        logger.info('created external conversation: %s..., id: %d, creator: "%s", subject: "%s"',
+                    global_id[:6], con_id, creator, subject)
+
+        participants_component = self.controller.components[Components.PARTICIPANTS]
+        await participants_component.add_first(con_id, creator)
+
+        messages_component = self.controller.components[Components.MESSAGES]
+        a = Action(creator, con_id, Verbs.ADD, Components.MESSAGES)
+        await a.set_actor(self.ds)
+        await messages_component.add_basic(a, body=body)
+
+    async def publish(self, action):
+        # TODO this needs refactoring to work with participants added during a conversation and more initial content
+        await self.ds.set_status(action.con, self.Status.ACTIVE)
+        new_action = Action(action.actor_addr, action.con, Verbs.ADD, Components.CONVERSATIONS)
+        subject = await self.ds.get_subject(action.con)
+        first_message = await self.ds.get_first_message(action.con)
+        body = first_message['body']
+        await self.controller.event(new_action, p_subject=subject, p_body=body)
 
     async def get_by_global_id(self, id):
         raise NotImplementedError()

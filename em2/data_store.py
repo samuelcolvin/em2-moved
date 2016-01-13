@@ -53,13 +53,13 @@ class DataStore:
     async def get_component_value(self, model, con, item_id):
         raise NotImplementedError()
 
-    async def get_message_locked(self, model, con, item_id):
+    async def get_component_count(self, model, con):
+        """
+        Find the number of instances of a component associated with a conversation.
+        """
         raise NotImplementedError()
 
-    async def get_message_count(self, con):
-        """
-        Find the number of messages associated with a conversation.
-        """
+    async def get_message_locked(self, model, con, item_id):
         raise NotImplementedError()
 
     async def get_first_message(self, con):

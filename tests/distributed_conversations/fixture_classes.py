@@ -45,4 +45,4 @@ class SimplePropagator(BasePropagator):
         ctrls = self.active_platforms[action.con]
         new_action = Action(action.actor_addr, action.con, action.verb, action.component, action.item, True)
         for ctrl in ctrls:
-            await ctrl.act(new_action)
+            await ctrl.act(new_action, **data)

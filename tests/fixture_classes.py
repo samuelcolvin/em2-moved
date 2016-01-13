@@ -48,6 +48,7 @@ class SimpleDataStore(DataStore):
     async def create_conversation(self, **kwargs):
         id = str(next(self.conversation_counter))
         self.data[id] = dict(
+            participant_counter=itertools.count(),  # special case with uses sequence id
             updates=[],
             locked=set(),
             **kwargs
@@ -62,17 +63,14 @@ class SimpleDataStore(DataStore):
         con_obj = self._get_con(con)
         return con_obj['status']
 
-    async def add_component(self, model, con, **kwargs):
-        con_obj = self._get_con(con)
-        con_counter_key = model + '_counter'
+    async def add_component(self, model, conversation, **kwargs):
+        con_obj = self._get_con(conversation)
         if model not in con_obj:
             con_obj[model] = OrderedDict()
-            con_obj[con_counter_key] = itertools.count()
-        # only participants uses counter as id
-        counter_key = 'id' if model == Components.PARTICIPANTS else 'counter'
-        kwargs[counter_key] = next(con_obj[con_counter_key])
-        component_id = kwargs['id']
-        con_obj[model][component_id] = kwargs
+        if model == 'participants':
+            kwargs['id'] = next(con_obj['participant_counter'])
+        id = kwargs['id']
+        con_obj[model][id] = kwargs
         return id
 
     async def edit_component(self, model, con, item_id, **kwargs):
@@ -103,9 +101,18 @@ class SimpleDataStore(DataStore):
         con_obj = self._get_con(con)
         return len(con_obj.get('messages', {}))
 
-    # async def get_first_message(self, con):
-    #     con_obj = self._get_con(con)
-    #     messages = con_obj[Components.MESSAGES]
+    async def get_first_message(self, con):
+        con_obj = self._get_con(con)
+        messages = con_obj[Components.MESSAGES]
+        return list(messages.values())[0]
+
+    async def get_subject(self, con):
+        con_obj = self._get_con(con)
+        return con_obj['subject']
+
+    async def set_subject(self, con, subject):
+        con_obj = self._get_con(con)
+        con_obj['subject'] = subject
 
     async def get_participant_count(self, con):
         con_obj = self._get_con(con)
