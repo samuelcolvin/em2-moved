@@ -57,7 +57,7 @@ class SimpleDataStore(DataStore):
 
     async def update_conversation_id(self, con, new_id):
         con_obj = self._get_con(con)
-        con_obj['global_id'] = new_id
+        con_obj['con_id'] = new_id
 
     async def set_status(self, con, status):
         con_obj = self._get_con(con)
@@ -139,7 +139,11 @@ class SimpleDataStore(DataStore):
         raise ComponentNotFound('participant {} not found in {}'.format(participant_address, prtis.keys()))
 
     def _get_con(self, con_id):
-        conversation = self.data.get(con_id)
+        conversation = None
+        for v in self.data.values():
+            if v['con_id'] == con_id:
+                conversation = v
+                break
         if conversation is None:
             raise ConversationNotFound('conversation {} not found'.format(con_id))
         return conversation

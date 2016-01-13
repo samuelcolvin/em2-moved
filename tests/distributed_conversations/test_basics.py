@@ -20,7 +20,7 @@ async def test_create_basic_conversation():
     assert isinstance(con['timestamp'], datetime.datetime)
     hash_data = bytes('sender@example.com_{}_foo bar'.format(con['timestamp'].isoformat()), 'utf8')
     hash_result = hashlib.sha256(hash_data).hexdigest()
-    assert con['global_id'] == hash_result
+    assert con['con_id'] == hash_result
 
 
 async def test_create_conversation_add_external_participant():
@@ -56,7 +56,7 @@ async def test_publish_conversation():
     a = Action('sender@local.com', con_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     await ctrl.act(a)
     assert len(other_ds.data) == 1
-    assert other_ds.data['0']['global_id'] == ds.data['0']['global_id']
+    assert other_ds.data['0']['con_id'] == ds.data['0']['con_id']
     assert other_ds.data['0']['subject'] == 'the subject'
     assert len(other_ds.data['0']['messages']) == 1
     msg1 = list(other_ds.data['0']['messages'].values())[0]

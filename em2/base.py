@@ -160,16 +160,15 @@ class Conversations:
     async def create(self, creator, subject, body=None):
         # TODO this needs refactoring to work with add
         timestamp = self.controller.now_tz()
-        global_id = self.ds.hash(creator, timestamp.isoformat(), subject, method='sha256')
-        con_id = await self.ds.create_conversation(
-            global_id=global_id,
+        con_id = self.ds.hash(creator, timestamp.isoformat(), subject, method='sha256')
+        await self.ds.create_conversation(
+            con_id=con_id,
             timestamp=timestamp,
             creator=creator,
             subject=subject,
             status=self.Status.DRAFT,
         )
-        logger.info('created conversation: %s..., id: %d, creator: "%s", subject: "%s"',
-                    global_id[:6], con_id, creator, subject)
+        logger.info('created conversation: %s..., creator: "%s", subject: "%s"', con_id[:6], creator, subject)
 
         participants = self.controller.components[Components.PARTICIPANTS]
         await participants.add_first(con_id, creator)
@@ -187,16 +186,15 @@ class Conversations:
         """
         creator = action.actor_addr
         timestamp = action.timestamp
-        global_id = self.ds.hash(creator, timestamp.isoformat(), subject, method='sha256')
+        con_id = self.ds.hash(creator, timestamp.isoformat(), subject, method='sha256')
         con_id = await self.ds.create_conversation(
-            global_id=global_id,
+            con_id=con_id,
             timestamp=timestamp,
             creator=creator,
             subject=subject,
             status=self.Status.PENDING,
         )
-        logger.info('created external conversation: %s..., id: %d, creator: "%s", subject: "%s"',
-                    global_id[:6], con_id, creator, subject)
+        logger.info('created external conversation: %s..., creator: "%s", subject: "%s"', con_id[:6], creator, subject)
 
         participants_component = self.controller.components[Components.PARTICIPANTS]
         await participants_component.add_first(con_id, creator)
@@ -213,15 +211,15 @@ class Conversations:
         subject = await self.ds.get_subject(action.con)
         timestamp = self.controller.now_tz()
 
-        global_id = self.ds.hash(action.actor_addr, timestamp.isoformat(), subject, method='sha256')
-        await self.ds.update_conversation_id(action.con, global_id)
+        new_con_id = self.ds.hash(action.actor_addr, timestamp.isoformat(), subject, method='sha256')
+        await self.ds.update_conversation_id(action.con, new_con_id)
 
-        new_action = Action(action.actor_addr, action.con, Verbs.ADD, Components.CONVERSATIONS)
-        first_message = await self.ds.get_first_message(action.con)
+        new_action = Action(action.actor_addr, new_con_id, Verbs.ADD, Components.CONVERSATIONS)
+        first_message = await self.ds.get_first_message(new_con_id)
         body = first_message['body']
         await self.controller.event(new_action, timestamp=timestamp, p_subject=subject, p_body=body)
 
-    async def get_by_global_id(self, id):
+    async def get_by_id(self, id):
         raise NotImplementedError()
 
     def __repr__(self):
