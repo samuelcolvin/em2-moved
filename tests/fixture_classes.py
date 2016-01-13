@@ -55,6 +55,10 @@ class SimpleDataStore(DataStore):
         )
         return id
 
+    async def update_conversation_id(self, con, new_id):
+        con_obj = self._get_con(con)
+        con_obj['global_id'] = new_id
+
     async def set_status(self, con, status):
         con_obj = self._get_con(con)
         con_obj['status'] = status

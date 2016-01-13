@@ -43,6 +43,6 @@ class SimplePropagator(BasePropagator):
 
     async def propagate(self, action, data, timestamp):
         ctrls = self.active_platforms[action.con]
-        new_action = Action(action.actor_addr, action.con, action.verb, action.component, action.item, True)
+        new_action = Action(action.actor_addr, action.con, action.verb, action.component, action.item, timestamp, True)
         for ctrl in ctrls:
             await ctrl.act(new_action, **data)

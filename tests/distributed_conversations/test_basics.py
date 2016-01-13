@@ -52,5 +52,12 @@ async def test_publish_conversation():
     assert len(ds.data['0']['participants']) == 2
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
 
+    assert len(other_ds.data) == 0
     a = Action('sender@local.com', con_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     await ctrl.act(a)
+    assert len(other_ds.data) == 1
+    assert other_ds.data['0']['global_id'] == ds.data['0']['global_id']
+    assert other_ds.data['0']['subject'] == 'the subject'
+    assert len(other_ds.data['0']['messages']) == 1
+    msg1 = list(other_ds.data['0']['messages'].values())[0]
+    assert msg1['body'] == 'the body'

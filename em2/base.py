@@ -41,7 +41,7 @@ class Components:
 
 
 class Action:
-    def __init__(self, actor, conversation, verb, component, item=None, remote=False):
+    def __init__(self, actor, conversation, verb, component, item=None, timestamp=None, remote=False):
         self.actor_addr = actor
         self.actor_id = None
         self.perm = None
@@ -49,14 +49,14 @@ class Action:
         self.verb = verb
         self.component = component
         self.item = item
+        self.timestamp = timestamp
         self.remote = remote
 
     async def set_actor(self, ds):
-        # TODO it may be possible to provide functionality to cache these results to reduce queries
         self.actor_id, self.perm = await ds.get_participant(self.con, self.actor_addr)
 
     def __repr__(self):
-        attrs = ['actor_addr', 'actor_id', 'perm', 'con', 'verb', 'component', 'item', 'remote']
+        attrs = ['actor_addr', 'actor_id', 'perm', 'con', 'verb', 'component', 'item', 'timestamp', 'remote']
         return '<Action({})>'.format(', '.join('{}={}'.format(a, getattr(self, a)) for a in attrs))
 
 
@@ -185,9 +185,8 @@ class Conversations:
         """
         Add a new conversation created on another platform.
         """
-        # TODO get timestamp from original conversation too
         creator = action.actor_addr
-        timestamp = self.controller.now_tz()
+        timestamp = action.timestamp
         global_id = self.ds.hash(creator, timestamp.isoformat(), subject, method='sha256')
         con_id = await self.ds.create_conversation(
             global_id=global_id,
@@ -208,13 +207,19 @@ class Conversations:
         await messages_component.add_basic(a, body=body)
 
     async def publish(self, action):
-        # TODO this needs refactoring to work with participants added during a conversation and more initial content
+        # TODO this needs refactoring to work with more initial content
         await self.ds.set_status(action.con, self.Status.ACTIVE)
-        new_action = Action(action.actor_addr, action.con, Verbs.ADD, Components.CONVERSATIONS)
+
         subject = await self.ds.get_subject(action.con)
+        timestamp = self.controller.now_tz()
+
+        global_id = self.ds.hash(action.actor_addr, timestamp.isoformat(), subject, method='sha256')
+        await self.ds.update_conversation_id(action.con, global_id)
+
+        new_action = Action(action.actor_addr, action.con, Verbs.ADD, Components.CONVERSATIONS)
         first_message = await self.ds.get_first_message(action.con)
         body = first_message['body']
-        await self.controller.event(new_action, p_subject=subject, p_body=body)
+        await self.controller.event(new_action, timestamp=timestamp, p_subject=subject, p_body=body)
 
     async def get_by_global_id(self, id):
         raise NotImplementedError()

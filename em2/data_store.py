@@ -23,6 +23,9 @@ class DataStore:
     async def create_conversation(self, **kwargs):
         raise NotImplementedError()
 
+    async def update_conversation_id(self, con, new_id):
+        raise NotImplementedError()
+
     async def set_status(self, con, status):
         raise NotImplementedError()
 
