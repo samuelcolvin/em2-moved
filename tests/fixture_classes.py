@@ -6,7 +6,7 @@ from collections import OrderedDict
 import itertools
 from em2.base import logger, Components
 from em2.send import BasePropagator
-from em2.data_store import DataStore
+from em2.data_store import DataStore, ConversationDataStore
 from em2.exceptions import ConversationNotFound, ComponentNotFound
 
 handler = logging.StreamHandler()
@@ -29,21 +29,10 @@ class UniversalEncoder(json.JSONEncoder):
 
 
 class SimpleDataStore(DataStore):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.conversation_counter = itertools.count()
         self.data = {}
-        super(SimpleDataStore, self).__init__(*args, **kwargs)
-
-    async def save_event(self, action, data, timestamp):
-        con_obj = self._get_con(action.con)
-        con_obj['updates'].append({
-            'actor': action.actor_id,
-            'verb': action.verb,
-            'component': action.component,
-            'item': action.item,
-            'data': data,
-            'timestamp': timestamp,
-        })
+        super(SimpleDataStore, self).__init__()
 
     async def create_conversation(self, **kwargs):
         id = str(next(self.conversation_counter))
@@ -55,116 +44,120 @@ class SimpleDataStore(DataStore):
         )
         return id
 
-    async def update_conversation_id(self, con, new_id):
-        con_obj = self._get_con(con)
-        con_obj['con_id'] = new_id
+    @property
+    def con_data_store(self):
+        return ConversationSimpleDataStore
 
-    async def set_status(self, con, status):
-        con_obj = self._get_con(con)
-        con_obj['status'] = status
+    def get_con(self, con_id):
+        for v in self.data.values():
+            if v['con_id'] == con_id:
+                return v
+        raise ConversationNotFound('conversation {} not found'.format(con_id))
 
-    async def get_status(self, con):
-        con_obj = self._get_con(con)
-        return con_obj['status']
+    def __repr__(self):
+        return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)
 
-    async def add_component(self, model, conversation, **kwargs):
-        con_obj = self._get_con(conversation)
-        if model not in con_obj:
-            con_obj[model] = OrderedDict()
+
+class ConversationSimpleDataStore(ConversationDataStore):
+    def __init__(self, *args, **kwargs):
+        super(ConversationSimpleDataStore, self).__init__(*args, **kwargs)
+        self.con_obj = self.ds.get_con(self.con)
+
+    async def save_event(self, action, data, timestamp):
+        self.con_obj['updates'].append({
+            'actor': action.actor_id,
+            'verb': action.verb,
+            'component': action.component,
+            'item': action.item,
+            'data': data,
+            'timestamp': timestamp,
+        })
+
+    async def set_published_id(self, new_id):
+        self.con_obj['draft_con_id'] = self.con_obj['con_id']
+        self.con_obj['con_id'] = new_id
+
+    async def set_status(self, status):
+        self.con_obj['status'] = status
+
+    async def get_status(self):
+        return self.con_obj['status']
+
+    async def add_component(self, model, **kwargs):
+        if model not in self.con_obj:
+            self.con_obj[model] = OrderedDict()
         if model == 'participants':
-            kwargs['id'] = next(con_obj['participant_counter'])
+            kwargs['id'] = next(self.con_obj['participant_counter'])
         id = kwargs['id']
-        con_obj[model][id] = kwargs
+        self.con_obj[model][id] = kwargs
         return id
 
-    async def edit_component(self, model, con, item_id, **kwargs):
-        item = self._get_con_item(model, con, item_id)
+    async def edit_component(self, model, item_id, **kwargs):
+        item = self._get_con_item(model, item_id)
         item.update(kwargs)
 
-    async def delete_component(self, model, con, item_id):
-        items = self._get_con_items(model, con)
+    async def delete_component(self, model, item_id):
+        items = self._get_con_items(model)
         try:
             del items[item_id]
         except KeyError:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, con))
+            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, self.con))
 
-    async def lock_component(self, model, con, item_id):
-        self._get_con_item(model, con, item_id)
-        con_obj = self._get_con(con)
-        con_obj['locked'].add('{}:{}'.format(model, item_id))
+    async def lock_component(self, model, item_id):
+        self._get_con_item(model, item_id)
+        self.con_obj['locked'].add('{}:{}'.format(model, item_id))
 
-    async def unlock_component(self, model, con, item_id):
-        con_obj = self._get_con(con)
-        con_obj['locked'].remove('{}:{}'.format(model, item_id))
+    async def unlock_component(self, model, item_id):
+        self.con_obj['locked'].remove('{}:{}'.format(model, item_id))
 
-    async def get_message_locked(self, model, con, item_id):
-        con_obj = self._get_con(con)
-        return '{}:{}'.format(model, item_id) in con_obj['locked']
+    async def get_message_locked(self, model, item_id):
+        return '{}:{}'.format(model, item_id) in self.con_obj['locked']
 
-    async def get_message_count(self, con):
-        con_obj = self._get_con(con)
-        return len(con_obj.get('messages', {}))
+    async def get_message_count(self):
+        return len(self.con_obj.get('messages', {}))
 
-    async def get_first_message(self, con):
-        con_obj = self._get_con(con)
-        messages = con_obj[Components.MESSAGES]
+    async def get_first_message(self):
+        messages = self.con_obj[Components.MESSAGES]
         return list(messages.values())[0]
 
-    async def get_subject(self, con):
-        con_obj = self._get_con(con)
-        return con_obj['subject']
+    async def get_subject(self):
+        return self.con_obj['subject']
 
-    async def set_subject(self, con, subject):
-        con_obj = self._get_con(con)
-        con_obj['subject'] = subject
+    async def set_subject(self, subject):
+        self.con_obj['subject'] = subject
 
-    async def get_participant_count(self, con):
-        con_obj = self._get_con(con)
-        return len(con_obj.get(Components.PARTICIPANTS, {}))
+    async def get_participant_count(self):
+        return len(self.con_obj.get(Components.PARTICIPANTS, {}))
 
-    async def get_message_author(self, con, message_id):
-        con_obj = self._get_con(con)
-        msgs = con_obj.get(Components.MESSAGES, {})
+    async def get_message_author(self, message_id):
+        msgs = self.con_obj.get(Components.MESSAGES, {})
         msg = msgs.get(message_id)
         if msg is None:
             raise ComponentNotFound('message {} not found in {}'.format(message_id, msgs.keys()))
         return msg['author']
 
-    async def get_participant(self, con, participant_address):
-        con_obj = self._get_con(con)
-        prtis = con_obj.get(Components.PARTICIPANTS, {})
+    async def get_participant(self, participant_address):
+        prtis = self.con_obj.get(Components.PARTICIPANTS, {})
         for v in prtis.values():
             if v['email'] == participant_address:
                 return v['id'], v['permissions']
         raise ComponentNotFound('participant {} not found in {}'.format(participant_address, prtis.keys()))
 
-    def _get_con(self, con_id):
-        conversation = None
-        for v in self.data.values():
-            if v['con_id'] == con_id:
-                conversation = v
-                break
-        if conversation is None:
-            raise ConversationNotFound('conversation {} not found'.format(con_id))
-        return conversation
-
-    def _get_con_items(self, model, con_id):
-        con_obj = self._get_con(con_id)
-        items = con_obj.get(model)
+    def _get_con_items(self, model):
+        items = self.con_obj.get(model)
         if items is None:
-            raise ComponentNotFound('model "{}" not found on conversation {}'.format(model, con_id))
+            raise ComponentNotFound('model "{}" not found on conversation {}'.format(model, self.con))
         return items
 
-    def _get_con_item(self, model, con_id, item_id):
-        items = self._get_con_items(model, con_id)
+    def _get_con_item(self, model, item_id):
+        items = self._get_con_items(model)
         item = items.get(item_id)
         if item is None:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, con_id))
-
+            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, self.con))
         return item
 
     def __repr__(self):
-        return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)
+        return json.dumps(self.con_obj, indent=2, sort_keys=True, cls=UniversalEncoder)
 
 
 class NullPropagator(BasePropagator):

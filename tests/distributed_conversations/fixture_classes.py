@@ -42,7 +42,14 @@ class SimplePropagator(BasePropagator):
             self.active_platforms[action.con].remove(platform)
 
     async def propagate(self, action, data, timestamp):
-        ctrls = self.active_platforms[action.con]
+        try:
+            ctrls = self.active_platforms[action.con]
+        except KeyError:
+            con_obj = action.ds.ds.get_con(action.con)
+            # con_id has changed, update active_platforms to correct key
+            ctrls = self.active_platforms.pop(con_obj['draft_con_id'])
+            self.active_platforms[action.con] = ctrls
+
         new_action = Action(action.actor_addr, action.con, action.verb, action.component, action.item, timestamp, True)
         for ctrl in ctrls:
             await ctrl.act(new_action, **data)
