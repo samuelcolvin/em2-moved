@@ -62,3 +62,5 @@ async def test_publish_conversation():
     msg1 = list(other_ds.data[0]['messages'].values())[0]
     assert msg1['body'] == 'the body'
     assert other_ds.data[0]['timestamp'] == ds.data[0]['timestamp']
+    assert len(other_ds.data[0]['participants']) == 2
+    # TODO check email address and permissions

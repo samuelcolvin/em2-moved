@@ -23,8 +23,8 @@ class Verbs:
     DELETE = 'delete'
     LOCK = 'lock'
     UNLOCK = 'unlock'
-    # is there anywhere we need this apparent from actually publishing conversations?
-    # seems ugly to have a verb for one use. let's wait and see
+    # is there anywhere we need this apart from actually publishing conversations?
+    # seems ugly to have a verb for one use
     PUBLISH = 'publish'
 
 
@@ -172,20 +172,46 @@ class Conversations:
 
     async def create(self, creator, subject, body=None):
         timestamp = self.controller.now_tz()
-        return await self._create(creator, subject, self.Status.DRAFT, timestamp, body)
+        return await self._create(creator, timestamp, subject, self.Status.DRAFT, body)
 
-    async def add(self, action, subject, timestamp, body):
+    async def add(self, action, timestamp, subject, body):
         """
         Add a new conversation created on another platform.
         """
         creator = action.actor_addr
-        check_con_id = hash_id(creator, timestamp.isoformat(), subject, sha256=True)
+        check_con_id = self._con_id_hash(creator, timestamp, subject)
         if check_con_id != action.con:
             raise BadHash('provided hash {} does not match computed hash {}'.format(action.con, check_con_id))
-        await self._create(creator, subject, self.Status.PENDING, timestamp, body)
+        con_id = await self._create(creator, timestamp, subject, self.Status.PENDING, body, action.con)
+        a = Action(creator, con_id, Verbs.ADD, Components.PARTICIPANTS)
+        await a.prepare(self.controller.ds)
+        participants = self.controller.components[Components.PARTICIPANTS]
+        self_email = '???'
+        permissions = Participants.Permissions.FULL  # TODO get this properly
+        await participants.add(a, email=self_email, permissions=permissions)
 
-    async def _create(self, creator, subject, status, timestamp, body):
-        con_id = hash_id(creator, timestamp.isoformat(), subject, sha256=True)
+    async def publish(self, action):
+        # TODO this needs refactoring to work with more initial content
+        await action.ds.set_status(self.Status.ACTIVE)
+
+        subject = await action.ds.get_subject()
+        timestamp = self.controller.now_tz()
+
+        new_con_id = self._con_id_hash(action.actor_addr, timestamp, subject)
+        await action.ds.set_published_id(timestamp, new_con_id)
+
+        new_action = Action(action.actor_addr, new_con_id, Verbs.ADD, Components.CONVERSATIONS)
+        await new_action.prepare(self.controller.ds)
+        first_message = await new_action.ds.get_first_message()
+        body = first_message['body']
+        await self.controller.event(new_action, timestamp=timestamp,
+                                    p_timestamp=timestamp, p_subject=subject, p_body=body)
+
+    async def get_by_id(self, id):
+        raise NotImplementedError()
+
+    async def _create(self, creator, timestamp, subject, status, body, con_id=None):
+        con_id = con_id or self._con_id_hash(creator, timestamp, subject)
         await self.controller.ds.create_conversation(
             con_id=con_id,
             timestamp=timestamp,
@@ -205,25 +231,8 @@ class Conversations:
             await messages.add_basic(a, body=body)
         return con_id
 
-    async def publish(self, action):
-        # TODO this needs refactoring to work with more initial content
-        await action.ds.set_status(self.Status.ACTIVE)
-
-        subject = await action.ds.get_subject()
-        timestamp = self.controller.now_tz()
-
-        new_con_id = hash_id(action.actor_addr, timestamp.isoformat(), subject, sha256=True)
-        await action.ds.set_published_id(timestamp, new_con_id)
-
-        new_action = Action(action.actor_addr, new_con_id, Verbs.ADD, Components.CONVERSATIONS)
-        await new_action.prepare(self.controller.ds)
-        first_message = await new_action.ds.get_first_message()
-        body = first_message['body']
-        await self.controller.event(new_action, timestamp=timestamp,
-                                    p_subject=subject, p_timestamp=timestamp, p_body=body)
-
-    async def get_by_id(self, id):
-        raise NotImplementedError()
+    def _con_id_hash(self, creator, timestamp, subject):
+        return hash_id(creator, timestamp.isoformat(), subject, sha256=True)
 
     def __repr__(self):
         return '<Conversations on {}>'.format(self.controller)
