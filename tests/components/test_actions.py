@@ -5,7 +5,7 @@ from em2.exceptions import ComponentNotFound, VerbNotFound, Em2TypeError
 
 async def test_correct_action(conversation):
     ds, ctrl, con_id = await conversation()
-    con = ds.data['0']
+    con = ds.data[0]
     msg1_id = list(con['messages'])[0]
     assert len(con['messages']) == 1
     a = Action('test@example.com', con_id, Verbs.ADD, Components.MESSAGES)
@@ -19,7 +19,7 @@ async def test_correct_action(conversation):
 
 async def test_wrong_component(conversation):
     ds, ctrl, con_id = await conversation()
-    con = ds.data['0']
+    con = ds.data[0]
     msg1_id = list(con['messages'])[0]
     a = Action('test@example.com', con_id, Verbs.ADD, 'foobar')
     with pytest.raises(ComponentNotFound):

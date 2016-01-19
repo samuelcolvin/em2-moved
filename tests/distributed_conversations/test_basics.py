@@ -11,7 +11,7 @@ async def test_create_basic_conversation():
     ctrl = Controller(ds, NullPropagator())
     await ctrl.conversations.create('sender@example.com', 'foo bar')
     assert len(ds.data) == 1
-    con = ds.data['0']
+    con = ds.data[0]
     assert len(con['participants']) == 1
     assert len(con['updates']) == 0
     assert con['creator'] == 'sender@example.com'
@@ -32,10 +32,10 @@ async def test_create_conversation_add_external_participant():
     propagator.add_platform('@remote.com', remove_ctrl)
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 0)
     con_id = await ctrl.conversations.create('sender@local.com', 'foo bar')
-    assert len(ds.data['0']['participants']) == 1
+    assert len(ds.data[0]['participants']) == 1
     a = Action('sender@local.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='receiver@remote.com', permissions=perms.WRITE)
-    assert len(ds.data['0']['participants']) == 2
+    assert len(ds.data[0]['participants']) == 2
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
 
 
@@ -49,16 +49,16 @@ async def test_publish_conversation():
     con_id = await ctrl.conversations.create('sender@local.com', 'the subject', 'the body')
     a = Action('sender@local.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, email='receiver@remote.com', permissions=perms.WRITE)
-    assert len(ds.data['0']['participants']) == 2
+    assert len(ds.data[0]['participants']) == 2
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
 
     assert len(other_ds.data) == 0
     a = Action('sender@local.com', con_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     await ctrl.act(a)
     assert len(other_ds.data) == 1
-    assert other_ds.data['0']['con_id'] == ds.data['0']['con_id']
-    assert other_ds.data['0']['subject'] == 'the subject'
-    assert len(other_ds.data['0']['messages']) == 1
-    msg1 = list(other_ds.data['0']['messages'].values())[0]
+    assert other_ds.data[0]['con_id'] == ds.data[0]['con_id']
+    assert other_ds.data[0]['subject'] == 'the subject'
+    assert len(other_ds.data[0]['messages']) == 1
+    msg1 = list(other_ds.data[0]['messages'].values())[0]
     assert msg1['body'] == 'the body'
-    assert other_ds.data['0']['timestamp'] == ds.data['0']['timestamp']
+    assert other_ds.data[0]['timestamp'] == ds.data[0]['timestamp']

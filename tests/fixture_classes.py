@@ -35,7 +35,7 @@ class SimpleDataStore(DataStore):
         super(SimpleDataStore, self).__init__()
 
     async def create_conversation(self, **kwargs):
-        id = str(next(self.conversation_counter))
+        id = next(self.conversation_counter)
         self.data[id] = dict(
             participant_counter=itertools.count(),  # special case with uses sequence id
             updates=[],
