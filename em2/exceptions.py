@@ -20,6 +20,10 @@ class VerbNotFound(Em2NotFoundException):
     pass
 
 
+class BadHash(Em2Exception):
+    pass
+
+
 class InsufficientPermissions(Em2Exception):
     pass
 

@@ -8,7 +8,7 @@ import hashlib
 import pytz
 
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
-                         ComponentLocked, Em2TypeError)
+                         ComponentLocked, Em2TypeError, BadHash)
 from .utils import get_options, random_name
 from .data_store import DataStore
 from .send import BasePropagator
@@ -171,17 +171,29 @@ class Conversations:
         DELETED = 'deleted'
 
     async def create(self, creator, subject, body=None):
-        # TODO this needs refactoring to work with add
         timestamp = self.controller.now_tz()
+        return await self._create(creator, subject, self.Status.DRAFT, timestamp, body)
+
+    async def add(self, action, subject, timestamp, body):
+        """
+        Add a new conversation created on another platform.
+        """
+        creator = action.actor_addr
+        check_con_id = hash_id(creator, timestamp.isoformat(), subject, sha256=True)
+        if check_con_id != action.con:
+            raise BadHash('provided hash {} does not match computed hash {}'.format(action.con, check_con_id))
+        await self._create(creator, subject, self.Status.PENDING, timestamp, body)
+
+    async def _create(self, creator, subject, status, timestamp, body):
         con_id = hash_id(creator, timestamp.isoformat(), subject, sha256=True)
         await self.controller.ds.create_conversation(
             con_id=con_id,
             timestamp=timestamp,
             creator=creator,
             subject=subject,
-            status=self.Status.DRAFT,
+            status=status,
         )
-        logger.info('created conversation: %s..., creator: "%s", subject: "%s"', con_id[:6], creator, subject)
+        logger.info('created %s conversation %s..., creator: "%s", subject: "%s"', status, con_id[:6], creator, subject)
 
         participants = self.controller.components[Components.PARTICIPANTS]
         await participants.add_first(con_id, creator)
@@ -193,30 +205,6 @@ class Conversations:
             await messages.add_basic(a, body=body)
         return con_id
 
-    async def add(self, action, subject, body):
-        """
-        Add a new conversation created on another platform.
-        """
-        creator = action.actor_addr
-        timestamp = action.timestamp
-        con_id = hash_id(creator, timestamp.isoformat(), subject, sha256=True)
-        await self.controller.ds.create_conversation(
-            con_id=con_id,
-            timestamp=timestamp,
-            creator=creator,
-            subject=subject,
-            status=self.Status.PENDING,
-        )
-        logger.info('created external conversation: %s..., creator: "%s", subject: "%s"', con_id[:6], creator, subject)
-
-        participants_component = self.controller.components[Components.PARTICIPANTS]
-        await participants_component.add_first(con_id, creator)
-
-        messages_component = self.controller.components[Components.MESSAGES]
-        a = Action(creator, con_id, Verbs.ADD, Components.MESSAGES)
-        await a.prepare(self.controller.ds)
-        await messages_component.add_basic(a, body=body)
-
     async def publish(self, action):
         # TODO this needs refactoring to work with more initial content
         await action.ds.set_status(self.Status.ACTIVE)
@@ -225,13 +213,14 @@ class Conversations:
         timestamp = self.controller.now_tz()
 
         new_con_id = hash_id(action.actor_addr, timestamp.isoformat(), subject, sha256=True)
-        await action.ds.set_published_id(new_con_id)
+        await action.ds.set_published_id(timestamp, new_con_id)
 
         new_action = Action(action.actor_addr, new_con_id, Verbs.ADD, Components.CONVERSATIONS)
         await new_action.prepare(self.controller.ds)
         first_message = await new_action.ds.get_first_message()
         body = first_message['body']
-        await self.controller.event(new_action, timestamp=timestamp, p_subject=subject, p_body=body)
+        await self.controller.event(new_action, timestamp=timestamp,
+                                    p_subject=subject, p_timestamp=timestamp, p_body=body)
 
     async def get_by_id(self, id):
         raise NotImplementedError()

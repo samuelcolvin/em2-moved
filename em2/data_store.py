@@ -28,7 +28,7 @@ class ConversationDataStore:
     async def save_event(self, action, data, timestamp):
         raise NotImplementedError()
 
-    async def set_published_id(self, new_id):
+    async def set_published_id(self, new_timestamp, new_id):
         raise NotImplementedError()
 
     async def set_status(self, status):

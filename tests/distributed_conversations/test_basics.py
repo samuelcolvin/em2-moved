@@ -61,3 +61,4 @@ async def test_publish_conversation():
     assert len(other_ds.data['0']['messages']) == 1
     msg1 = list(other_ds.data['0']['messages'].values())[0]
     assert msg1['body'] == 'the body'
+    assert other_ds.data['0']['timestamp'] == ds.data['0']['timestamp']

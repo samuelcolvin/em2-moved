@@ -73,9 +73,10 @@ class ConversationSimpleDataStore(ConversationDataStore):
             'timestamp': timestamp,
         })
 
-    async def set_published_id(self, new_id):
+    async def set_published_id(self, new_timestamp, new_id):
         self.con_obj['draft_con_id'] = self.con_obj['con_id']
         self.con_obj['con_id'] = new_id
+        self.con_obj['timestamp'] = new_timestamp
 
     async def set_status(self, status):
         self.con_obj['status'] = status
