@@ -2,6 +2,9 @@ import pytest
 import asyncio
 import gc
 
+from em2.base import Controller
+from tests.fixture_classes import SimpleDataStore, NullPropagator
+
 
 def pytest_pycollect_makeitem(collector, name, obj):
     if collector.funcnamefilter(name) and asyncio.iscoroutinefunction(obj):
@@ -32,3 +35,9 @@ def loop():
     loop.close()
     gc.collect()
     asyncio.set_event_loop(None)
+
+
+@pytest.fixture
+def controller():
+    ds = SimpleDataStore()
+    return Controller(ds, NullPropagator())

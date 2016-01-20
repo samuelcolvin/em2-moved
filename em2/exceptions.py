@@ -38,3 +38,7 @@ class ComponentNotLocked(Em2Exception):
 
 class BadDataException(Em2Exception, TypeError):
     pass
+
+
+class MisshapedDataException(BadDataException):
+    pass

@@ -31,7 +31,6 @@ class ConversationDataStore:
         participants = await self.get_all_component_items(Components.PARTICIPANTS)
         messages = await self.get_all_component_items(Components.MESSAGES)
         data.update({
-            'id': self.con,
             # TODO signature
             Components.PARTICIPANTS: [(p['address'], p['permissions']) for p in participants],
             Components.MESSAGES: messages,

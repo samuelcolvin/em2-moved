@@ -142,11 +142,11 @@ class ConversationSimpleDataStore(ConversationDataStore):
         return msg['author']
 
     async def get_participant(self, participant_address):
-        prtis = self.con_obj.get(Components.PARTICIPANTS, {})
-        for v in prtis.values():
+        participants = self.con_obj.get(Components.PARTICIPANTS, {})
+        for v in participants.values():
             if v['address'] == participant_address:
                 return v['id'], v['permissions']
-        raise ComponentNotFound('participant {} not found in {}'.format(participant_address, prtis.keys()))
+        raise ComponentNotFound('participant {} not found'.format(participant_address))
 
     def _get_con_items(self, model):
         items = self.con_obj.get(model)

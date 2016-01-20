@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+Install requirements from both dev_requirements.txt and the install_requires section of setup.py
+"""
 import os
 import re
 from tempfile import NamedTemporaryFile

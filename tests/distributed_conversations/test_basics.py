@@ -6,10 +6,9 @@ from tests.fixture_classes import SimpleDataStore, NullPropagator
 from .fixture_classes import SimplePropagator
 
 
-async def test_create_basic_conversation():
-    ds = SimpleDataStore()
-    ctrl = Controller(ds, NullPropagator())
-    await ctrl.conversations.create('sender@example.com', 'foo bar')
+async def test_create_basic_conversation(controller):
+    await controller.conversations.create('sender@example.com', 'foo bar')
+    ds = controller.ds
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['participants']) == 1
@@ -62,6 +61,5 @@ async def test_publish_conversation():
     msg1 = list(other_ds.data[0]['messages'].values())[0]
     assert msg1['body'] == 'the body'
     assert other_ds.data[0]['timestamp'] == ds.data[0]['timestamp']
-    assert len(other_ds.data[0]['participants']) == 2
-    # TODO check email address and permissions
-    print(ds.data[0]['messages'])
+    assert ds.data[0]['participants'] == other_ds.data[0]['participants']
+    assert ds.data[0]['messages'] == other_ds.data[0]['messages']

@@ -7,9 +7,10 @@ import hashlib
 import inspect
 
 import pytz
+from cerberus import Validator
 
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
-                         ComponentLocked, BadDataException, BadHash)
+                         ComponentLocked, BadDataException, BadHash, MisshapedDataException)
 from .utils import get_options, random_name
 from .data_store import DataStore
 from .send import BasePropagator
@@ -105,8 +106,8 @@ class Controller:
         # FIXME this is ugly and there are probably more cases where we don't want to do this
         if not (action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD):
             await action.prepare(self.ds)
-        sig = inspect.signature(func)
-        args = set(sig.parameters)
+
+        args = set(inspect.signature(func).parameters)
         args.remove('action')
         if args != set(kwargs):
             raise BadDataException('Wrong kwargs for {}, got: {}, expected: {}'.format(func.__name__, kwargs, args))
@@ -150,6 +151,33 @@ class Controller:
 class Conversations:
     name = Components.CONVERSATIONS
     event = None
+    schema = {
+        'creator': {'type': 'string', 'required': True},
+        'timestamp': {'type': 'datetime', 'required': True},
+        'ref': {'type': 'string', 'required': True},
+        'status': {'type': 'string', 'required': True},
+        'subject': {'type': 'string', 'required': True},
+        'expiration': {'type': 'datetime', 'nullable': True, 'required': True},
+        'messages': {
+            'type': 'list',
+            'schema': {
+                'type': 'dict',
+                'required': True,
+                'schema': {
+                    'id': {'type': 'string', 'required': True},
+                    'author': {'type': 'integer', 'required': True},
+                    'parent': {'type': 'string', 'nullable': True, 'required': True},
+                    'timestamp': {'type': 'datetime', 'required': True},
+                    'body': {'type': 'string', 'required': True},
+                }
+            }
+        },
+        'participants': {
+            'type': 'list',
+            'required': True,
+            'schema': {'type': 'list', 'minlength': 2, 'maxlength': 2, 'required': True}
+        },
+    }
 
     def __init__(self, controller):
         self.controller = controller
@@ -176,18 +204,21 @@ class Conversations:
         await self._create(creator, timestamp, ref, subject, self.Status.DRAFT, con_id)
 
         ds = self._create_ds(con_id)
-        await self._participants.add_first(ds, creator)
+        creator_id = await self._participants.add_first(ds, creator)
 
         if body:
-            a = Action(creator, con_id, Verbs.ADD, Components.MESSAGES)
-            await a.prepare(self.controller.ds)
-            await self._messages.add_basic(a, body=body)
+            await self._messages.add_basic(ds, creator, creator_id, body, None)
         return con_id
 
     async def add(self, action, data):
         """
         Add a new conversation created on another platform.
         """
+        v = Validator(self.schema, )
+        if not isinstance(data, dict):
+            raise MisshapedDataException('data must be a dict')
+        if not v(data):
+            raise MisshapedDataException('{}'.format(v.errors))
         creator = data['creator']
         timestamp = data['timestamp']
         check_con_id = self._con_id_hash(creator, timestamp, data['ref'])
@@ -257,9 +288,8 @@ class Messages(_Component):
     name = Components.MESSAGES
 
     async def add_multiple(self, ds, data):
-        # TODO check shape with cerberus, {'id', 'author',  'timestamp', 'body', 'parent'}
         if data[0]['parent'] is not None:
-            raise BadDataException('first message parent should be None')
+            raise MisshapedDataException('first message parent should be None')
 
         parents = {data[0]['id']: data[0]['timestamp']}
         for d in data[1:]:
@@ -273,24 +303,24 @@ class Messages(_Component):
 
         await ds.add_multiple_components(self.name, data)
 
-    async def add_basic(self, action, body, parent_id=None):
+    async def add_basic(self, ds, author, author_id, body, parent_id):
         timestamp = self.controller.now_tz()
-        id = hash_id(action.actor_addr, timestamp.isoformat(), body, parent_id)
-        await action.ds.add_component(
+        m_id = hash_id(author, timestamp.isoformat(), body, parent_id)
+        await ds.add_component(
             self.name,
-            id=id,
-            author=action.actor_id,
+            id=m_id,
+            author=author_id,
             timestamp=timestamp,
             body=body,
             parent=parent_id,
         )
-        return id
+        return m_id
 
     async def add(self, action, body, parent_id):
         await action.ds.get_message_author(parent_id)
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE access required to add messages')
-        action.item = await self.add_basic(action, body, parent_id)
+        action.item = await self.add_basic(action.ds, action.actor_addr, action.actor_id, body, parent_id)
         await self._event(action, p_parent_id=parent_id, p_body=body)
 
     async def edit(self, action, body):
