@@ -44,4 +44,4 @@ async def test_wrong_args(conversation):
     a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     with pytest.raises(BadDataException) as excinfo:
         await ctrl.act(a, address='someone_different@example.com', foobar=True)
-    assert 'add() got an unexpected keyword argument' in str(excinfo)
+    assert 'Wrong kwargs for add, got:' in str(excinfo)

@@ -4,6 +4,7 @@ Main interface to em2
 import logging
 import datetime
 import hashlib
+import inspect
 
 import pytz
 
@@ -104,11 +105,12 @@ class Controller:
         # FIXME this is ugly and there are probably more cases where we don't want to do this
         if not (action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD):
             await action.prepare(self.ds)
-        try:
-            return await func(action, **kwargs)
-        except TypeError as e:
-            # TODO we need a better way of checking function arguments: inspect.getargspec
-            raise BadDataException(str(e))
+        sig = inspect.signature(func)
+        args = set(sig.parameters)
+        args.remove('action')
+        if args != set(kwargs):
+            raise BadDataException('Wrong kwargs for {}, got: {}, expected: {}'.format(func.__name__, kwargs, args))
+        return await func(action, **kwargs)
 
     @property
     def timezone(self):
