@@ -1,4 +1,5 @@
 import hashlib
+import datetime
 import pytest
 from em2.base import perms, Action, Verbs, Components
 from em2.exceptions import InsufficientPermissions, ComponentLocked, ComponentNotLocked
@@ -39,6 +40,17 @@ async def test_add_message(conversation):
 
     msg2_id = list(con['messages'])[1]
     assert con['updates'][0]['item'] == msg2_id
+    msg2 = con['messages'][msg2_id]
+    # can't easily get the timestamp value in a sensible way
+    timestamp = msg2.pop('timestamp')
+    assert isinstance(timestamp, datetime.datetime)
+    msg2_expected = {
+        'author': 0,
+        'id': msg2_id,
+        'body': 'I am fine thanks.',
+        'parent': msg1_id,
+    }
+    assert msg2 == msg2_expected
 
 
 async def test_edit_message(conversation):
@@ -119,7 +131,7 @@ async def test_wrong_unlock(conversation):
 async def test_add_message_missing_perms(conversation):
     ds, ctrl, con_id = await conversation()
     a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
-    await ctrl.act(a, email='readonly@example.com', permissions=perms.READ)
+    await ctrl.act(a, address='readonly@example.com', permissions=perms.READ)
 
     con = ds.data[0]
     msg1_id = list(con['messages'])[0]
@@ -134,7 +146,7 @@ async def test_edit_message_missing_perms(conversation):
     msg1_id = list(ds.data[0]['messages'])[0]
 
     a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
-    await ctrl.act(a, email='readonly@example.com', permissions=perms.READ)
+    await ctrl.act(a, address='readonly@example.com', permissions=perms.READ)
 
     a = Action('readonly@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
     with pytest.raises(InsufficientPermissions) as excinfo:
@@ -145,7 +157,7 @@ async def test_edit_message_missing_perms(conversation):
 async def test_edit_message_right_person(conversation):
     ds, ctrl, con_id = await conversation()
     a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
-    await ctrl.act(a, email='writeonly@example.com', permissions=perms.WRITE)
+    await ctrl.act(a, address='writeonly@example.com', permissions=perms.WRITE)
 
     con = ds.data[0]
     msg1_id = list(con['messages'])[0]
@@ -168,7 +180,7 @@ async def test_edit_message_wrong_person(conversation):
     msg1_id = list(ds.data[0]['messages'])[0]
 
     a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
-    await ctrl.act(a, email='writeonly@example.com', permissions=perms.WRITE)
+    await ctrl.act(a, address='writeonly@example.com', permissions=perms.WRITE)
 
     a = Action('writeonly@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg1_id)
     with pytest.raises(InsufficientPermissions) as excinfo:

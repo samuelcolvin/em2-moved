@@ -8,10 +8,11 @@ import hashlib
 import pytz
 
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
-                         ComponentLocked, Em2TypeError, BadHash)
+                         ComponentLocked, BadDataException, BadHash)
 from .utils import get_options, random_name
 from .data_store import DataStore
 from .send import BasePropagator
+from .common import Components
 
 logger = logging.getLogger('em2')
 
@@ -26,19 +27,6 @@ class Verbs:
     # is there anywhere we need this apart from actually publishing conversations?
     # seems ugly to have a verb for one use
     PUBLISH = 'publish'
-
-
-class Components:
-    MESSAGES = 'messages'
-    COMMENTS = 'comments'
-    PARTICIPANTS = 'participants'
-    LABELS = 'labels'
-    SUBJECT = 'subject'
-    EXPIRY = 'expiry'
-    ATTACHMENTS = 'attachments'
-    EXTRAS = 'extras'
-    RESPONSES = 'responses'
-    CONVERSATIONS = 'conversations'
 
 
 class Action:
@@ -119,7 +107,8 @@ class Controller:
         try:
             return await func(action, **kwargs)
         except TypeError as e:
-            raise Em2TypeError(str(e))
+            # TODO we need a better way of checking function arguments: inspect.getargspec
+            raise BadDataException(str(e))
 
     @property
     def timezone(self):
@@ -170,69 +159,83 @@ class Conversations:
         EXPIRED = 'expired'
         DELETED = 'deleted'
 
-    async def create(self, creator, subject, body=None):
-        timestamp = self.controller.now_tz()
-        return await self._create(creator, timestamp, subject, self.Status.DRAFT, body)
+    @property
+    def _participants(self):
+        return self.controller.components[Components.PARTICIPANTS]
 
-    async def add(self, action, timestamp, subject, body):
+    @property
+    def _messages(self):
+        return self.controller.components[Components.MESSAGES]
+
+    async def create(self, creator, subject, body=None, ref=None):
+        timestamp = self.controller.now_tz()
+        ref = ref or subject
+        con_id = self._con_id_hash(creator, timestamp, ref)
+        await self._create(creator, timestamp, ref, subject, self.Status.DRAFT, con_id)
+
+        ds = self._create_ds(con_id)
+        await self._participants.add_first(ds, creator)
+
+        if body:
+            a = Action(creator, con_id, Verbs.ADD, Components.MESSAGES)
+            await a.prepare(self.controller.ds)
+            await self._messages.add_basic(a, body=body)
+        return con_id
+
+    async def add(self, action, data):
         """
         Add a new conversation created on another platform.
         """
-        creator = action.actor_addr
-        check_con_id = self._con_id_hash(creator, timestamp, subject)
+        creator = data['creator']
+        timestamp = data['timestamp']
+        check_con_id = self._con_id_hash(creator, timestamp, data['ref'])
         if check_con_id != action.con:
             raise BadHash('provided hash {} does not match computed hash {}'.format(action.con, check_con_id))
-        con_id = await self._create(creator, timestamp, subject, self.Status.PENDING, body, action.con)
-        a = Action(creator, con_id, Verbs.ADD, Components.PARTICIPANTS)
-        await a.prepare(self.controller.ds)
-        participants = self.controller.components[Components.PARTICIPANTS]
-        self_email = '???'
-        permissions = Participants.Permissions.FULL  # TODO get this properly
-        await participants.add(a, email=self_email, permissions=permissions)
+        con_id = action.con
+        await self._create(creator, timestamp, data['ref'], data['subject'], self.Status.PENDING, con_id=con_id)
+
+        ds = self._create_ds(con_id)
+
+        participant_data = data[Components.PARTICIPANTS]
+        await self._participants.add_multiple(ds, participant_data)
+
+        message_data = data[Components.MESSAGES]
+        await self._messages.add_multiple(ds, message_data)
 
     async def publish(self, action):
-        # TODO this needs refactoring to work with more initial content
         await action.ds.set_status(self.Status.ACTIVE)
 
-        subject = await action.ds.get_subject()
+        ref = await action.ds.get_ref()
         timestamp = self.controller.now_tz()
 
-        new_con_id = self._con_id_hash(action.actor_addr, timestamp, subject)
+        new_con_id = self._con_id_hash(action.actor_addr, timestamp, ref)
         await action.ds.set_published_id(timestamp, new_con_id)
 
         new_action = Action(action.actor_addr, new_con_id, Verbs.ADD, Components.CONVERSATIONS)
         await new_action.prepare(self.controller.ds)
-        first_message = await new_action.ds.get_first_message()
-        body = first_message['body']
-        await self.controller.event(new_action, timestamp=timestamp,
-                                    p_timestamp=timestamp, p_subject=subject, p_body=body)
+
+        data = await action.ds.export()
+        await self.controller.event(new_action, timestamp=timestamp, p_data=data)
 
     async def get_by_id(self, id):
         raise NotImplementedError()
 
-    async def _create(self, creator, timestamp, subject, status, body, con_id=None):
-        con_id = con_id or self._con_id_hash(creator, timestamp, subject)
+    async def _create(self, creator, timestamp, ref, subject, status, con_id):
         await self.controller.ds.create_conversation(
             con_id=con_id,
-            timestamp=timestamp,
             creator=creator,
+            timestamp=timestamp,
+            ref=ref,
             subject=subject,
             status=status,
         )
         logger.info('created %s conversation %s..., creator: "%s", subject: "%s"', status, con_id[:6], creator, subject)
 
-        participants = self.controller.components[Components.PARTICIPANTS]
-        await participants.add_first(con_id, creator)
+    def _create_ds(self, con_id):
+        return self.controller.ds.new_con_ds(con_id)
 
-        if body is not None:
-            messages = self.controller.components[Components.MESSAGES]
-            a = Action(creator, con_id, Verbs.ADD, Components.MESSAGES)
-            await a.prepare(self.controller.ds)
-            await messages.add_basic(a, body=body)
-        return con_id
-
-    def _con_id_hash(self, creator, timestamp, subject):
-        return hash_id(creator, timestamp.isoformat(), subject, sha256=True)
+    def _con_id_hash(self, creator, timestamp, ref):
+        return hash_id(creator, timestamp.isoformat(), ref, sha256=True)
 
     def __repr__(self):
         return '<Conversations on {}>'.format(self.controller)
@@ -250,6 +253,23 @@ class _Component:
 
 class Messages(_Component):
     name = Components.MESSAGES
+
+    async def add_multiple(self, ds, data):
+        # TODO check shape with cerberus, {'id', 'author',  'timestamp', 'body', 'parent'}
+        if data[0]['parent'] is not None:
+            raise BadDataException('first message parent should be None')
+
+        parents = {data[0]['id']: data[0]['timestamp']}
+        for d in data[1:]:
+            parent = parents.get(d['parent'])
+            if parent is None:
+                raise ComponentNotFound('message {} not found in {}'.format(d['parent'], parents.keys()))
+            if parent >= d['timestamp']:
+                raise BadDataException('timestamp not after parent timestamp: {timestamp}'.format(**d))
+            parents[d['id']] = d['timestamp']
+            # TODO check authors exist
+
+        await ds.add_multiple_components(self.name, data)
 
     async def add_basic(self, action, body, parent_id=None):
         timestamp = self.controller.now_tz()
@@ -322,17 +342,21 @@ class Participants(_Component):
         COMMENT = 'comment'
         READ = 'read'
 
-    async def add_first(self, con, email):
-        ds = self.controller.ds.new_con_ds(con)
+    async def add_multiple(self, ds, data):
+        # TODO validate
+        prepared_data = [{'address': address, 'permissions': permissions} for address, permissions in data]
+        await ds.add_multiple_components(self.name, prepared_data)
+
+    async def add_first(self, ds, address):
         new_participant_id = await ds.add_component(
             self.name,
-            email=email,
+            address=address,
             permissions=perms.FULL,
         )
-        logger.info('first participant added to %d: email: "%s"', con, email)
+        logger.info('first participant added to %d: address: "%s"', ds.con, address)
         return new_participant_id
 
-    async def add(self, action, email, permissions):
+    async def add(self, action, address, permissions):
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE permission are required to add participants')
         if action.perm == perms.WRITE and permissions == perms.FULL:
@@ -340,11 +364,11 @@ class Participants(_Component):
         # TODO check the address is valid
         new_participant_id = await action.ds.add_component(
             self.name,
-            email=email,
+            address=address,
             permissions=permissions,
         )
-        logger.info('added participant to %d: email: "%s", permissions: "%s"', action.con, email, permissions)
-        await self.controller.prop.add_participant(action, email)
+        logger.info('added participant to %d: address: "%s", permissions: "%s"', action.con, address, permissions)
+        await self.controller.prop.add_participant(action, address)
         await self._event(action, new_participant_id)
         return new_participant_id
 

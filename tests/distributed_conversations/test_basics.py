@@ -34,7 +34,7 @@ async def test_create_conversation_add_external_participant():
     con_id = await ctrl.conversations.create('sender@local.com', 'foo bar')
     assert len(ds.data[0]['participants']) == 1
     a = Action('sender@local.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
-    await ctrl.act(a, email='receiver@remote.com', permissions=perms.WRITE)
+    await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
     assert len(ds.data[0]['participants']) == 2
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
 
@@ -48,7 +48,7 @@ async def test_publish_conversation():
     propagator.add_platform('@remote.com', remove_ctrl)
     con_id = await ctrl.conversations.create('sender@local.com', 'the subject', 'the body')
     a = Action('sender@local.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
-    await ctrl.act(a, email='receiver@remote.com', permissions=perms.WRITE)
+    await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
     assert len(ds.data[0]['participants']) == 2
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
 
@@ -64,3 +64,4 @@ async def test_publish_conversation():
     assert other_ds.data[0]['timestamp'] == ds.data[0]['timestamp']
     assert len(other_ds.data[0]['participants']) == 2
     # TODO check email address and permissions
+    print(ds.data[0]['messages'])

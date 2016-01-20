@@ -4,7 +4,8 @@ import datetime
 from collections import OrderedDict
 
 import itertools
-from em2.base import logger, Components
+from em2.base import logger
+from em2.common import Components
 from em2.send import BasePropagator
 from em2.data_store import DataStore, ConversationDataStore
 from em2.exceptions import ConversationNotFound, ComponentNotFound
@@ -40,6 +41,7 @@ class SimpleDataStore(DataStore):
             participant_counter=itertools.count(),  # special case with uses sequence id
             updates=[],
             locked=set(),
+            expiration=None,
             **kwargs
         )
         return id
@@ -63,6 +65,10 @@ class ConversationSimpleDataStore(ConversationDataStore):
         super(ConversationSimpleDataStore, self).__init__(*args, **kwargs)
         self.con_obj = self.ds.get_con(self.con)
 
+    async def get_core_properties(self):
+        keys = ['timestamp', 'status', 'ref', 'subject', 'creator', 'expiration']
+        return {k: self.con_obj[k] for k in keys}
+
     async def save_event(self, action, data, timestamp):
         self.con_obj['updates'].append({
             'actor': action.actor_id,
@@ -81,13 +87,10 @@ class ConversationSimpleDataStore(ConversationDataStore):
     async def set_status(self, status):
         self.con_obj['status'] = status
 
-    async def get_status(self):
-        return self.con_obj['status']
-
     async def add_component(self, model, **kwargs):
         if model not in self.con_obj:
             self.con_obj[model] = OrderedDict()
-        if model == 'participants':
+        if model == Components.PARTICIPANTS:
             kwargs['id'] = next(self.con_obj['participant_counter'])
         id = kwargs['id']
         self.con_obj[model][id] = kwargs
@@ -111,18 +114,19 @@ class ConversationSimpleDataStore(ConversationDataStore):
     async def unlock_component(self, model, item_id):
         self.con_obj['locked'].remove('{}:{}'.format(model, item_id))
 
+    async def get_all_component_items(self, component):
+        data = self.con_obj[component]
+        return list(data.values())
+
     async def get_message_locked(self, model, item_id):
         return '{}:{}'.format(model, item_id) in self.con_obj['locked']
 
     async def get_message_count(self):
-        return len(self.con_obj.get('messages', {}))
+        return len(self.con_obj.get(Components.MESSAGES, {}))
 
     async def get_first_message(self):
         messages = self.con_obj[Components.MESSAGES]
         return list(messages.values())[0]
-
-    async def get_subject(self):
-        return self.con_obj['subject']
 
     async def set_subject(self, subject):
         self.con_obj['subject'] = subject
@@ -140,7 +144,7 @@ class ConversationSimpleDataStore(ConversationDataStore):
     async def get_participant(self, participant_address):
         prtis = self.con_obj.get(Components.PARTICIPANTS, {})
         for v in prtis.values():
-            if v['email'] == participant_address:
+            if v['address'] == participant_address:
                 return v['id'], v['permissions']
         raise ComponentNotFound('participant {} not found in {}'.format(participant_address, prtis.keys()))
 
@@ -158,7 +162,7 @@ class ConversationSimpleDataStore(ConversationDataStore):
         return item
 
     def __repr__(self):
-        return json.dumps(self.con_obj, indent=2, sort_keys=True, cls=UniversalEncoder)
+        return self.__class__.__name__ + json.dumps(self.con_obj, indent=2, sort_keys=True, cls=UniversalEncoder)
 
 
 class NullPropagator(BasePropagator):
