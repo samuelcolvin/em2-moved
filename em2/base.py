@@ -283,6 +283,9 @@ class _Component:
     async def _event(self, *args, **kwargs):
         return await self.controller.event(*args, **kwargs)
 
+    def __repr__(self):
+        return '<{} on controller "{}">'.format(self.__class__.__name__, self.controller.ref)
+
 
 class Messages(_Component):
     name = Components.MESSAGES
@@ -314,14 +317,28 @@ class Messages(_Component):
             body=body,
             parent=parent_id,
         )
-        return m_id
+        return m_id, timestamp
 
     async def add(self, action, body, parent_id):
+        # TODO this remote vs. not remote logic should be pretty common, can it be reused?
         await action.ds.get_message_author(parent_id)
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE access required to add messages')
-        action.item = await self.add_basic(action.ds, action.actor_addr, action.actor_id, body, parent_id)
-        await self._event(action, p_parent_id=parent_id, p_body=body)
+        timestamp = None
+        if action.remote:
+            # TODO check parent_id and timestamp
+            await action.ds.add_component(
+                self.name,
+                id=action.item,
+                author=action.actor_id,
+                timestamp=action.timestamp,
+                body=body,
+                parent=parent_id,
+            )
+        else:
+            action.item, timestamp = await self.add_basic(action.ds, action.actor_addr, action.actor_id, body,
+                                                          parent_id)
+        await self._event(action, timestamp=timestamp, p_parent_id=parent_id, p_body=body)
 
     async def edit(self, action, body):
         await self._check_permissions(action)
@@ -378,6 +395,8 @@ class Participants(_Component):
         # TODO validate
         prepared_data = [{'address': address, 'permissions': permissions} for address, permissions in data]
         await ds.add_multiple_components(self.name, prepared_data)
+        for address, _ in data:
+            await self.controller.prop.add_participant(ds.con, address)
 
     async def add_first(self, ds, address):
         new_participant_id = await ds.add_component(
@@ -400,7 +419,7 @@ class Participants(_Component):
             permissions=permissions,
         )
         logger.info('added participant to %d: address: "%s", permissions: "%s"', action.con, address, permissions)
-        await self.controller.prop.add_participant(action, address)
+        await self.controller.prop.add_participant(action.con, address)
         await self._event(action, new_participant_id)
         return new_participant_id
 

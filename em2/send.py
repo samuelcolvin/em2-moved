@@ -1,10 +1,10 @@
 
 
 class BasePropagator:
-    async def add_participant(self, action, participant_addr):
+    async def add_participant(self, con, participant_addr):
         raise NotImplementedError()
 
-    async def remove_participant(self, action, participant_addr):
+    async def remove_participant(self, con, participant_addr):
         raise NotImplementedError()
 
     async def propagate(self, action, data, timestamp):

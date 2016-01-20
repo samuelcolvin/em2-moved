@@ -106,9 +106,6 @@ class ConversationDataStore:
     async def get_all_component_items(self, component):
         raise NotImplementedError()
 
-    async def get_component_item_count(self, component):
-        return len(await self.get_all_component_items(component))
-
     # Messages
 
     async def get_message_locked(self, component, item_id):

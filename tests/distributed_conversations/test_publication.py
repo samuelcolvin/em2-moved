@@ -71,8 +71,8 @@ bad_data = [
         ]),
     ),
     (
-       'list_extra_item',
-       modified_data(participants=[('testing@example.com', 'full'), ('receiver@remote.com', 'write', 3)])
+        'list_extra_item',
+        modified_data(participants=[('testing@example.com', 'full'), ('receiver@remote.com', 'write', 3)])
     ),
     (
         'bad_first_parent',
