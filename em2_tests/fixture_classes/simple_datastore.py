@@ -1,19 +1,11 @@
-import logging
 import json
 import datetime
 from collections import OrderedDict
 
 import itertools
-from em2.base import logger
 from em2.common import Components
 from em2.data_store import DataStore, ConversationDataStore
 from em2.exceptions import ConversationNotFound, ComponentNotFound
-
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(message)s'))
-logger.addHandler(handler)
-# logger.setLevel(logging.DEBUG)
 
 
 class UniversalEncoder(json.JSONEncoder):
@@ -47,7 +39,7 @@ class SimpleDataStore(DataStore):
 
     @property
     def con_data_store(self):
-        return ConversationSimpleDataStore
+        return SimpleConversationDataStore
 
     def get_con(self, con_id):
         for v in self.data.values():
@@ -59,9 +51,9 @@ class SimpleDataStore(DataStore):
         return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)
 
 
-class ConversationSimpleDataStore(ConversationDataStore):
+class SimpleConversationDataStore(ConversationDataStore):
     def __init__(self, *args, **kwargs):
-        super(ConversationSimpleDataStore, self).__init__(*args, **kwargs)
+        super(SimpleConversationDataStore, self).__init__(*args, **kwargs)
         self.con_obj = self.ds.get_con(self.con)
 
     async def get_core_properties(self):
@@ -83,8 +75,22 @@ class ConversationSimpleDataStore(ConversationDataStore):
         self.con_obj['con_id'] = new_id
         self.con_obj['timestamp'] = new_timestamp
 
+    # Status
+
     async def set_status(self, status):
         self.con_obj['status'] = status
+
+    # Ref
+
+    def set_ref(self, ref):
+        self.con_obj['ref'] = ref
+
+    # Subject
+
+    async def set_subject(self, subject):
+        self.con_obj['subject'] = subject
+
+    # Component generic methods
 
     async def add_component(self, model, **kwargs):
         if model not in self.con_obj:
@@ -113,25 +119,14 @@ class ConversationSimpleDataStore(ConversationDataStore):
     async def unlock_component(self, model, item_id):
         self.con_obj['locked'].remove('{}:{}'.format(model, item_id))
 
+    async def check_component_locked(self, model, item_id):
+        return '{}:{}'.format(model, item_id) in self.con_obj['locked']
+
     async def get_all_component_items(self, component):
         data = self.con_obj.get(component, {})
         return list(data.values())
 
-    async def check_component_locked(self, model, item_id):
-        return '{}:{}'.format(model, item_id) in self.con_obj['locked']
-
-    async def get_message_count(self):
-        return len(self.con_obj.get(Components.MESSAGES, {}))
-
-    async def get_first_message(self):
-        messages = self.con_obj[Components.MESSAGES]
-        return list(messages.values())[0]
-
-    async def set_subject(self, subject):
-        self.con_obj['subject'] = subject
-
-    async def get_participant_count(self):
-        return len(self.con_obj.get(Components.PARTICIPANTS, {}))
+    # Messages
 
     async def get_message_meta(self, message_id):
         msgs = self.con_obj.get(Components.MESSAGES, {})
@@ -140,12 +135,16 @@ class ConversationSimpleDataStore(ConversationDataStore):
             raise ComponentNotFound('message {} not found in {}'.format(message_id, msgs.keys()))
         return {k: msg[k] for k in ('author', 'timestamp')}
 
+    # Participants
+
     async def get_participant(self, participant_address):
         participants = self.con_obj.get(Components.PARTICIPANTS, {})
         for v in participants.values():
             if v['address'] == participant_address:
                 return v['id'], v['permissions']
         raise ComponentNotFound('participant {} not found'.format(participant_address))
+
+    # internal methods
 
     def _get_con_items(self, model):
         items = self.con_obj.get(model)
