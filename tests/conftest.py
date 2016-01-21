@@ -7,7 +7,7 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker, scoped_session
 from em2pg.models import Base
 
-pytest_plugins = 'em2.test_plugins.asyncio'
+pytest_plugins = 'em2_tests.plugins.asyncio'
 
 
 DATABASE = {
@@ -21,25 +21,33 @@ DATABASE = {
 
 
 @pytest.fixture(scope='session')
-def db():
+def dsn():
+    return str(URL(**DATABASE))
+
+
+@pytest.yield_fixture(scope='session')
+def db(dsn):
     conn = psycopg2.connect(user=DATABASE['username'], password=DATABASE['password'],
                             host=DATABASE['host'], port=DATABASE['port'])
     conn.autocommit = True
     cur = conn.cursor()
     cur.execute('DROP DATABASE IF EXISTS {}'.format(DATABASE['database']))
     cur.execute('CREATE DATABASE {}'.format(DATABASE['database']))
+
+    engine = create_engine(dsn)
+    Base.metadata.create_all(engine)
+
+    yield engine
+
+    engine.dispose()
+    cur.execute('DROP DATABASE {}'.format(DATABASE['database']))
     cur.close()
     conn.close()
 
-    engine = create_engine(URL(**DATABASE))
 
-    Base.metadata.create_all(engine)
-    return engine
-
-
-@pytest.yield_fixture(scope='function')
+@pytest.yield_fixture()
 def Session(db):
-    connection = db.engine.connect()
+    connection = db.connect()
     transaction = connection.begin()
 
     session_factory = sessionmaker(bind=db)

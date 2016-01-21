@@ -28,6 +28,8 @@ class Conversation(Base):
         UniqueConstraint('global_id', name='_con_id'),
     )
 
+conversations = Conversation.__table__
+
 
 class Update(Base):
     __tablename__ = 'updates'

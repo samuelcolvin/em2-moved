@@ -9,3 +9,4 @@ __pycache__/
 /test*.py
 htmlcov/
 em2
+em2_tests
