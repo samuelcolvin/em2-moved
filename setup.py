@@ -25,8 +25,8 @@ setup(
     zip_safe=True,
     install_requires=[
         'pytz>=2015.7',
-        'aiohttp==0.20.0',
-        'cchardet==1.0.0',
-        'Cerberus==0.9.2',
+        'aiohttp>=0.20.0',
+        'cchardet>=1.0.0',
+        'Cerberus>=0.9.2',
     ]
 )
