@@ -1,0 +1,1 @@
+-e git+https://github.com/em-2/em2-core.git#egg=em2-core == 0.01

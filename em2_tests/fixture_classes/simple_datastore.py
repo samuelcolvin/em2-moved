@@ -6,7 +6,6 @@ from collections import OrderedDict
 import itertools
 from em2.base import logger
 from em2.common import Components
-from em2.send import BasePropagator
 from em2.data_store import DataStore, ConversationDataStore
 from em2.exceptions import ConversationNotFound, ComponentNotFound
 
@@ -115,7 +114,7 @@ class ConversationSimpleDataStore(ConversationDataStore):
         self.con_obj['locked'].remove('{}:{}'.format(model, item_id))
 
     async def get_all_component_items(self, component):
-        data = self.con_obj[component]
+        data = self.con_obj.get(component, {})
         return list(data.values())
 
     async def check_component_locked(self, model, item_id):
