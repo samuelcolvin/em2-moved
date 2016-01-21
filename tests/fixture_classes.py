@@ -118,7 +118,7 @@ class ConversationSimpleDataStore(ConversationDataStore):
         data = self.con_obj[component]
         return list(data.values())
 
-    async def get_message_locked(self, model, item_id):
+    async def check_component_locked(self, model, item_id):
         return '{}:{}'.format(model, item_id) in self.con_obj['locked']
 
     async def get_message_count(self):
@@ -134,12 +134,12 @@ class ConversationSimpleDataStore(ConversationDataStore):
     async def get_participant_count(self):
         return len(self.con_obj.get(Components.PARTICIPANTS, {}))
 
-    async def get_message_author(self, message_id):
+    async def get_message_meta(self, message_id):
         msgs = self.con_obj.get(Components.MESSAGES, {})
         msg = msgs.get(message_id)
         if msg is None:
             raise ComponentNotFound('message {} not found in {}'.format(message_id, msgs.keys()))
-        return msg['author']
+        return {k: msg[k] for k in ('author', 'timestamp')}
 
     async def get_participant(self, participant_address):
         participants = self.con_obj.get(Components.PARTICIPANTS, {})

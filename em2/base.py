@@ -99,6 +99,12 @@ class Controller:
         if action.verb not in self.valid_verbs:
             raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, self.valid_verbs))
 
+        if action.remote:
+            if not isinstance(action.timestamp, datetime.datetime):
+                raise BadDataException('remote actions should always have a timestamp')
+        else:
+            action.timestamp = self.now_tz()
+
         func = getattr(component_cls, action.verb, None)
         if func is None:
             raise VerbNotFound('{} is not an available verb on {}'.format(action.verb, action.component))
@@ -131,7 +137,7 @@ class Controller:
         :param timestamp: datetime the update occurred, if None this is set to now
         :param data: extra information to either be saved (s_*), propagated (p_*) or both (b_*)
         """
-        timestamp = timestamp or self.now_tz()
+        timestamp = timestamp or action.timestamp
         logger.debug('event on %d: author: "%s", action: "%s", component: %s %s',
                      action.con, action.actor_addr, action.verb, action.component, action.item)
         save_data = self._subdict(data, 'sb')
@@ -157,7 +163,7 @@ class Conversations:
         'ref': {'type': 'string', 'required': True},
         'status': {'type': 'string', 'required': True},
         'subject': {'type': 'string', 'required': True},
-        'expiration': {'type': 'datetime', 'nullable': True, 'required': True},
+        'expiration': {'type': 'datetime', 'nullable': True},
         'messages': {
             'type': 'list',
             'schema': {
@@ -165,7 +171,7 @@ class Conversations:
                 'required': True,
                 'schema': {
                     'id': {'type': 'string', 'required': True},
-                    'author': {'type': 'integer', 'required': True},
+                    'author': {'type': 'integer', 'required': True},  # TODO should be address, eg. string
                     'parent': {'type': 'string', 'nullable': True, 'required': True},
                     'timestamp': {'type': 'datetime', 'required': True},
                     'body': {'type': 'string', 'required': True},
@@ -207,7 +213,7 @@ class Conversations:
         creator_id = await self._participants.add_first(ds, creator)
 
         if body:
-            await self._messages.add_basic(ds, creator, creator_id, body, None)
+            await self._messages.add_basic(ds, timestamp, creator, creator_id, body, None)
         return con_id
 
     async def add(self, action, data):
@@ -218,7 +224,7 @@ class Conversations:
         if not isinstance(data, dict):
             raise MisshapedDataException('data must be a dict')
         if not v(data):
-            raise MisshapedDataException('{}'.format(v.errors))
+            raise MisshapedDataException(str(v.errors))
         creator = data['creator']
         timestamp = data['timestamp']
         check_con_id = self._con_id_hash(creator, timestamp, data['ref'])
@@ -239,16 +245,16 @@ class Conversations:
         await action.ds.set_status(self.Status.ACTIVE)
 
         ref = await action.ds.get_ref()
-        timestamp = self.controller.now_tz()
 
-        new_con_id = self._con_id_hash(action.actor_addr, timestamp, ref)
-        await action.ds.set_published_id(timestamp, new_con_id)
+        new_con_id = self._con_id_hash(action.actor_addr, action.timestamp, ref)
+        await action.ds.set_published_id(action.timestamp, new_con_id)
 
-        new_action = Action(action.actor_addr, new_con_id, Verbs.ADD, Components.CONVERSATIONS)
+        new_action = Action(action.actor_addr, new_con_id, Verbs.ADD, Components.CONVERSATIONS,
+                            timestamp=action.timestamp)
         await new_action.prepare(self.controller.ds)
 
         data = await action.ds.export()
-        await self.controller.event(new_action, timestamp=timestamp, p_data=data)
+        await self.controller.event(new_action, p_data=data)
 
     async def get_by_id(self, id):
         raise NotImplementedError()
@@ -306,8 +312,7 @@ class Messages(_Component):
 
         await ds.add_multiple_components(self.name, data)
 
-    async def add_basic(self, ds, author, author_id, body, parent_id):
-        timestamp = self.controller.now_tz()
+    async def add_basic(self, ds, timestamp, author, author_id, body, parent_id):
         m_id = hash_id(author, timestamp.isoformat(), body, parent_id)
         await ds.add_component(
             self.name,
@@ -317,16 +322,17 @@ class Messages(_Component):
             body=body,
             parent=parent_id,
         )
-        return m_id, timestamp
+        return m_id
 
     async def add(self, action, body, parent_id):
-        # TODO this remote vs. not remote logic should be pretty common, can it be reused?
-        await action.ds.get_message_author(parent_id)
+        meta = await action.ds.get_message_meta(parent_id)
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE access required to add messages')
-        timestamp = None
+
+        if action.timestamp <= meta['timestamp']:
+            raise BadDataException('timestamp not after parent timestamp: {}'.format(action.timestamp))
+
         if action.remote:
-            # TODO check parent_id and timestamp
             await action.ds.add_component(
                 self.name,
                 id=action.item,
@@ -336,9 +342,9 @@ class Messages(_Component):
                 parent=parent_id,
             )
         else:
-            action.item, timestamp = await self.add_basic(action.ds, action.actor_addr, action.actor_id, body,
-                                                          parent_id)
-        await self._event(action, timestamp=timestamp, p_parent_id=parent_id, p_body=body)
+            action.item = await self.add_basic(action.ds, action.timestamp, action.actor_addr, action.actor_id, body,
+                                               parent_id)
+        await self._event(action, p_parent_id=parent_id, p_body=body)
 
     async def edit(self, action, body):
         await self._check_permissions(action)
@@ -363,14 +369,15 @@ class Messages(_Component):
 
     async def unlock(self, action):
         await self._check_permissions(action)
-        if not await action.ds.get_message_locked(self.name, action.item):
+        if not await action.ds.check_component_locked(self.name, action.item):
             raise ComponentNotLocked('{} with id = {} not locked'.format(self.name, action.item))
         await action.ds.unlock_component(self.name, action.item)
         await self._event(action)
 
     async def _check_permissions(self, action):
         if action.perm == perms.WRITE:
-            author_pid = await action.ds.get_message_author(action.item)
+            meta = await action.ds.get_message_meta(action.item)
+            author_pid = meta['author']
             if author_pid != action.actor_id:
                 raise InsufficientPermissions('To {} a message authored by another participant '
                                               'FULL permissions are requires'.format(action.verb))
@@ -378,7 +385,7 @@ class Messages(_Component):
             raise InsufficientPermissions('To {} a message requires FULL or WRITE permissions'.format(action.verb))
 
     async def _check_locked(self, action):
-        if await action.ds.get_message_locked(self.name, action.item):
+        if await action.ds.check_component_locked(self.name, action.item):
             raise ComponentLocked('{} with id = {} locked'.format(self.name, action.item))
 
 

@@ -1,4 +1,8 @@
+import datetime
+
 import pytest
+import pytz
+
 from em2.base import Controller, Action, Verbs, perms
 from em2.common import Components
 from tests.distributed_conversations.fixture_classes import SimplePropagator
@@ -24,3 +28,8 @@ def two_controllers():
         await ctrl1.act(a, address='user@ctrl2.com', permissions=perms.WRITE)
         return ctrl1, ctrl2, con_id
     return get_controllers
+
+
+@pytest.fixture
+def timestamp():
+    return pytz.utc.localize(datetime.datetime(2015, 1, 1))

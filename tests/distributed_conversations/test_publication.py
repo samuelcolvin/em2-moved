@@ -1,5 +1,7 @@
 import datetime
+
 import pytest
+
 from em2.base import Action, Verbs
 from em2.common import Components
 from em2.exceptions import BadDataException, BadHash
@@ -23,9 +25,9 @@ correct_data = {
     'timestamp': datetime.datetime(2016, 1, 2),
 }
 
-async def test_publish_simple_conversation(controller):
+async def test_publish_simple_conversation(controller, timestamp):
     con_id = '0d35129317a6a6455609436c9aad1d11f2b0cb734d53b7222459d2452b25854f'
-    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, remote=True)
+    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
     ds = controller.ds
     assert len(ds.data) == 0
     await controller.act(a, data=correct_data)
@@ -39,11 +41,18 @@ async def test_publish_simple_conversation(controller):
     assert len(ds.data[0]['participants']) == 2
 
 
-async def test_publish_invalid_args(controller):
-    a = Action('testing@example.com', 'abc', Verbs.ADD, Components.CONVERSATIONS, remote=True)
+async def test_publish_invalid_args(controller, timestamp):
+    a = Action('testing@example.com', 'abc', Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
     with pytest.raises(BadDataException):
         await controller.act(a, foo='bar')
 
+    assert len(controller.ds.data) == 0
+
+async def test_publish_no_timestamp(controller):
+    con_id = '0d35129317a6a6455609436c9aad1d11f2b0cb734d53b7222459d2452b25854f'
+    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=None, remote=True)
+    with pytest.raises(BadDataException):
+        await controller.act(a, data=correct_data)
     assert len(controller.ds.data) == 0
 
 
@@ -90,18 +99,18 @@ bad_data = [
 
 
 @pytest.mark.parametrize('data', [v[1] for v in bad_data], ids=[v[0] for v in bad_data])
-async def test_publish_misshaped_data(controller, data):
+async def test_publish_misshaped_data(controller, timestamp, data):
     con_id = '0d35129317a6a6455609436c9aad1d11f2b0cb734d53b7222459d2452b25854f'
-    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, remote=True)
+    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
     with pytest.raises(BadDataException):
         await controller.act(a, data=data)
 
     assert len(controller.ds.data) == 0
 
 
-async def test_wrong_hash(controller):
+async def test_wrong_hash(controller, timestamp):
     con_id = '0d35129317a6a6455609436c9aad1d11f2b0cb734d53b7222459d2452b25854f+wrong'
-    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, remote=True)
+    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
     with pytest.raises(BadHash):
         await controller.act(a, data=correct_data)
     assert len(controller.ds.data) == 0

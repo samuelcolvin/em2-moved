@@ -103,21 +103,20 @@ class ConversationDataStore:
     async def unlock_component(self, component, item_id):
         raise NotImplementedError()
 
+    async def check_component_locked(self, component, item_id):
+        raise NotImplementedError()
+
     async def get_all_component_items(self, component):
         raise NotImplementedError()
 
     # Messages
 
-    async def get_message_locked(self, component, item_id):
-        raise NotImplementedError()
-
-    async def get_message_author(self, message_id):
+    async def get_message_meta(self, message_id):
         """
         Find message author by global id, should raise ComponentNotFound if not.
         :param message_id: id of message
-        :return: participant id of message
+        :return: dict containing: participant id, timestamp
         """
-        # TODO, may be better to update this method to return more information
         raise NotImplementedError()
 
     # Participants
