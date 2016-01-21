@@ -1,10 +1,8 @@
-"""
-Main interface to em2
-"""
 import logging
 import datetime
 import hashlib
 import inspect
+import json
 
 import pytz
 from cerberus import Validator
@@ -116,7 +114,9 @@ class Controller:
         args = set(inspect.signature(func).parameters)
         args.remove('action')
         if args != set(kwargs):
-            raise BadDataException('Wrong kwargs for {}, got: {}, expected: {}'.format(func.__name__, kwargs, args))
+            expected = sorted(list(args))
+            got = sorted(list(kwargs))
+            raise BadDataException('Wrong kwargs for {}, got: {}, expected: {}'.format(func.__name__, got, expected))
         return await func(action, **kwargs)
 
     @property
@@ -171,7 +171,7 @@ class Conversations:
                 'required': True,
                 'schema': {
                     'id': {'type': 'string', 'required': True},
-                    'author': {'type': 'integer', 'required': True},  # TODO should be address, eg. string
+                    'author': {'type': 'string', 'required': True},
                     'parent': {'type': 'string', 'nullable': True, 'required': True},
                     'timestamp': {'type': 'datetime', 'required': True},
                     'body': {'type': 'string', 'required': True},
@@ -224,7 +224,7 @@ class Conversations:
         if not isinstance(data, dict):
             raise MisshapedDataException('data must be a dict')
         if not v(data):
-            raise MisshapedDataException(str(v.errors))
+            raise MisshapedDataException(json.dumps(v.errors, sort_keys=True))
         creator = data['creator']
         timestamp = data['timestamp']
         check_con_id = self._con_id_hash(creator, timestamp, data['ref'])
@@ -308,7 +308,11 @@ class Messages(_Component):
             if parent >= d['timestamp']:
                 raise BadDataException('timestamp not after parent timestamp: {timestamp}'.format(**d))
             parents[d['id']] = d['timestamp']
-            # TODO check authors exist
+
+        participants = await ds.get_all_component_items(Components.PARTICIPANTS)
+        participants = {p['address']: p['id'] for p in participants}
+        for d in data:
+            d['author'] = participants[d['author']]
 
         await ds.add_multiple_components(self.name, data)
 

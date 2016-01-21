@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from em2.base import Action
 from em2.send import BasePropagator
 
@@ -51,8 +53,9 @@ class SimplePropagator(BasePropagator):
             self.active_platforms[action.con] = ctrls
 
         new_action = Action(action.actor_addr, action.con, action.verb, action.component, action.item, timestamp, True)
+        prop_data = deepcopy(data)
         for ctrl in ctrls:
-            await ctrl.act(new_action, **data)
+            await ctrl.act(new_action, **prop_data)
 
     def __repr__(self):
         return 'SimplePropagator<{}>'.format(self.local_domain)

@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+from copy import deepcopy
 
 from em2.base import Controller, Action, Verbs, Components, perms
 from tests.fixture_classes import SimpleDataStore, NullPropagator
@@ -49,9 +50,11 @@ async def test_publish_conversation():
     a = Action('sender@local.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
 
+    messages_before = deepcopy(ds.data[0]['messages'])
     assert len(other_ds.data) == 0
     a = Action('sender@local.com', con_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     await ctrl.act(a)
+    assert ds.data[0]['messages'] == messages_before
     assert len(other_ds.data) == 1
     assert other_ds.data[0]['con_id'] == ds.data[0]['con_id']
     assert other_ds.data[0]['subject'] == 'the subject'

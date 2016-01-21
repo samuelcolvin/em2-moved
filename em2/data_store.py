@@ -4,6 +4,7 @@ Abstract base for data storage in em2.
 Database back-ends for em2 should define a child class for DataStore which implements all "NotImplemented" methods.
 """
 import logging
+from copy import deepcopy
 from .common import Components
 
 logger = logging.getLogger('em2')
@@ -28,11 +29,21 @@ class ConversationDataStore:
 
     async def export(self):
         data = await self.get_core_properties()
-        participants = await self.get_all_component_items(Components.PARTICIPANTS)
-        messages = await self.get_all_component_items(Components.MESSAGES)
+        participants_data = await self.get_all_component_items(Components.PARTICIPANTS)
+
+        participants_lookup = {}
+        participants = []
+        for p in participants_data:
+            participants_lookup[p['id']] = p['address']
+            participants.append((p['address'], p['permissions']))
+
+        messages = deepcopy(await self.get_all_component_items(Components.MESSAGES))
+        for m in messages:
+            m['author'] = participants_lookup[m['author']]
+
         data.update({
             # TODO signature
-            Components.PARTICIPANTS: [(p['address'], p['permissions']) for p in participants],
+            Components.PARTICIPANTS: participants,
             Components.MESSAGES: messages,
             # TODO labels
             # TODO attachments
