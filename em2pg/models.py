@@ -9,7 +9,7 @@ Base = declarative_base()
 
 
 class Conversation(Base):
-    __tablename__ = 'conversations'
+    __tablename__ = Components.CONVERSATIONS
 
     class Status(Conversations.Status, RichEnum):
         pass
@@ -24,6 +24,9 @@ class Conversation(Base):
     subject = Column(String(255), nullable=False)
     labels = Column(ARRAY(String(64)))
     current = Column(JSONB)
+    __table_args__ = (
+        UniqueConstraint('global_id', name='_con_id'),
+    )
 
 
 class Update(Base):
@@ -42,12 +45,11 @@ class Update(Base):
     component = Column(ComponentEnum.enum(), nullable=False)
     component_id = Column(String(40))
     verb = Column(VerbEnum.enum(), nullable=False)
-
     value = Column(Text)
 
 
 class Participant(Base):
-    __tablename__ = 'participants'
+    __tablename__ = Components.PARTICIPANTS
 
     class Permissions(Participants.Permissions, RichEnum):
         pass
@@ -59,7 +61,7 @@ class Participant(Base):
     hidden = Column(Boolean, default=False)
     permissions = Column(Permissions.enum())
     __table_args__ = (
-        UniqueConstraint('conversation', 'address', name='_con_email_uc'),
+        UniqueConstraint('conversation', 'address', name='_participant_email'),
     )
 
 
@@ -79,20 +81,20 @@ class MsgCmt:
 
 
 class Message(MsgCmt, Base):
-    __tablename__ = 'messages'
+    __tablename__ = Components.MESSAGES
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     parent = Column(String(40), ForeignKey('messages.id', ondelete='CASCADE'))
     locked = Column(Boolean, default=False)
 
 
 class Comment(MsgCmt, Base):
-    __tablename__ = 'comments'
+    __tablename__ = Components.COMMENTS
     message = Column(String(40), ForeignKey('messages.id', ondelete='CASCADE'), nullable=False)
     ref = Column(String(40))
 
 
 class Attachment(Base):
-    __tablename__ = 'attachments'
+    __tablename__ = Components.ATTACHMENTS
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     id = Column(String(40), primary_key=True)
     author = Column(Integer, ForeignKey('participants.id'), nullable=False)
@@ -103,23 +105,24 @@ class Attachment(Base):
     expires = Column(TIMESTAMPTZ)
 
 
-class Extra(Base):
-    __tablename__ = 'extras'
-    conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
-    id = Column(String(40), primary_key=True)
-    author = Column(Integer, ForeignKey('participants.id'), nullable=False)
-    timestamp = Column(TIMESTAMPTZ, nullable=False)
-    type = Column(String(40))
-    name = Column(String(255))
-    description = Column(Text)
-    data = Column(JSONB)
-    questions = Column(JSONB)
-
-
-class Response(Base):
-    __tablename__ = 'responses'
-    id = Column(String(40), primary_key=True)
-    extra = Column(String(40), ForeignKey('extras.id', ondelete='CASCADE'), nullable=False)
-    author = Column(Integer, ForeignKey('participants.id'), nullable=False)
-    timestamp = Column(TIMESTAMPTZ, nullable=False)
-    response = Column(JSONB, nullable=False)
+# TODO uncomment once we're ready to implement extras:
+# class Extra(Base):
+#     __tablename__ = Components.EXTRAS
+#     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
+#     id = Column(String(40), primary_key=True)
+#     author = Column(Integer, ForeignKey('participants.id'), nullable=False)
+#     timestamp = Column(TIMESTAMPTZ, nullable=False)
+#     type = Column(String(40))
+#     name = Column(String(255))
+#     description = Column(Text)
+#     data = Column(JSONB)
+#     questions = Column(JSONB)
+#
+#
+# class Response(Base):
+#     __tablename__ = Components.RESPONSES
+#     id = Column(String(40), primary_key=True)
+#     extra = Column(String(40), ForeignKey('extras.id', ondelete='CASCADE'), nullable=False)
+#     author = Column(Integer, ForeignKey('participants.id'), nullable=False)
+#     timestamp = Column(TIMESTAMPTZ, nullable=False)
+#     response = Column(JSONB, nullable=False)
