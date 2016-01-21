@@ -11,7 +11,7 @@ logger = logging.getLogger('em2')
 
 
 class DataStore:
-    async def create_conversation(self, **kwargs):
+    async def create_conversation(self, con_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 
     @property
@@ -131,12 +131,6 @@ class ConversationDataStore:
         raise NotImplementedError()
 
     # Participants
-
-    async def get_participant_count(self):
-        """
-        Find the number of participants in a con.
-        """
-        raise NotImplementedError()
 
     async def get_participant(self, participant_address):
         """
