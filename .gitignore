@@ -1,0 +1,10 @@
+diff-match-patch
+env
+.idea
+__pycache__/
+*.py[cod]
+*.cache
+.coverage.*
+.coverage
+/test*.py
+htmlcov/
