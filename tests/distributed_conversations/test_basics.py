@@ -2,9 +2,8 @@ import datetime
 import hashlib
 from copy import deepcopy
 
+from em2_tests.fixture_classes import SimpleDataStore, NullPropagator, SimplePropagator
 from em2.base import Controller, Action, Verbs, Components, perms
-from tests.fixture_classes import SimpleDataStore, NullPropagator
-from .fixture_classes import SimplePropagator
 
 
 async def test_create_basic_conversation(controller):

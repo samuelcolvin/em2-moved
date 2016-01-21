@@ -1,7 +1,7 @@
 import pytest
 
+from em2_tests.fixture_classes import SimpleDataStore, NullPropagator
 from em2.base import Controller
-from tests.fixture_classes import SimpleDataStore, NullPropagator
 
 pytest_plugins = 'em2_tests.asyncio'
 

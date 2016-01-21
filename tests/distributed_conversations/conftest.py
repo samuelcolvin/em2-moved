@@ -5,8 +5,7 @@ import pytz
 
 from em2.base import Controller, Action, Verbs, perms
 from em2.common import Components
-from tests.distributed_conversations.fixture_classes import SimplePropagator
-from tests.fixture_classes import SimpleDataStore
+from em2_tests.fixture_classes import SimpleDataStore, SimplePropagator
 
 
 def create_controller(name):
