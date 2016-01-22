@@ -45,6 +45,7 @@ class Action:
     async def prepare(self, ds):
         self.ds = ds.new_con_ds(self.con)
         self.actor_id, self.perm = await self.ds.get_participant(self.actor_addr)
+        return self.ds
 
     def __repr__(self):
         attrs = ['actor_addr', 'actor_id', 'perm', 'con', 'verb', 'component', 'item', 'timestamp', 'remote']
@@ -107,17 +108,18 @@ class Controller:
         if func is None:
             raise VerbNotFound('{} is not an available verb on {}'.format(action.verb, action.component))
 
-        # FIXME this is ugly and there are probably more cases where we don't want to do this
-        if not (action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD):
-            await action.prepare(self.ds)
-
         args = set(inspect.signature(func).parameters)
         args.remove('action')
         if args != set(kwargs):
-            expected = sorted(list(args))
-            got = sorted(list(kwargs))
-            raise BadDataException('Wrong kwargs for {}, got: {}, expected: {}'.format(func.__name__, got, expected))
-        return await func(action, **kwargs)
+            msg = 'Wrong kwargs for {}, got: {}, expected: {}'
+            raise BadDataException(msg.format(func.__name__, sorted(list(kwargs)), sorted(list(args))))
+
+        # TODO better way of dealing with this(ese) case(s)
+        if action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD:
+            return await func(action, **kwargs)
+
+        async with await action.prepare(self.ds):
+            return await func(action, **kwargs)
 
     @property
     def timezone(self):
@@ -148,6 +150,7 @@ class Controller:
         if status == Conversations.Status.DRAFT:
             return
         propagate_data = self._subdict(data, 'pb')
+        # FIXME what do we do when propagation fails, can we save status on update
         await self.prop.propagate(action, propagate_data, timestamp)
 
     def __repr__(self):
@@ -220,11 +223,13 @@ class Conversations:
         """
         Add a new conversation created on another platform.
         """
-        v = Validator(self.schema, )
         if not isinstance(data, dict):
             raise MisshapedDataException('data must be a dict')
+
+        v = Validator(self.schema)
         if not v(data):
             raise MisshapedDataException(json.dumps(v.errors, sort_keys=True))
+
         creator = data['creator']
         timestamp = data['timestamp']
         check_con_id = self._con_id_hash(creator, timestamp, data['ref'])
@@ -251,10 +256,10 @@ class Conversations:
 
         new_action = Action(action.actor_addr, new_con_id, Verbs.ADD, Components.CONVERSATIONS,
                             timestamp=action.timestamp)
-        await new_action.prepare(self.controller.ds)
 
-        data = await action.ds.export()
-        await self.controller.event(new_action, p_data=data)
+        async with await new_action.prepare(self.controller.ds):
+            data = await action.ds.export()
+            await self.controller.event(new_action, p_data=data)
 
     async def get_by_id(self, id):
         raise NotImplementedError()

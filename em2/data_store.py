@@ -27,6 +27,12 @@ class ConversationDataStore:
         self.ds = ds
         self.con = con_id
 
+    async def __aenter__(self):
+        pass
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
     async def export(self):
         data = await self.get_core_properties()
         participants_data = await self.get_all_component_items(Components.PARTICIPANTS)

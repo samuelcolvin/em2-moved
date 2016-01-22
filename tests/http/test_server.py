@@ -34,12 +34,12 @@ async def test_missing_conversation(client):
     r = await client.post('/123/messages/add/', headers=headers)
     assert r.status == 400
     content = await r.read()
-    assert content == b'ConversationNotFound: conversation 123 not found\n'
+    assert content == b"BadDataException: Wrong kwargs for add, got: [], expected: ['body', 'parent_id']\n"
 
 
 async def test_missing_conversation_valid_html(client):
     headers = {'Authorization': 'Token 321', 'Actor': 'test@example.com'}
-    data = '{"key": "foobar"}'
+    data = '{"body": "foobar", "parent_id": "123"}'
     r = await client.post('/123/messages/add/', data=data, headers=headers)
     assert r.status == 400
     content = await r.read()
