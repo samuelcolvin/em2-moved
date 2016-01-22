@@ -10,7 +10,7 @@ def test_create_retrieve_conversation(Session):
     session = Session()
     assert session.query(Conversation).count() == 0
     con = Conversation(
-        global_id='x',
+        con_id='x',
         creator='user@example.com',
         subject='testing',
         timestamp=datetime.datetime.now(),
@@ -25,7 +25,7 @@ def test_create_conversation_duplicate_id(Session):
     session = Session()
     assert session.query(Conversation).count() == 0
     con1 = Conversation(
-        global_id='x',
+        con_id='x',
         creator='user@example.com',
         subject='testing',
         timestamp=datetime.datetime.now(),
@@ -34,7 +34,7 @@ def test_create_conversation_duplicate_id(Session):
     session.add(con1)
     assert session.query(Conversation).count() == 1
     con2 = Conversation(
-        global_id='x',
+        con_id='x',
         creator='user2@example.com',
         subject='testing',
         timestamp=datetime.datetime.now(),

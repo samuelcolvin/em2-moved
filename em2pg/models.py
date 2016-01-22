@@ -15,7 +15,7 @@ class Conversation(Base):
         pass
 
     id = Column(Integer, Sequence('con_id_seq'), primary_key=True, nullable=False)
-    global_id = Column(String(64), index=True, nullable=False)
+    con_id = Column(String(64), index=True, nullable=False)
     creator = Column(String(255), nullable=False)
     timestamp = Column(TIMESTAMPTZ, nullable=False)
     signature = Column(Text)
@@ -25,10 +25,10 @@ class Conversation(Base):
     labels = Column(ARRAY(String(64)))
     current = Column(JSONB)
     __table_args__ = (
-        UniqueConstraint('global_id', name='_con_id'),
+        UniqueConstraint('con_id', name='_con_id'),
     )
 
-conversations = Conversation.__table__
+sa_conversations = Conversation.__table__
 
 
 class Update(Base):
