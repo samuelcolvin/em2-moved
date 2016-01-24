@@ -9,7 +9,7 @@ from cerberus import Validator
 
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
                          ComponentLocked, BadDataException, BadHash, MisshapedDataException)
-from .utils import get_options, random_name
+from .utils import get_options
 from .data_store import DataStore
 from .send import BasePropagator
 from .common import Components
@@ -32,7 +32,6 @@ class Verbs:
 class Action:
     def __init__(self, actor, conversation, verb, component, item=None, timestamp=None, remote=False):
         self.ds = None
-        self.connection = None
         self.actor_id = None
         self.perm = None
         self.actor_addr = actor
@@ -42,9 +41,6 @@ class Action:
         self.item = item
         self.timestamp = timestamp
         self.remote = remote
-
-    def set_connection(self, connection):
-        self.connection = connection
 
     async def prepare(self, ds):
         self.ds = ds.new_conv_ds(self.conv)
@@ -77,7 +73,7 @@ class Controller:
         self.ds = data_store
         self.prop = propagator
         self.timezone_name = timezone_name
-        self.ref = ref if ref is not None else random_name()
+        self.ref = ref if ref is not None else hex(id(self))
         self.conversations = Conversations(self)
         components = [Messages, Participants]
         self.components = {c.name: c(self) for c in components}
@@ -210,7 +206,7 @@ class Conversations:
     def _messages(self):
         return self.controller.components[Components.MESSAGES]
 
-    async def create(self, creator, subject, body=None, ref=None, conn=None):
+    async def create(self, creator, subject, body=None, ref=None):
         timestamp = self.controller.now_tz()
         ref = ref or subject
         conv_id = self._conv_id_hash(creator, timestamp, ref)
