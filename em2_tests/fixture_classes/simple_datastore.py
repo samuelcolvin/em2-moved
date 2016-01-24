@@ -38,14 +38,14 @@ class SimpleDataStore(DataStore):
         return id
 
     @property
-    def con_data_store(self):
+    def conv_data_store(self):
         return SimpleConversationDataStore
 
-    def get_con(self, con_id):
+    def get_conv(self, conv_id):
         for v in self.data.values():
-            if v['con_id'] == con_id:
+            if v['conv_id'] == conv_id:
                 return v
-        raise ConversationNotFound('conversation {} not found'.format(con_id))
+        raise ConversationNotFound('conversation {} not found'.format(conv_id))
 
     def __repr__(self):
         return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)
@@ -54,14 +54,14 @@ class SimpleDataStore(DataStore):
 class SimpleConversationDataStore(ConversationDataStore):
     def __init__(self, *args, **kwargs):
         super(SimpleConversationDataStore, self).__init__(*args, **kwargs)
-        self.con_obj = self.ds.get_con(self.con)
+        self.conv_obj = self.ds.get_conv(self.conv)
 
     async def get_core_properties(self):
         keys = ['timestamp', 'status', 'ref', 'subject', 'creator', 'expiration']
-        return {k: self.con_obj[k] for k in keys}
+        return {k: self.conv_obj[k] for k in keys}
 
     async def save_event(self, action, data, timestamp):
-        self.con_obj['updates'].append({
+        self.conv_obj['updates'].append({
             'actor': action.actor_id,
             'verb': action.verb,
             'component': action.component,
@@ -71,65 +71,65 @@ class SimpleConversationDataStore(ConversationDataStore):
         })
 
     async def set_published_id(self, new_timestamp, new_id):
-        self.con_obj['draft_con_id'] = self.con_obj['con_id']
-        self.con_obj['con_id'] = new_id
-        self.con_obj['timestamp'] = new_timestamp
+        self.conv_obj['draft_conv_id'] = self.conv_obj['conv_id']
+        self.conv_obj['conv_id'] = new_id
+        self.conv_obj['timestamp'] = new_timestamp
 
     # Status
 
     async def set_status(self, status):
-        self.con_obj['status'] = status
+        self.conv_obj['status'] = status
 
     # Ref
 
     def set_ref(self, ref):
-        self.con_obj['ref'] = ref
+        self.conv_obj['ref'] = ref
 
     # Subject
 
     async def set_subject(self, subject):
-        self.con_obj['subject'] = subject
+        self.conv_obj['subject'] = subject
 
     # Component generic methods
 
     async def add_component(self, model, **kwargs):
-        if model not in self.con_obj:
-            self.con_obj[model] = OrderedDict()
+        if model not in self.conv_obj:
+            self.conv_obj[model] = OrderedDict()
         if model == Components.PARTICIPANTS:
-            kwargs['id'] = next(self.con_obj['participant_counter'])
+            kwargs['id'] = next(self.conv_obj['participant_counter'])
         id = kwargs['id']
-        self.con_obj[model][id] = kwargs
+        self.conv_obj[model][id] = kwargs
         return id
 
     async def edit_component(self, model, item_id, **kwargs):
-        item = self._get_con_item(model, item_id)
+        item = self._get_conv_item(model, item_id)
         item.update(kwargs)
 
     async def delete_component(self, model, item_id):
-        items = self._get_con_items(model)
+        items = self._get_conv_items(model)
         try:
             del items[item_id]
         except KeyError:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, self.con))
+            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, self.conv))
 
     async def lock_component(self, model, item_id):
-        self._get_con_item(model, item_id)
-        self.con_obj['locked'].add('{}:{}'.format(model, item_id))
+        self._get_conv_item(model, item_id)
+        self.conv_obj['locked'].add('{}:{}'.format(model, item_id))
 
     async def unlock_component(self, model, item_id):
-        self.con_obj['locked'].remove('{}:{}'.format(model, item_id))
+        self.conv_obj['locked'].remove('{}:{}'.format(model, item_id))
 
     async def check_component_locked(self, model, item_id):
-        return '{}:{}'.format(model, item_id) in self.con_obj['locked']
+        return '{}:{}'.format(model, item_id) in self.conv_obj['locked']
 
     async def get_all_component_items(self, component):
-        data = self.con_obj.get(component, {})
+        data = self.conv_obj.get(component, {})
         return list(data.values())
 
     # Messages
 
     async def get_message_meta(self, message_id):
-        msgs = self.con_obj.get(Components.MESSAGES, {})
+        msgs = self.conv_obj.get(Components.MESSAGES, {})
         msg = msgs.get(message_id)
         if msg is None:
             raise ComponentNotFound('message {} not found in {}'.format(message_id, msgs.keys()))
@@ -138,7 +138,7 @@ class SimpleConversationDataStore(ConversationDataStore):
     # Participants
 
     async def get_participant(self, participant_address):
-        participants = self.con_obj.get(Components.PARTICIPANTS, {})
+        participants = self.conv_obj.get(Components.PARTICIPANTS, {})
         for v in participants.values():
             if v['address'] == participant_address:
                 return v['id'], v['permissions']
@@ -146,18 +146,18 @@ class SimpleConversationDataStore(ConversationDataStore):
 
     # internal methods
 
-    def _get_con_items(self, model):
-        items = self.con_obj.get(model)
+    def _get_conv_items(self, model):
+        items = self.conv_obj.get(model)
         if items is None:
-            raise ComponentNotFound('model "{}" not found on conversation {}'.format(model, self.con))
+            raise ComponentNotFound('model "{}" not found on conversation {}'.format(model, self.conv))
         return items
 
-    def _get_con_item(self, model, item_id):
-        items = self._get_con_items(model)
+    def _get_conv_item(self, model, item_id):
+        items = self._get_conv_items(model)
         item = items.get(item_id)
         if item is None:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, self.con))
+            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, self.conv))
         return item
 
     def __repr__(self):
-        return self.__class__.__name__ + json.dumps(self.con_obj, indent=2, sort_keys=True, cls=UniversalEncoder)
+        return self.__class__.__name__ + json.dumps(self.conv_obj, indent=2, sort_keys=True, cls=UniversalEncoder)

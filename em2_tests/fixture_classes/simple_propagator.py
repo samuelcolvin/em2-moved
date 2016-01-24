@@ -23,36 +23,36 @@ class SimplePropagator(BasePropagator):
     def active_platform_count(self):
         return len(self.active_platforms)
 
-    async def add_participant(self, con, participant_addr):
+    async def add_participant(self, conv, participant_addr):
         domain = self.get_domain(participant_addr)
         if domain == self.local_domain:
             return
         platform = self.all_platforms[domain]
-        if con in self.active_platforms:
-            self.active_platforms[con].add(platform)
-            self.addr_lookups[con][participant_addr] = platform
+        if conv in self.active_platforms:
+            self.active_platforms[conv].add(platform)
+            self.addr_lookups[conv][participant_addr] = platform
         else:
-            self.active_platforms[con] = {platform}
-            self.addr_lookups[con] = {participant_addr: platform}
+            self.active_platforms[conv] = {platform}
+            self.addr_lookups[conv] = {participant_addr: platform}
 
-    async def remove_participant(self, con, participant_addr):
+    async def remove_participant(self, conv, participant_addr):
         domain = self.get_domain(participant_addr)
         if domain == self.local_domain:
             return
-        platform = self.addr_lookups[con].pop(participant_addr)
-        if platform not in self.addr_lookups[con].values():
-            self.active_platforms[con].remove(platform)
+        platform = self.addr_lookups[conv].pop(participant_addr)
+        if platform not in self.addr_lookups[conv].values():
+            self.active_platforms[conv].remove(platform)
 
     async def propagate(self, action, data, timestamp):
         try:
-            ctrls = self.active_platforms[action.con]
+            ctrls = self.active_platforms[action.conv]
         except KeyError:
-            con_obj = action.ds.ds.get_con(action.con)
-            # con_id has changed, update active_platforms to correct key
-            ctrls = self.active_platforms.pop(con_obj['draft_con_id'])
-            self.active_platforms[action.con] = ctrls
+            conv_obj = action.ds.ds.get_conv(action.conv)
+            # conv_id has changed, update active_platforms to correct key
+            ctrls = self.active_platforms.pop(conv_obj['draft_conv_id'])
+            self.active_platforms[action.conv] = ctrls
 
-        new_action = Action(action.actor_addr, action.con, action.verb, action.component, action.item, timestamp, True)
+        new_action = Action(action.actor_addr, action.conv, action.verb, action.component, action.item, timestamp, True)
         prop_data = deepcopy(data)
         for ctrl in ctrls:
             await ctrl.act(new_action, **prop_data)

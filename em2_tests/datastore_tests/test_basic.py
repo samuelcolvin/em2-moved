@@ -11,8 +11,8 @@ async def test_datastore_type(data_store):
 
 async def test_create_conversation(data_store):
     controller = Controller(data_store, NullPropagator())
-    con_id = await controller.conversations.create('sender@example.com', 'the subject')
-    cds = data_store.new_con_ds(con_id)
+    conv_id = await controller.conversations.create('sender@example.com', 'the subject')
+    cds = data_store.new_conv_ds(conv_id)
     assert isinstance(cds, ConversationDataStore)
     props = await cds.get_core_properties()
     ts = props.pop('timestamp')
@@ -28,8 +28,8 @@ async def test_create_conversation(data_store):
 
 async def test_create_conversation_check_participants(data_store):
     controller = Controller(data_store, NullPropagator())
-    con_id = await controller.conversations.create('sender@example.com', 'the subject')
-    cds = data_store.new_con_ds(con_id)
+    conv_id = await controller.conversations.create('sender@example.com', 'the subject')
+    cds = data_store.new_conv_ds(conv_id)
     participants = await cds.get_all_component_items(Components.PARTICIPANTS)
     assert len(participants) == 1
     p = participants[0]
