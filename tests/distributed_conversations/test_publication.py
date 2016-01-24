@@ -25,16 +25,16 @@ correct_data = {
     'subject': 'the subject',
     'timestamp': datetime.datetime(2016, 1, 2),
 }
-con_id = '0d35129317a6a6455609436c9aad1d11f2b0cb734d53b7222459d2452b25854f'
+conv_id = '0d35129317a6a6455609436c9aad1d11f2b0cb734d53b7222459d2452b25854f'
 
 async def test_publish_simple_conversation(controller, timestamp):
-    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
     ds = controller.ds
     assert len(ds.data) == 0
     await controller.act(a, data=deepcopy(correct_data))
 
     assert len(ds.data) == 1
-    assert ds.data[0]['con_id'] == con_id
+    assert ds.data[0]['conv_id'] == conv_id
     assert ds.data[0]['subject'] == 'the subject'
     assert len(ds.data[0]['messages']) == 1
     assert list(ds.data[0]['messages'].values())[0]['body'] == 'the body'
@@ -43,14 +43,14 @@ async def test_publish_simple_conversation(controller, timestamp):
 
 
 async def test_publish_invalid_args(controller, timestamp):
-    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
     with pytest.raises(BadDataException) as excinfo:
         await controller.act(a, foo='bar')
     assert excinfo.value.args[0] == "Wrong kwargs for add, got: ['foo'], expected: ['data']"
     assert len(controller.ds.data) == 0
 
 async def test_publish_no_timestamp(controller):
-    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=None, remote=True)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=None, remote=True)
     with pytest.raises(BadDataException) as excinfo:
         await controller.act(a, data=deepcopy(correct_data))
     assert excinfo.value.args[0] == 'remote actions should always have a timestamp'
@@ -125,7 +125,7 @@ bad_data = [
 
 @pytest.mark.parametrize('data,exc', [(v[1], v[2]) for v in bad_data], ids=[v[0] for v in bad_data])
 async def test_publish_misshaped_data(controller, timestamp, data, exc):
-    a = Action('testing@example.com', con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
     with pytest.raises(BadDataException) as excinfo:
         await controller.act(a, data=data)
     assert excinfo.value.args[0] == exc
@@ -133,9 +133,9 @@ async def test_publish_misshaped_data(controller, timestamp, data, exc):
 
 
 async def test_wrong_hash(controller, timestamp):
-    w_con_id = con_id + '+wrong'
-    a = Action('testing@example.com', w_con_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
+    w_conv_id = conv_id + '+wrong'
+    a = Action('testing@example.com', w_conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp, remote=True)
     with pytest.raises(BadHash) as excinfo:
         await controller.act(a, data=deepcopy(correct_data))
-    assert excinfo.value.args[0] == 'provided hash {} does not match computed hash {}'.format(w_con_id, con_id)
+    assert excinfo.value.args[0] == 'provided hash {} does not match computed hash {}'.format(w_conv_id, conv_id)
     assert len(controller.ds.data) == 0

@@ -15,17 +15,18 @@ class DataStore:
         raise NotImplementedError()
 
     @property
-    def con_data_store(self):
+    def conv_data_store(self):
         raise NotImplementedError()
 
-    def new_con_ds(self, con_id):
-        return self.con_data_store(self, con_id)
+    def new_conv_ds(self, conv_id, conn=None):  # TODO
+        return self.conv_data_store(self, conv_id, conn)
 
 
 class ConversationDataStore:
-    def __init__(self, ds, con_id):
+    def __init__(self, ds, conv_id, conn):
         self.ds = ds
-        self.con = con_id
+        self.conv = conv_id
+        self.conn = conn
 
     async def __aenter__(self):
         pass
