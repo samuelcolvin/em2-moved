@@ -40,3 +40,17 @@ async def test_create_conversation_check_participants(data_store):
         assert p['address'] == 'sender@example.com'
         messages = await cds.get_all_component_items(Components.MESSAGES)
         assert len(messages) == 0
+
+
+async def test_create_conversation_body(data_store):
+    controller = Controller(data_store, NullPropagator())
+    conv_id = await controller.conversations.create('sender@example.com', 'the subject', 'the body', 'conv-ref')
+    async with data_store.reuse_connection() as conn:
+        cds = data_store.new_conv_ds(conv_id, conn)
+        messages = await cds.get_all_component_items(Components.MESSAGES)
+        assert len(messages) == 1
+        message = messages[0]
+        message = dict(message)
+        assert isinstance(message['timestamp'], datetime.datetime)
+        assert message['body'] == 'the body'
+        assert message['parent'] is None
