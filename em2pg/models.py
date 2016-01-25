@@ -15,17 +15,18 @@ class Conversation(Base):
         pass
 
     id = Column(Integer, Sequence('con_id_seq'), primary_key=True, nullable=False)
-    con_id = Column(String(64), index=True, nullable=False)
+    conv_id = Column(String(64), index=True, nullable=False)
     creator = Column(String(255), nullable=False)
     timestamp = Column(TIMESTAMPTZ, nullable=False)
     signature = Column(Text)
     status = Column(Status.enum(), nullable=False)
+    ref = Column(String(255), nullable=False)
     expiration = Column(TIMESTAMPTZ)
     subject = Column(String(255), nullable=False)
     labels = Column(ARRAY(String(64)))
     current = Column(JSONB)
     __table_args__ = (
-        UniqueConstraint('con_id', name='_con_id'),
+        UniqueConstraint('conv_id', name='_conv_id'),
     )
 
 sa_conversations = Conversation.__table__
@@ -66,6 +67,8 @@ class Participant(Base):
         UniqueConstraint('conversation', 'address', name='_participant_email'),
     )
 
+sa_participants = Participant.__table__
+
 
 class MsgCmt:
     class Status(RichEnum):
@@ -87,6 +90,8 @@ class Message(MsgCmt, Base):
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     parent = Column(String(40), ForeignKey('messages.id', ondelete='CASCADE'))
     locked = Column(Boolean, default=False)
+
+sa_messages = Message.__table__
 
 
 class Comment(MsgCmt, Base):

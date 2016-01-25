@@ -12,9 +12,10 @@ async def test_conversation_insert_raw(db, dsn):
             async with conn.begin() as tr:
                 n = pytz.utc.localize(datetime.datetime.now())
                 conversation = dict(
-                    con_id='x',
+                    conv_id='x',
                     creator='user@example.com',
                     subject='testing',
+                    ref='testing',
                     timestamp=n,
                     status='draft',
                 )
@@ -25,7 +26,7 @@ async def test_conversation_insert_raw(db, dsn):
                 data = None
                 async for row in conn.execute(sa_conversations.select()):
                     data = row
-                assert data.con_id == 'x'
+                assert data.conv_id == 'x'
                 assert data.creator == 'user@example.com'
                 assert data.subject == 'testing'
                 assert data.timestamp.isoformat() == n.isoformat()

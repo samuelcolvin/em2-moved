@@ -10,9 +10,10 @@ def test_create_retrieve_conversation(Session):
     session = Session()
     assert session.query(Conversation).count() == 0
     con = Conversation(
-        con_id='x',
+        conv_id='x',
         creator='user@example.com',
         subject='testing',
+        ref='testing',
         timestamp=datetime.datetime.now(),
         status='draft',
     )
@@ -25,18 +26,20 @@ def test_create_conversation_duplicate_id(Session):
     session = Session()
     assert session.query(Conversation).count() == 0
     con1 = Conversation(
-        con_id='x',
+        conv_id='x',
         creator='user@example.com',
         subject='testing',
+        ref='testing',
         timestamp=datetime.datetime.now(),
         status='draft',
     )
     session.add(con1)
     assert session.query(Conversation).count() == 1
     con2 = Conversation(
-        con_id='x',
+        conv_id='x',
         creator='user2@example.com',
         subject='testing',
+        ref='testing',
         timestamp=datetime.datetime.now(),
         status='draft',
     )
