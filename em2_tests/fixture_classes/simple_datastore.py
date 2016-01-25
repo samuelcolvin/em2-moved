@@ -21,12 +21,14 @@ class UniversalEncoder(json.JSONEncoder):
 
 
 class SimpleDataStore(DataStore):
+    _conn_ctx = None
+
     def __init__(self):
         self.conversation_counter = itertools.count()
         self.data = {}
         super(SimpleDataStore, self).__init__()
 
-    async def create_conversation(self, **kwargs):
+    async def create_conversation(self, conn, **kwargs):
         id = next(self.conversation_counter)
         self.data[id] = dict(
             participant_counter=itertools.count(),  # special case with uses sequence id
@@ -41,6 +43,15 @@ class SimpleDataStore(DataStore):
     def conv_data_store(self):
         return SimpleConversationDataStore
 
+    def connection(self):
+        # assert self._conn_ctx is None
+        self._conn_ctx = VoidContextManager()
+        return self._conn_ctx
+
+    def reuse_connection(self):
+        # assert self._conn_ctx is not None
+        return self._conn_ctx
+
     def get_conv(self, conv_id):
         for v in self.data.values():
             if v['conv_id'] == conv_id:
@@ -51,14 +62,21 @@ class SimpleDataStore(DataStore):
         return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)
 
 
+class VoidContextManager:
+    async def __aenter__(self):
+        pass
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
 class SimpleConversationDataStore(ConversationDataStore):
     def __init__(self, *args, **kwargs):
         super(SimpleConversationDataStore, self).__init__(*args, **kwargs)
         self.conv_obj = self.ds.get_conv(self.conv)
 
     async def get_core_properties(self):
-        keys = ['timestamp', 'status', 'ref', 'subject', 'creator', 'expiration']
-        return {k: self.conv_obj[k] for k in keys}
+        return {k: self.conv_obj[k] for k in self._core_property_keys}
 
     async def save_event(self, action, data, timestamp):
         self.conv_obj['updates'].append({
@@ -71,9 +89,11 @@ class SimpleConversationDataStore(ConversationDataStore):
         })
 
     async def set_published_id(self, new_timestamp, new_id):
-        self.conv_obj['draft_conv_id'] = self.conv_obj['conv_id']
-        self.conv_obj['conv_id'] = new_id
-        self.conv_obj['timestamp'] = new_timestamp
+        self.conv_obj.update(
+            draft_conv_id=self.conv_obj['conv_id'],
+            conv_id=new_id,
+            timestamp=new_timestamp,
+        )
 
     # Status
 
