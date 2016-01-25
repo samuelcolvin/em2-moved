@@ -86,9 +86,11 @@ class PostgresConversationDataStore(ConversationDataStore):
     # Component generic methods
 
     async def add_component(self, component, **kwargs):
-        if component == Components.PARTICIPANTS:
+        if component in {Components.PARTICIPANTS, Components.MESSAGES}:
             kwargs['conversation'] = await self._get_local_id()  # FIXME
-            await self.conn.execute(sa_participants.insert().values(**kwargs))
+            sa_component = sa_component_lookup[component]
+            v = await self.conn.execute(sa_component.insert().returning(sa_component.c.id).values(**kwargs))
+            return (await v.first()).id
         else:
             raise NotImplementedError()
 

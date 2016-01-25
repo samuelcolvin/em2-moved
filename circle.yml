@@ -6,8 +6,8 @@ machine:
 
 test:
   override:
-    - ./lint.sh
-    - py.test --cov=em2pg tests/
+    - flake8 em2pg/ tests/
+    - py.test --cov=em2pg
   post:
     - coverage combine
     - coverage html
