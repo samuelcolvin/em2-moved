@@ -5,7 +5,7 @@ async def test_add_message(client):
         'Authorization': 'Token 321',
         'Actor': 'test@example.com',
     }
-    conv_ds = client.api.em2_ctrl.ds.new_conv_ds(conv_id)
+    conv_ds = client.api.em2_ctrl.ds.new_conv_ds(conv_id, None)
     msg1_id = list(conv_ds.conv_obj['messages'])[0]
     data = '{"parent_id": "%s", "body": "reply"}' % msg1_id
     r = await client.post('/{}/messages/add/'.format(conv_id), data=data, headers=headers)

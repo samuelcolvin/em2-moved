@@ -42,8 +42,7 @@ class Action:
         self.timestamp = timestamp
         self.remote = remote
 
-    async def prepare(self, ds):
-        self.ds = ds.new_conv_ds(self.conv)
+    async def prepare(self):
         self.actor_id, self.perm = await self.ds.get_participant(self.actor_addr)
         return self.ds
 
@@ -118,7 +117,9 @@ class Controller:
         if action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD:
             return await func(action, **kwargs)
 
-        async with await action.prepare(self.ds):
+        async with self.ds.connection() as conn:
+            action.ds = self.ds.new_conv_ds(action.conv, conn)
+            await action.prepare()
             return await func(action, **kwargs)
 
     @property
@@ -210,13 +211,23 @@ class Conversations:
         timestamp = self.controller.now_tz()
         ref = ref or subject
         conv_id = self._conv_id_hash(creator, timestamp, ref)
-        await self._create(creator, timestamp, ref, subject, self.Status.DRAFT, conv_id)
+        async with self.controller.ds.connection() as conn:
+            await self.controller.ds.create_conversation(
+                conn,
+                conv_id=conv_id,
+                creator=creator,
+                timestamp=timestamp,
+                ref=ref,
+                subject=subject,
+                status=self.Status.DRAFT,
+            )
+            logger.info('created draft conversation %s..., creator: "%s"', conv_id[:6], creator)
 
-        ds = self.controller.ds.new_conv_ds(conv_id)
-        creator_id = await self._participants.add_first(ds, creator)
+            cds = self.controller.ds.new_conv_ds(conv_id, conn)
+            creator_id = await self._participants.add_first(cds, creator)
 
-        if body:
-            await self._messages.add_basic(ds, timestamp, creator, creator_id, body, None)
+            if body:
+                await self._messages.add_basic(cds, timestamp, creator, creator_id, body, None)
         return conv_id
 
     async def add(self, action, data):
@@ -235,16 +246,25 @@ class Conversations:
         check_conv_id = self._conv_id_hash(creator, timestamp, data['ref'])
         if check_conv_id != action.conv:
             raise BadHash('provided hash {} does not match computed hash {}'.format(action.conv, check_conv_id))
-        conv_id = action.conv
-        await self._create(creator, timestamp, data['ref'], data['subject'], self.Status.PENDING, conv_id=conv_id)
+        async with self.controller.ds.connection() as conn:
+            await self.controller.ds.create_conversation(
+                conn,
+                conv_id=action.conv,
+                creator=creator,
+                timestamp=timestamp,
+                ref=data['ref'],
+                subject=data['subject'],
+                status=self.Status.PENDING,
+            )
+            logger.info('created pending conversation %s..., creator: "%s"', action.conv[:6], creator)
 
-        ds = self.controller.ds.new_conv_ds(conv_id)
+            ds = self.controller.ds.new_conv_ds(action.conv, conn)
 
-        participant_data = data[Components.PARTICIPANTS]
-        await self._participants.add_multiple(ds, participant_data)
+            participant_data = data[Components.PARTICIPANTS]
+            await self._participants.add_multiple(ds, participant_data)
 
-        message_data = data[Components.MESSAGES]
-        await self._messages.add_multiple(ds, message_data)
+            message_data = data[Components.MESSAGES]
+            await self._messages.add_multiple(ds, message_data)
 
     async def publish(self, action):
         await action.ds.set_status(self.Status.ACTIVE)
@@ -256,31 +276,19 @@ class Conversations:
 
         new_action = Action(action.actor_addr, new_conv_id, Verbs.ADD, Components.CONVERSATIONS,
                             timestamp=action.timestamp)
+        new_action.ds, new_action.actor_id, new_action.perm = action.ds, action.actor_id, action.perm
 
-        async with await new_action.prepare(self.controller.ds):
-            data = await action.ds.export()
-            await self.controller.event(new_action, p_data=data)
+        data = await action.ds.export()
+        await self.controller.event(new_action, p_data=data)
 
     async def get_by_id(self, id):
         raise NotImplementedError()
-
-    async def _create(self, creator, timestamp, ref, subject, status, conv_id):
-        await self.controller.ds.create_conversation(
-            conv_id=conv_id,
-            creator=creator,
-            timestamp=timestamp,
-            ref=ref,
-            subject=subject,
-            status=status,
-        )
-        logger.info('created %s conversation %s..., creator: "%s", subject: "%s"',
-                    status, conv_id[:6], creator, subject)
 
     def _conv_id_hash(self, creator, timestamp, ref):
         return hash_id(creator, timestamp.isoformat(), ref, sha256=True)
 
     def __repr__(self):
-        return '<Conversations on {}>'.format(self.controller)
+        return '<Conversations 0x{:x} on {}>'.format(id(self), self.controller)
 
 
 class _Component:

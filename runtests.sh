@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-py.test
+py.test --cov=em2
 pytest=$?
 echo "pytest exit code: ${pytest}"
 flake8 em2/ tests/

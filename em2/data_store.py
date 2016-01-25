@@ -11,27 +11,31 @@ logger = logging.getLogger('em2')
 
 
 class DataStore:
-    async def create_conversation(self, con_id, creator, timestamp, ref, subject, status):
+    async def create_conversation(self, conn, conv_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 
     @property
     def conv_data_store(self):
         raise NotImplementedError()
 
-    def new_conv_ds(self, conv_id):
-        return self.conv_data_store(self, conv_id)
+    def connection(self):
+        raise NotImplementedError()
+
+    def reuse_connection(self):
+        """
+        Only used for tests, should return the connection previously returned from connection()
+        """
+        raise NotImplementedError()
+
+    def new_conv_ds(self, conv_id, conn):
+        return self.conv_data_store(self, conv_id, conn)
 
 
 class ConversationDataStore:
-    def __init__(self, ds, conv_id):
+    def __init__(self, ds, conv_id, conn):
         self.ds = ds
         self.conv = conv_id
-
-    async def __aenter__(self):
-        pass
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
+        self.conn = conn
 
     async def export(self):
         data = await self.get_core_properties()
@@ -57,6 +61,8 @@ class ConversationDataStore:
             # TODO updates
         })
         return data
+
+    _core_property_keys = ['timestamp', 'status', 'ref', 'subject', 'creator', 'expiration']
 
     async def get_core_properties(self):
         """
