@@ -10,7 +10,7 @@ from cerberus import Validator
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
                          ComponentLocked, BadDataException, BadHash, MisshapedDataException)
 from .utils import get_options
-from .data_store import DataStore
+from .datastore import DataStore
 from .propagator import BasePropagator
 from .common import Components
 
@@ -66,10 +66,10 @@ class Controller:
     """
     Top level class for accessing conversations and conversation components.
     """
-    def __init__(self, data_store, propagator, timezone_name='utc', ref=None):
-        assert isinstance(data_store, DataStore)
+    def __init__(self, datastore, propagator, timezone_name='utc', ref=None):
+        assert isinstance(datastore, DataStore)
         assert isinstance(propagator, BasePropagator)
-        self.ds = data_store
+        self.ds = datastore
         self.prop = propagator
         self.timezone_name = timezone_name
         self.ref = ref if ref is not None else hex(id(self))

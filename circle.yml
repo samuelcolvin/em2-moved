@@ -7,6 +7,7 @@ dependencies:
     - python setup.py install
     - pip install -r requirements/test_requirements.txt
     - pip install -r requirements/pg_requirements.txt
+    - pip install -r requirements/http_requirements.txt
 
 test:
   override:
