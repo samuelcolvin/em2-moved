@@ -132,19 +132,17 @@ class Controller:
     def _subdict(self, data, first_chars):
         return {k[2:]: v for k, v in data.items() if k[0] in first_chars}
 
-    async def event(self, action, timestamp=None, **data):
+    async def event(self, action, **data):
         """
         Record and propagate updates of conversations and conversation components.
 
         :param action: Action instance
-        :param timestamp: datetime the update occurred, if None this is set to now
         :param data: extra information to either be saved (s_*), propagated (p_*) or both (b_*)
         """
-        timestamp = timestamp or action.timestamp
         logger.debug('event on %d: author: "%s", action: "%s", component: %s %s',
                      action.conv, action.actor_addr, action.verb, action.component, action.item)
         save_data = self._subdict(data, 'sb')
-        await action.ds.save_event(action, save_data, timestamp)
+        await action.ds.save_event(action, save_data)
         if action.remote:
             return
         status = await action.ds.get_status()
@@ -152,7 +150,7 @@ class Controller:
             return
         propagate_data = self._subdict(data, 'pb')
         # FIXME what do we do when propagation fails, can we save status on update
-        await self.prop.propagate(action, propagate_data, timestamp)
+        await self.prop.propagate(action, propagate_data, action.timestamp)
 
     def __repr__(self):
         return '<Controller({})>'.format(self.ref)
@@ -435,15 +433,15 @@ class Participants(_Component):
         if action.perm == perms.WRITE and permissions == perms.FULL:
             raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions')
         # TODO check the address is valid
-        new_participant_id = await action.ds.add_component(
+        action.item = await action.ds.add_component(
             self.name,
             address=address,
             permissions=permissions,
         )
         logger.info('added participant to %d: address: "%s", permissions: "%s"', action.conv, address, permissions)
         await self.controller.prop.add_participant(action.conv, address)
-        await self._event(action, new_participant_id)
-        return new_participant_id
+        await self._event(action)
+        return action.item
 
 # shortcut
 perms = Participants.Permissions
