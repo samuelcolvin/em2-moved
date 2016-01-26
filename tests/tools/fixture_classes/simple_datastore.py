@@ -3,9 +3,9 @@ import datetime
 from collections import OrderedDict
 
 import itertools
-from em2.common import Components
-from em2.data_store import DataStore, ConversationDataStore
-from em2.exceptions import ConversationNotFound, ComponentNotFound
+from em2.core.common import Components
+from em2.core.data_store import DataStore, ConversationDataStore
+from em2.core.exceptions import ConversationNotFound, ComponentNotFound
 
 
 class UniversalEncoder(json.JSONEncoder):

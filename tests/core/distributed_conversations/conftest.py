@@ -3,9 +3,9 @@ import datetime
 import pytest
 import pytz
 
-from em2.base import Controller, Action, Verbs, perms
-from em2.common import Components
-from em2_tests.fixture_classes import SimpleDataStore, SimplePropagator
+from em2.core.base import Controller, Action, Verbs, perms
+from em2.core.common import Components
+from tests.tools.fixture_classes import SimpleDataStore, SimplePropagator
 
 
 def create_controller(name):

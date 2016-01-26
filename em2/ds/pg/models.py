@@ -2,7 +2,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
-from em2.base import Conversations, Verbs, Participants, Components
+from em2.core.base import Conversations, Verbs, Participants, Components
 from .model_extras import TIMESTAMPTZ, RichEnum
 
 Base = declarative_base()

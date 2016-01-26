@@ -5,7 +5,8 @@ machine:
 dependencies:
   override:
     - python setup.py install
-    - pip install -r dev_requirements.txt
+    - pip install -r requirements/test_requirements.txt
+    - pip install -r requirements/pg_requirements.txt
 
 test:
   override:

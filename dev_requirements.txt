@@ -1,1 +1,0 @@
--e git+https://github.com/em-2/em2-test-utils.git#egg=em2-test-utils == 0.01

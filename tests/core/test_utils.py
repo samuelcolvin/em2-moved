@@ -1,4 +1,4 @@
-from em2.utils import get_options
+from em2.core.utils import get_options
 
 
 class Foo:

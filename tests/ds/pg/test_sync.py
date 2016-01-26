@@ -3,7 +3,7 @@ import datetime
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from em2pg.models import Conversation
+from em2.ds.pg.models import Conversation
 
 
 def test_create_retrieve_conversation(Session):

@@ -1,6 +1,6 @@
 import inspect
 
-from em2_tests import datastore_tests as tests
+from tests.tools import datastore_tests as tests
 
 
 def function_name(f):

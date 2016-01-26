@@ -1,8 +1,8 @@
 import datetime
-from em2.base import Controller, perms
-from em2.common import Components
-from em2.data_store import DataStore, ConversationDataStore
-from em2_tests.fixture_classes import NullPropagator
+from em2.core.base import Controller, perms
+from em2.core.common import Components
+from em2.core.data_store import DataStore, ConversationDataStore
+from tests.tools.fixture_classes import NullPropagator
 
 
 async def test_datastore_type(data_store):

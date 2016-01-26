@@ -1,8 +1,8 @@
 from sqlalchemy import select, column
 
-from em2.common import Components
-from em2.data_store import DataStore, ConversationDataStore
-from em2.exceptions import ConversationNotFound
+from em2.core.common import Components
+from em2.core.data_store import DataStore, ConversationDataStore
+from em2.core.exceptions import ConversationNotFound
 
 from .models import sa_conversations, sa_participants, sa_messages
 

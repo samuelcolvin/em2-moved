@@ -5,9 +5,9 @@ import psycopg2
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker, scoped_session
-from em2pg.models import Base
+from em2.ds.pg.models import Base
 
-pytest_plugins = 'em2_tests.plugins.asyncio'
+pytest_plugins = 'tests.tools.plugins.asyncio'
 
 
 DATABASE = {

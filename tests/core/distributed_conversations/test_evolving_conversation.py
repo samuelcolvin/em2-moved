@@ -1,8 +1,8 @@
 import datetime
 import pytest
 import pytz
-from em2.base import Action, Verbs, Components
-from em2.exceptions import BadDataException
+from em2.core.base import Action, Verbs, Components
+from em2.core.exceptions import BadDataException
 
 
 async def test_publish_reply(two_controllers):

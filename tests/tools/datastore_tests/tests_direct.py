@@ -1,6 +1,6 @@
 import datetime
-from em2.base import Conversations, perms
-from em2.common import Components
+from em2.core.base import Conversations, perms
+from em2.core.common import Components
 
 
 async def test_create_conversation(data_store):

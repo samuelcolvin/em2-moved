@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Install requirements from both dev_requirements.txt and the install_requires section of setup.py
+Install requirements from both *_requirements.txt and the install_requires section of setup.py
 """
 import os
 import re
@@ -10,8 +10,8 @@ import pip
 THIS_DIR = os.path.dirname(__file__)
 
 
-def get_setup_requirements():
-    with open(os.path.join(THIS_DIR, 'setup.py')) as f:
+def get_setup_requirements(setup_path):
+    with open(os.path.join(THIS_DIR, setup_path)) as f:
         text = f.read()
 
     m = re.search('install_requires=\[(.*?)\]', text, re.S)
@@ -20,11 +20,15 @@ def get_setup_requirements():
     return re.findall("'(.*?)'", m.groups()[0])
 
 
+def get_txt_requirements(fn):
+    with open(os.path.join(THIS_DIR, fn)) as f:
+        return list(filter(bool, f.read().split('\n')))
+
 if __name__ == '__main__':
-    with open(os.path.join(THIS_DIR, 'dev_requirements.txt')) as f:
-        dev_reqs = list(filter(bool, f.read().split('\n')))
-    packages = dev_reqs + get_setup_requirements()
-    packages.sort()
+    test_req = get_txt_requirements('test_requirements.txt')
+    pg_req = get_txt_requirements('pg_requirements.txt')
+    setup_req = get_setup_requirements('../setup.py')
+    packages = sorted(test_req + pg_req + setup_req)
     reqs = '\n'.join(packages)
     print('Installing all requirements:\n{}\n'.format(reqs))
     with NamedTemporaryFile() as tmp:

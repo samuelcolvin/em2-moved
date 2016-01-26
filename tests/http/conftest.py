@@ -4,9 +4,9 @@ import socket
 import aiohttp
 from aiohttp import web
 
-from em2_tests.fixture_classes import SimpleDataStore, NullPropagator
-from em2.base import Controller
-from em2.receive import Api
+from tests.tools.fixture_classes import SimpleDataStore, NullPropagator
+from em2.core.base import Controller
+from em2.core.receive import Api
 
 
 @pytest.fixture

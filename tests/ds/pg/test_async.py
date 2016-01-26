@@ -3,7 +3,7 @@ import datetime
 import pytz
 from aiopg.sa import create_engine
 
-from em2pg.models import sa_conversations
+from em2.ds.pg.models import sa_conversations
 
 
 async def test_conversation_insert_raw(db, dsn):

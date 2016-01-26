@@ -1,8 +1,8 @@
 from aiopg.sa import create_engine
 
-from em2pg.datastore import PostgresDataStore, ConnectionContextManager
+from em2.ds.pg.datastore import PostgresDataStore, ConnectionContextManager
 
-pytest_plugins = 'em2_tests.plugins.datastore', 'em2_tests.plugins.asyncio'
+pytest_plugins = 'tests.tools.plugins.datastore', 'tests.tools.plugins.asyncio'
 
 
 class TestPostgresDataStore(PostgresDataStore):

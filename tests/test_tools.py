@@ -1,6 +1,6 @@
-from em2_tests.fixture_classes import SimpleDataStore
+from tests.tools.fixture_classes import SimpleDataStore
 
-pytest_plugins = 'em2_tests.plugins.datastore', 'em2_tests.plugins.asyncio'
+pytest_plugins = 'tests.tools.plugins.datastore', 'tests.tools.plugins.asyncio'
 
 
 async def test_simple_datastore(ds_test_method):

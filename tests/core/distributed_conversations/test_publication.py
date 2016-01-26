@@ -3,9 +3,9 @@ from copy import deepcopy
 
 import pytest
 
-from em2.base import Action, Verbs
-from em2.common import Components
-from em2.exceptions import BadDataException, BadHash
+from em2.core.base import Action, Verbs
+from em2.core.common import Components
+from em2.core.exceptions import BadDataException, BadHash
 
 correct_data = {
     'creator': 'testing@example.com',
