@@ -1,10 +1,10 @@
-from sqlalchemy import select, column
+from sqlalchemy import select, column, join
 
 from em2.core.common import Components
 from em2.core.data_store import DataStore, ConversationDataStore
-from em2.core.exceptions import ConversationNotFound
+from em2.core.exceptions import ConversationNotFound, ComponentNotFound
 
-from .models import sa_conversations, sa_participants, sa_messages
+from .models import sa_conversations, sa_participants, sa_messages, sa_updates
 
 sa_component_lookup = {
     Components.CONVERSATIONS: sa_conversations,
@@ -52,6 +52,10 @@ class ConnectionContextManager:
 class PostgresConversationDataStore(ConversationDataStore):
     _sa_core_property_keys = [column(c) for c in ConversationDataStore._core_property_keys]
 
+    def __init__(self, *args, **kwargs):
+        super(PostgresConversationDataStore, self).__init__(*args, **kwargs)
+        self._local_id = None
+
     async def get_core_properties(self):
         q = (select(self._sa_core_property_keys)
              .where(sa_conversations.c.conv_id == self.conv)
@@ -59,11 +63,20 @@ class PostgresConversationDataStore(ConversationDataStore):
         result = await self.conn.execute(q)
         row = await result.first()
         if row is None:
-            raise ConversationNotFound('conversation {} not found'.format(self.conv_id))
+            raise ConversationNotFound('conversation {} not found'.format(self.conv))
         return row
 
-    async def save_event(self, action, data, timestamp):
-        raise NotImplementedError()
+    async def save_event(self, action, data):
+        kwargs = {
+            'conversation': await self._get_local_id(),
+            'actor': action.actor_id,
+            'verb': action.verb,
+            'component': action.component,
+            'item': action.item,
+            'data': data,
+            'timestamp': action.timestamp,
+        }
+        await self.conn.execute(sa_updates.insert().values(**kwargs))
 
     async def set_published_id(self, new_timestamp, new_id):
         raise NotImplementedError()
@@ -87,7 +100,7 @@ class PostgresConversationDataStore(ConversationDataStore):
 
     async def add_component(self, component, **kwargs):
         if component in {Components.PARTICIPANTS, Components.MESSAGES}:
-            kwargs['conversation'] = await self._get_local_id()  # FIXME
+            kwargs['conversation'] = await self._get_local_id()
             sa_component = sa_component_lookup[component]
             v = await self.conn.execute(sa_component.insert().returning(sa_component.c.id).values(**kwargs))
             return (await v.first()).id
@@ -110,7 +123,7 @@ class PostgresConversationDataStore(ConversationDataStore):
         raise NotImplementedError()
 
     async def get_all_component_items(self, component):
-        local_id = await self._get_local_id()  # FIXME
+        local_id = await self._get_local_id()
         sa_component = sa_component_lookup[component]
         q = select([sa_component]).where(sa_participants.c.conversation == local_id)
         data = []
@@ -126,14 +139,27 @@ class PostgresConversationDataStore(ConversationDataStore):
     # Participants
 
     async def get_participant(self, participant_address):
-        raise NotImplementedError()
-
-    async def _get_local_id(self):
-        q = (select([sa_conversations.c.id])
+        j = join(sa_participants, sa_conversations, sa_participants.c.conversation == sa_conversations.c.id)
+        q = (select([sa_conversations.c.id, sa_participants.c.id, sa_participants.c.permissions], use_labels=True)
+             .select_from(j)
              .where(sa_conversations.c.conv_id == self.conv)
+             .where(sa_participants.c.address == participant_address)
              .order_by(sa_conversations.c.timestamp.desc()))
         result = await self.conn.execute(q)
         row = await result.first()
         if row is None:
-            raise ConversationNotFound('conversation {} not found'.format(self.conv_id))
-        return row.id
+            raise ComponentNotFound('participant {} not found'.format(participant_address))
+        self._local_id = row.conversations_id
+        return row.participants_id, row.participants_permissions
+
+    async def _get_local_id(self):
+        if self._local_id is None:
+            q = (select([sa_conversations.c.id])
+                 .where(sa_conversations.c.conv_id == self.conv)
+                 .order_by(sa_conversations.c.timestamp.desc()))
+            result = await self.conn.execute(q)
+            row = await result.first()
+            if row is None:
+                raise ConversationNotFound('conversation {} not found'.format(self.conv))
+            self._local_id = row.id
+        return self._local_id

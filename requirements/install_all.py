@@ -27,8 +27,9 @@ def get_txt_requirements(fn):
 if __name__ == '__main__':
     test_req = get_txt_requirements('test_requirements.txt')
     pg_req = get_txt_requirements('pg_requirements.txt')
+    http_req = get_txt_requirements('http_requirements.txt')
     setup_req = get_setup_requirements('../setup.py')
-    packages = sorted(test_req + pg_req + setup_req)
+    packages = sorted(test_req + pg_req + http_req + setup_req)
     reqs = '\n'.join(packages)
     print('Installing all requirements:\n{}\n'.format(reqs))
     with NamedTemporaryFile() as tmp:

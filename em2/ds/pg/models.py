@@ -43,12 +43,14 @@ class Update(Base):
 
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     id = Column(Integer, Sequence('update_id_seq'), primary_key=True, nullable=False)
-    participant = Column(Integer, ForeignKey('participants.id'), nullable=False)
+    actor = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     component = Column(ComponentEnum.enum(), nullable=False)
-    component_id = Column(String(40))
+    item = Column(String(40))
     verb = Column(VerbEnum.enum(), nullable=False)
-    value = Column(Text)
+    data = Column(JSONB)  # TODO (maybe) possibly we only want "value" so this could be replaced by a text field
+
+sa_updates = Update.__table__
 
 
 class Participant(Base):
