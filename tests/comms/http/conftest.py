@@ -6,7 +6,7 @@ from aiohttp import web
 
 from tests.tools.fixture_classes import SimpleDataStore, NullPropagator
 from em2.core.base import Controller
-from em2.core.receive import Api
+from em2.comms.http.api import Api
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ class Client:
 @pytest.yield_fixture
 def client(loop, server):
     api, url = loop.run_until_complete(server())
-    client = Client(loop, url, api)
-    yield client
+    _client = Client(loop, url, api)
+    yield _client
 
-    client.close()
+    _client.close()

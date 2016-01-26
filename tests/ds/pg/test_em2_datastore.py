@@ -2,7 +2,7 @@ from aiopg.sa import create_engine
 
 from em2.ds.pg.datastore import PostgresDataStore, ConnectionContextManager
 
-pytest_plugins = 'tests.tools.plugins.datastore', 'tests.tools.plugins.asyncio'
+pytest_plugins = 'tests.tools.plugins.datastore'
 
 
 class TestPostgresDataStore(PostgresDataStore):
@@ -41,8 +41,8 @@ class TestCtx(ConnectionContextManager):
         self.conn = None
 
 
-async def test_postgres_datastore(db, dsn, ds_test_method):
-    async with create_engine(dsn) as engine:
+async def test_postgres_datastore(loop, db, dsn, ds_test_method):
+    async with create_engine(dsn, loop=loop) as engine:
         ds = TestPostgresDataStore(engine)
         try:
             await ds_test_method(ds)

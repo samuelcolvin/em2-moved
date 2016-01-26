@@ -4,8 +4,8 @@ from json import JSONDecodeError
 
 from aiohttp import web
 
-from .base import Action
-from .exceptions import Em2Exception
+from em2.core.base import Action
+from em2.core.exceptions import Em2Exception
 
 logger = logging.getLogger('http')
 

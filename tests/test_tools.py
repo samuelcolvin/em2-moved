@@ -1,6 +1,6 @@
 from tests.tools.fixture_classes import SimpleDataStore
 
-pytest_plugins = 'tests.tools.plugins.datastore', 'tests.tools.plugins.asyncio'
+pytest_plugins = 'tests.tools.plugins.datastore'
 
 
 async def test_simple_datastore(ds_test_method):

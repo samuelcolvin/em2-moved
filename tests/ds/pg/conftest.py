@@ -7,8 +7,6 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker, scoped_session
 from em2.ds.pg.models import Base
 
-pytest_plugins = 'tests.tools.plugins.asyncio'
-
 
 DATABASE = {
     'drivername': 'postgres',

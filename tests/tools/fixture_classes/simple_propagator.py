@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from em2.core.base import Action
-from em2.core.send import BasePropagator
+from em2.core.propagator import BasePropagator
 
 
 class SimplePropagator(BasePropagator):

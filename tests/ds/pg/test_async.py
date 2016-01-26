@@ -6,8 +6,8 @@ from aiopg.sa import create_engine
 from em2.ds.pg.models import sa_conversations
 
 
-async def test_conversation_insert_raw(db, dsn):
-    async with create_engine(dsn) as engine:
+async def test_conversation_insert_raw(loop, db, dsn):
+    async with create_engine(dsn, loop=loop) as engine:
         async with engine.acquire() as conn:
             async with conn.begin() as tr:
                 n = pytz.utc.localize(datetime.datetime.now())

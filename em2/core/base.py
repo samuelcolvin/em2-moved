@@ -11,7 +11,7 @@ from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFoun
                          ComponentLocked, BadDataException, BadHash, MisshapedDataException)
 from .utils import get_options
 from .data_store import DataStore
-from .send import BasePropagator
+from .propagator import BasePropagator
 from .common import Components
 
 logger = logging.getLogger('em2')
