@@ -78,14 +78,14 @@ class SimpleConversationDataStore(ConversationDataStore):
     async def get_core_properties(self):
         return {k: self.conv_obj[k] for k in self._core_property_keys}
 
-    async def save_event(self, action, data, timestamp):
+    async def save_event(self, action, data):
         self.conv_obj['updates'].append({
             'actor': action.actor_id,
             'verb': action.verb,
             'component': action.component,
             'item': action.item,
             'data': data,
-            'timestamp': timestamp,
+            'timestamp': action.timestamp,
         })
 
     async def set_published_id(self, new_timestamp, new_id):
