@@ -6,10 +6,11 @@ from em2.core.exceptions import ComponentNotFound
 from tests.conftest import timestamp
 
 
-async def test_create_conversation(data_store):
-    async with data_store.connection() as conn:
+async def test_create_conversation(get_ds):
+    ds = await get_ds()
+    async with ds.connection() as conn:
         ts = datetime.datetime.now()
-        await data_store.create_conversation(
+        await ds.create_conversation(
             conn,
             conv_id='123',
             creator='test@example.com',
@@ -18,7 +19,7 @@ async def test_create_conversation(data_store):
             subject='sub',
             status=Conversations.Status.ACTIVE,
         )
-        cds = data_store.new_conv_ds('123', conn)
+        cds = ds.new_conv_ds('123', conn)
         props = await cds.get_core_properties()
         props = dict(props)
         ts = props.pop('timestamp')
@@ -32,9 +33,9 @@ async def test_create_conversation(data_store):
         }
 
 
-async def create_conv(conn, data_store, conv_id='123'):
+async def create_conv(conn, ds, conv_id='123'):
     ts = datetime.datetime.now()
-    await data_store.create_conversation(
+    await ds.create_conversation(
         conn,
         conv_id=conv_id,
         creator='test@example.com',
@@ -43,12 +44,13 @@ async def create_conv(conn, data_store, conv_id='123'):
         subject='sub',
         status=Conversations.Status.ACTIVE,
     )
-    return data_store.new_conv_ds(conv_id, conn)
+    return ds.new_conv_ds(conv_id, conn)
 
 
-async def test_create_first_participant(data_store):
-    async with data_store.connection() as conn:
-        cds = await create_conv(conn, data_store)
+async def test_create_first_participant(get_ds):
+    ds = await get_ds()
+    async with ds.connection() as conn:
+        cds = await create_conv(conn, ds)
         pid = await cds.add_component(
             Components.PARTICIPANTS,
             address='test@example.com',
@@ -57,9 +59,10 @@ async def test_create_first_participant(data_store):
         assert isinstance(pid, int)
 
 
-async def test_get_participant(data_store):
-    async with data_store.connection() as conn:
-        cds = await create_conv(conn, data_store)
+async def test_get_participant(get_ds):
+    ds = await get_ds()
+    async with ds.connection() as conn:
+        cds = await create_conv(conn, ds)
         pid = await cds.add_component(
             Components.PARTICIPANTS,
             address='test@example.com',
@@ -73,9 +76,10 @@ async def test_get_participant(data_store):
             await cds.get_participant('foo@example.com')
 
 
-async def test_save_event(data_store):
-    async with data_store.connection() as conn:
-        cds = await create_conv(conn, data_store)
+async def test_save_event(get_ds):
+    ds = await get_ds()
+    async with ds.connection() as conn:
+        cds = await create_conv(conn, ds)
         pid = await cds.add_component(
             Components.PARTICIPANTS,
             address='test@example.com',
@@ -92,9 +96,10 @@ async def test_save_event(data_store):
         # these actions are saved correctly
 
 
-async def test_set_published_id(data_store):
-    async with data_store.connection() as conn:
-        cds = await create_conv(conn, data_store)
+async def test_set_published_id(get_ds):
+    ds = await get_ds()
+    async with ds.connection() as conn:
+        cds = await create_conv(conn, ds)
         assert cds.conv == '123'
         new_ts = timestamp()
 
@@ -117,10 +122,11 @@ async def test_set_published_id(data_store):
         assert cds.conv == '456'
 
 
-async def test_set_status_ref_subject(data_store):
-    async with data_store.connection() as conn:
-        cds = await create_conv(conn, data_store)
-        cds2 = await create_conv(conn, data_store, conv_id='other')
+async def test_set_status_ref_subject(get_ds):
+    ds = await get_ds()
+    async with ds.connection() as conn:
+        cds = await create_conv(conn, ds)
+        cds2 = await create_conv(conn, ds, conv_id='other')
 
         props = await cds.get_core_properties()
         assert props['status'] == Conversations.Status.ACTIVE
@@ -148,9 +154,10 @@ async def test_set_status_ref_subject(data_store):
         assert props['subject'] == 'sub'
 
 
-async def test_add_component_message(data_store):
-    async with data_store.connection() as conn:
-        cds = await create_conv(conn, data_store)
+async def test_add_component_message(get_ds):
+    ds = await get_ds()
+    async with ds.connection() as conn:
+        cds = await create_conv(conn, ds)
         pid = await cds.add_component(
             Components.PARTICIPANTS,
             address='test@example.com',
@@ -176,9 +183,10 @@ async def test_add_component_message(data_store):
         # TODO test other things eg. locked
 
 
-async def test_edit_component_message(data_store):
-    async with data_store.connection() as conn:
-        cds = await create_conv(conn, data_store)
+async def test_edit_component_message(get_ds):
+    ds = await get_ds()
+    async with ds.connection() as conn:
+        cds = await create_conv(conn, ds)
         pid = await cds.add_component(
             Components.PARTICIPANTS,
             address='test@example.com',

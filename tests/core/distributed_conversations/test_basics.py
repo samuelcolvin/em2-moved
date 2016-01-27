@@ -3,7 +3,7 @@ import hashlib
 from copy import deepcopy
 
 from em2.core.base import Controller, Action, Verbs, Components, perms
-from tests.tools.fixture_classes import SimpleDataStore, NullPropagator, SimplePropagator
+from tests.fixture_classes import SimpleDataStore, NullPropagator, SimplePropagator
 
 
 async def test_create_basic_conversation(controller):

@@ -4,7 +4,7 @@ import socket
 import aiohttp
 from aiohttp import web
 
-from tests.tools.fixture_classes import SimpleDataStore, NullPropagator
+from tests.fixture_classes import SimpleDataStore, NullPropagator
 from em2.core.base import Controller
 from em2.comms.http.api import Api
 

@@ -2,7 +2,7 @@ import pytest
 
 from em2.core.base import Controller, Action, Verbs, perms
 from em2.core.common import Components
-from tests.tools.fixture_classes import SimpleDataStore, SimplePropagator
+from tests.fixture_classes import SimpleDataStore, SimplePropagator
 
 
 def create_controller(name):

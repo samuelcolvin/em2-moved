@@ -2,18 +2,20 @@ import datetime
 from em2.core.base import Controller, perms
 from em2.core.common import Components
 from em2.core.datastore import DataStore, ConversationDataStore
-from tests.tools.fixture_classes import NullPropagator
+from tests.fixture_classes import NullPropagator
 
 
-async def test_datastore_type(data_store):
-    assert isinstance(data_store, DataStore)
+async def test_datastore_type(get_ds):
+    ds = await get_ds()
+    assert isinstance(ds, DataStore)
 
 
-async def test_create_conversation(data_store):
-    controller = Controller(data_store, NullPropagator())
+async def test_create_conversation(get_ds):
+    ds = await get_ds()
+    controller = Controller(ds, NullPropagator())
     conv_id = await controller.conversations.create('sender@example.com', 'the subject')
-    async with data_store.reuse_connection() as conn:
-        cds = data_store.new_conv_ds(conv_id, conn)
+    async with ds.reuse_connection() as conn:
+        cds = ds.new_conv_ds(conv_id, conn)
         assert isinstance(cds, ConversationDataStore)
         props = await cds.get_core_properties()
         props = dict(props)
@@ -28,11 +30,12 @@ async def test_create_conversation(data_store):
         }
 
 
-async def test_create_conversation_check_participants(data_store):
-    controller = Controller(data_store, NullPropagator())
+async def test_create_conversation_check_participants(get_ds):
+    ds = await get_ds()
+    controller = Controller(ds, NullPropagator())
     conv_id = await controller.conversations.create('sender@example.com', 'the subject')
-    async with data_store.reuse_connection() as conn:
-        cds = data_store.new_conv_ds(conv_id, conn)
+    async with ds.reuse_connection() as conn:
+        cds = ds.new_conv_ds(conv_id, conn)
         participants = await cds.get_all_component_items(Components.PARTICIPANTS)
         assert len(participants) == 1
         p = participants[0]
@@ -42,11 +45,12 @@ async def test_create_conversation_check_participants(data_store):
         assert len(messages) == 0
 
 
-async def test_create_conversation_body(data_store):
-    controller = Controller(data_store, NullPropagator())
+async def test_create_conversation_body(get_ds):
+    ds = await get_ds()
+    controller = Controller(ds, NullPropagator())
     conv_id = await controller.conversations.create('sender@example.com', 'the subject', 'the body', 'conv-ref')
-    async with data_store.reuse_connection() as conn:
-        cds = data_store.new_conv_ds(conv_id, conn)
+    async with ds.reuse_connection() as conn:
+        cds = ds.new_conv_ds(conv_id, conn)
         messages = await cds.get_all_component_items(Components.MESSAGES)
         assert len(messages) == 1
         message = messages[0]
