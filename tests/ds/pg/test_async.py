@@ -1,6 +1,10 @@
 from aiopg.sa import create_engine
 
+from em2.core.base import Controller
+from em2.ds.pg.datastore import PostgresDataStore
 from em2.ds.pg.models import sa_conversations
+
+from tests.fixture_classes import NullPropagator
 
 
 async def test_conversation_insert_raw(timestamp, loop, db, dsn):
@@ -28,3 +32,14 @@ async def test_conversation_insert_raw(timestamp, loop, db, dsn):
                 assert data.timestamp.isoformat() == timestamp.isoformat()
                 assert data.status == 'draft'
                 await tr.rollback()
+
+
+async def test_datastore_setup(loop, empty_db, dsn):
+    async with create_engine(dsn, loop=loop, timeout=5) as engine:
+        ds = PostgresDataStore(engine)
+        controller = Controller(ds, NullPropagator())
+        conv_id = await controller.conversations.create('sender@example.com', 'the subject')
+        async with ds.connection() as conn:
+            cds = ds.new_conv_ds(conv_id, conn)
+            props = await cds.get_core_properties()
+            assert props.subject == 'the subject'

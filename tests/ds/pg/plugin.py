@@ -59,6 +59,16 @@ def Session(db):
     _Session.remove()
 
 
+@pytest.yield_fixture
+def empty_db(Session):
+    yield
+
+    session = Session()
+    for table in reversed(Base.metadata.sorted_tables):
+        session.execute(table.delete())
+    session.commit()
+
+
 class TestPostgresDataStore(PostgresDataStore):
     _conn_ctx = None
 
