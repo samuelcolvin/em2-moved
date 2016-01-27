@@ -338,10 +338,10 @@ class Messages(_Component):
         return m_id
 
     async def add(self, action, body, parent_id):
-        meta = await action.ds.get_message_meta(parent_id)
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE access required to add messages')
 
+        meta = await action.ds.get_message_meta(parent_id)
         if action.timestamp <= meta['timestamp']:
             raise BadDataException('timestamp not after parent timestamp: {}'.format(action.timestamp))
 

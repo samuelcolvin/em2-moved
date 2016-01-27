@@ -45,7 +45,7 @@ def db(dsn):
     conn.close()
 
 
-@pytest.yield_fixture()
+@pytest.yield_fixture
 def Session(db):
     connection = db.connect()
     transaction = connection.begin()
@@ -95,29 +95,22 @@ class TestCtx(ConnectionContextManager):
         self.conn = None
 
 
-# async def test_postgres_datastore(loop, db, dsn, ds_test_method):
-#     async with create_engine(dsn, loop=loop) as engine:
-#         ds = TestPostgresDataStore(engine)
-#         try:
-#             await ds_test_method(ds)
-#         finally:
-#             await ds.terminate()
-
-
 @pytest.yield_fixture
 def get_ds_postgres(loop, db, dsn):
     ds = engine = None
 
     async def postgres_datastore_creator():
         nonlocal ds, engine
-        engine = await _create_engine(dsn, loop=loop)
+        engine = await _create_engine(dsn, loop=loop, minsize=1, maxsize=4, timeout=5)
         ds = TestPostgresDataStore(engine)
         return ds
 
     yield postgres_datastore_creator
 
     async def teardown():
-        await ds.terminate()
-        engine.close()
-        await engine.wait_closed()
+        if ds is not None:
+            await ds.terminate()
+        if engine is not None:
+            engine.close()
+            await engine.wait_closed()
     loop.run_until_complete(teardown())

@@ -35,6 +35,10 @@ def loop():
     loop.close()
 
 
+def datetime_tz(day=1, month=1, year=2015):
+    return pytz.utc.localize(datetime.datetime(year, month, day))
+
+
 @pytest.fixture
 def timestamp():
-    return pytz.utc.localize(datetime.datetime(2015, 1, 1))
+    return datetime_tz()

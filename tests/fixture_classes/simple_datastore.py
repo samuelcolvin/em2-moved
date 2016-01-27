@@ -113,35 +113,36 @@ class SimpleConversationDataStore(ConversationDataStore):
 
     # Component generic methods
 
-    async def add_component(self, model, **kwargs):
-        if model not in self.conv_obj:
-            self.conv_obj[model] = OrderedDict()
-        if model == Components.PARTICIPANTS:
+    async def add_component(self, component, **kwargs):
+        if component not in self.conv_obj:
+            self.conv_obj[component] = OrderedDict()
+        if component == Components.PARTICIPANTS:
             kwargs['id'] = next(self.conv_obj['participant_counter'])
         id = kwargs['id']
-        self.conv_obj[model][id] = kwargs
+        self.conv_obj[component][id] = kwargs
         return id
 
-    async def edit_component(self, model, item_id, **kwargs):
-        item = self._get_conv_item(model, item_id)
+    async def edit_component(self, component, item_id, **kwargs):
+        item = self._get_conv_item(component, item_id)
         item.update(kwargs)
 
-    async def delete_component(self, model, item_id):
-        items = self._get_conv_items(model)
+    async def delete_component(self, component, item_id):
+        items = self._get_conv_items(component)
         try:
             del items[item_id]
         except KeyError:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, self.conv))
+            msg = '{} with id = {} not found on conversation {}'
+            raise ComponentNotFound(msg.format(component, item_id, self.conv))
 
-    async def lock_component(self, model, item_id):
-        self._get_conv_item(model, item_id)
-        self.conv_obj['locked'].add('{}:{}'.format(model, item_id))
+    async def lock_component(self, component, item_id):
+        self._get_conv_item(component, item_id)
+        self.conv_obj['locked'].add('{}:{}'.format(component, item_id))
 
-    async def unlock_component(self, model, item_id):
-        self.conv_obj['locked'].remove('{}:{}'.format(model, item_id))
+    async def unlock_component(self, component, item_id):
+        self.conv_obj['locked'].remove('{}:{}'.format(component, item_id))
 
-    async def check_component_locked(self, model, item_id):
-        return '{}:{}'.format(model, item_id) in self.conv_obj['locked']
+    async def check_component_locked(self, component, item_id):
+        return '{}:{}'.format(component, item_id) in self.conv_obj['locked']
 
     async def get_all_component_items(self, component):
         data = self.conv_obj.get(component, {})
@@ -167,17 +168,18 @@ class SimpleConversationDataStore(ConversationDataStore):
 
     # internal methods
 
-    def _get_conv_items(self, model):
-        items = self.conv_obj.get(model)
+    def _get_conv_items(self, component):
+        items = self.conv_obj.get(component)
         if items is None:
-            raise ComponentNotFound('model "{}" not found on conversation {}'.format(model, self.conv))
+            raise ComponentNotFound('component "{}" not found on conversation {}'.format(component, self.conv))
         return items
 
-    def _get_conv_item(self, model, item_id):
-        items = self._get_conv_items(model)
+    def _get_conv_item(self, component, item_id):
+        items = self._get_conv_items(component)
         item = items.get(item_id)
         if item is None:
-            raise ComponentNotFound('{} with id = {} not found on conversation {}'.format(model, item_id, self.conv))
+            msg = '{} with id = {} not found on conversation {}'
+            raise ComponentNotFound(msg.format(component, item_id, self.conv))
         return item
 
     def __repr__(self):

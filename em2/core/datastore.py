@@ -128,6 +128,7 @@ class ConversationDataStore:
         raise NotImplementedError()
 
     async def check_component_locked(self, component, item_id):
+        # TODO we could remove this and make lock and unlock check themselves
         raise NotImplementedError()
 
     async def get_all_component_items(self, component):

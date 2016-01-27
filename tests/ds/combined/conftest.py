@@ -6,10 +6,14 @@ from tests.fixture_classes import SimpleDataStore
 pytest_plugins = 'tests.ds.pg.plugin'
 
 
-def ds_pytest_function(name, node, fix_name):
+def ds_pytest_function(name, f, fix_name):
+    node = f.parent
     fm = node.session._fixturemanager
-    names_closure, arg2fixturedefs = fm.getfixtureclosure((fix_name,), node)
-    fixtureinfo = FuncFixtureInfo(('get_ds',), names_closure, arg2fixturedefs)
+    argnames = f._fixtureinfo.argnames
+    fixnames = list(argnames)
+    fixnames[fixnames.index('get_ds')] = fix_name
+    names_closure, arg2fixturedefs = fm.getfixtureclosure(fixnames, node)
+    fixtureinfo = FuncFixtureInfo(argnames, names_closure, arg2fixturedefs)
     name = '{}[{}]'.format(name, fix_name.replace('get_ds_', ''))
     return Function(name, parent=node, fixtureinfo=fixtureinfo)
 
@@ -19,10 +23,9 @@ def pytest_pycollect_makeitem(collector, name, obj):
         f = list(collector._genfunctions(name, obj))[0]
         if 'get_ds' not in f._fixtureinfo.argnames:
             return [f]
-        node = f.parent
         return [
-            ds_pytest_function(name, node, 'get_ds_simple'),
-            ds_pytest_function(name, node, 'get_ds_postgres'),
+            ds_pytest_function(name, f, 'get_ds_simple'),
+            ds_pytest_function(name, f, 'get_ds_postgres'),
         ]
 
 

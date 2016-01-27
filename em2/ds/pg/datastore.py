@@ -121,26 +121,49 @@ class PostgresConversationDataStore(ConversationDataStore):
         local_id = await self._get_local_id()
         sa_component = sa_component_lookup[component]
         q = (sa_component.update()
+             .where(sa_component.c.id == item_id)
              .where(sa_component.c.conversation == local_id)
              .values(**kwargs))
         await self.conn.execute(q)
 
     async def delete_component(self, component, item_id):
-        raise NotImplementedError()
+        if component != Components.MESSAGES:
+            # FIXME logic below might well work fine but we should check explicitly
+            raise NotImplementedError()
+        local_id = await self._get_local_id()
+        sa_component = sa_component_lookup[component]
+        q = (sa_component.delete()
+             .where(sa_component.c.id == item_id)
+             .where(sa_component.c.conversation == local_id))
+        await self.conn.execute(q)
 
     async def lock_component(self, component, item_id):
-        raise NotImplementedError()
+        if component != Components.MESSAGES:  # pragma no branch
+            # locking only applies to messages, method name remains in case that changes
+            raise NotImplementedError()
+        await self._update_message(item_id, locked=True)
 
     async def unlock_component(self, component, item_id):
-        raise NotImplementedError()
+        if component != Components.MESSAGES:  # pragma no branch
+            # locking only applies to messages, method name remains in case that changes
+            raise NotImplementedError()
+        await self._update_message(item_id, locked=False)
 
     async def check_component_locked(self, component, item_id):
-        raise NotImplementedError()
+        local_id = await self._get_local_id()
+        q = (select([sa_messages.c.locked])
+             .where(sa_messages.c.conversation == local_id)
+             .where(sa_messages.c.id == item_id))
+        result = await self.conn.execute(q)
+        row = await result.first()
+        if row is None:
+            raise ComponentNotFound('message {} not found'.format(item_id))
+        return row.locked
 
     async def get_all_component_items(self, component):
         local_id = await self._get_local_id()
         sa_component = sa_component_lookup[component]
-        q = select([sa_component]).where(sa_participants.c.conversation == local_id)
+        q = select([sa_component]).where(sa_component.c.conversation == local_id)
         # TODO can we make this into a generator or do something more efficient?
         data = []
         async for row in self.conn.execute(q):
@@ -150,7 +173,23 @@ class PostgresConversationDataStore(ConversationDataStore):
     # Messages
 
     async def get_message_meta(self, message_id):
-        raise NotImplementedError()
+        local_id = await self._get_local_id()
+        q = (select([sa_messages.c.author, sa_messages.c.timestamp])
+             .where(sa_messages.c.conversation == local_id)
+             .where(sa_messages.c.id == message_id))
+        result = await self.conn.execute(q)
+        row = await result.first()
+        if row is None:
+            raise ComponentNotFound('message {} not found'.format(message_id))
+        return {k: row[k] for k in ('author', 'timestamp')}
+
+    async def _update_message(self, item_id, **kwargs):
+        local_id = await self._get_local_id()
+        q = (sa_messages.update()
+             .where(sa_messages.c.id == item_id)
+             .where(sa_messages.c.conversation == local_id)
+             .values(**kwargs))
+        return await self.conn.execute(q)
 
     # Participants
 

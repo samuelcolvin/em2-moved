@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence, UniqueConstraint
+from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence, UniqueConstraint, sql
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
 from em2.core.base import Conversations, Verbs, Participants, Components
@@ -92,7 +92,7 @@ class Message(MsgCmt, Base):
     __tablename__ = Components.MESSAGES
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     parent = Column(String(40), ForeignKey('messages.id', ondelete='CASCADE'))
-    locked = Column(Boolean, default=False)
+    locked = Column(Boolean, server_default=sql.expression.false())
 
 sa_messages = Message.__table__
 
