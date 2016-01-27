@@ -16,6 +16,7 @@ class Conversation(Base):
 
     id = Column(Integer, Sequence('con_id_seq'), primary_key=True, nullable=False)
     conv_id = Column(String(64), index=True, nullable=False)
+    draft_conv_id = Column(String(64))
     creator = Column(String(255), nullable=False)
     timestamp = Column(TIMESTAMPTZ, nullable=False)
     signature = Column(Text)

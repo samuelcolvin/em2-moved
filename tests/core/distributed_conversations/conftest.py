@@ -1,7 +1,4 @@
-import datetime
-
 import pytest
-import pytz
 
 from em2.core.base import Controller, Action, Verbs, perms
 from em2.core.common import Components
@@ -27,8 +24,3 @@ def two_controllers():
         await ctrl1.act(a, address='user@ctrl2.com', permissions=perms.WRITE)
         return ctrl1, ctrl2, con_id
     return get_controllers
-
-
-@pytest.fixture
-def timestamp():
-    return pytz.utc.localize(datetime.datetime(2015, 1, 1))

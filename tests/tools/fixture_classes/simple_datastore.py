@@ -94,6 +94,7 @@ class SimpleConversationDataStore(ConversationDataStore):
             conv_id=new_id,
             timestamp=new_timestamp,
         )
+        self.conv = new_id
 
     # Status
 
@@ -102,7 +103,7 @@ class SimpleConversationDataStore(ConversationDataStore):
 
     # Ref
 
-    def set_ref(self, ref):
+    async def set_ref(self, ref):
         self.conv_obj['ref'] = ref
 
     # Subject

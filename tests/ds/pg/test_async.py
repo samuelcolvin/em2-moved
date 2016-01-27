@@ -1,22 +1,18 @@
-import datetime
-
-import pytz
 from aiopg.sa import create_engine
 
 from em2.ds.pg.models import sa_conversations
 
 
-async def test_conversation_insert_raw(loop, db, dsn):
+async def test_conversation_insert_raw(timestamp, loop, db, dsn):
     async with create_engine(dsn, loop=loop) as engine:
         async with engine.acquire() as conn:
             async with conn.begin() as tr:
-                n = pytz.utc.localize(datetime.datetime.now())
                 conversation = dict(
                     conv_id='x',
                     creator='user@example.com',
                     subject='testing',
                     ref='testing',
-                    timestamp=n,
+                    timestamp=timestamp,
                     status='draft',
                 )
                 await conn.execute(sa_conversations.insert().values(**conversation))
@@ -29,6 +25,6 @@ async def test_conversation_insert_raw(loop, db, dsn):
                 assert data.conv_id == 'x'
                 assert data.creator == 'user@example.com'
                 assert data.subject == 'testing'
-                assert data.timestamp.isoformat() == n.isoformat()
+                assert data.timestamp.isoformat() == timestamp.isoformat()
                 assert data.status == 'draft'
                 await tr.rollback()

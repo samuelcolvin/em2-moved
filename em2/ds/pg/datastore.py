@@ -79,36 +79,51 @@ class PostgresConversationDataStore(ConversationDataStore):
         await self.conn.execute(sa_updates.insert().values(**kwargs))
 
     async def set_published_id(self, new_timestamp, new_id):
-        raise NotImplementedError()
+        await self._update_conv(draft_conv_id=self.conv, conv_id=new_id, timestamp=new_timestamp)
+        self.conv = new_id
 
     # Status
 
     async def set_status(self, status):
-        raise NotImplementedError()
+        await self._update_conv(status=status)
 
     # Ref
 
     async def set_ref(self, ref):
-        raise NotImplementedError()
+        await self._update_conv(ref=ref)
 
     # Subject
 
     async def set_subject(self, subject):
-        raise NotImplementedError()
+        await self._update_conv(subject=subject)
+
+    async def _update_conv(self, **kwargs):
+        q = (sa_conversations.update()
+             .where(sa_conversations.c.conv_id == self.conv)
+             .values(**kwargs))
+        return await self.conn.execute(q)
 
     # Component generic methods
 
     async def add_component(self, component, **kwargs):
-        if component in {Components.PARTICIPANTS, Components.MESSAGES}:
-            kwargs['conversation'] = await self._get_local_id()
-            sa_component = sa_component_lookup[component]
-            v = await self.conn.execute(sa_component.insert().returning(sa_component.c.id).values(**kwargs))
-            return (await v.first()).id
-        else:
+        if component not in {Components.PARTICIPANTS, Components.MESSAGES}:
+            # FIXME logic below might well work fine but we should check explicitly
             raise NotImplementedError()
+        kwargs['conversation'] = await self._get_local_id()
+        sa_component = sa_component_lookup[component]
+        v = await self.conn.execute(sa_component.insert().returning(sa_component.c.id).values(**kwargs))
+        return (await v.first()).id
 
     async def edit_component(self, component, item_id, **kwargs):
-        raise NotImplementedError()
+        if component != Components.MESSAGES:
+            # FIXME logic below might well work fine but we should check explicitly
+            raise NotImplementedError()
+        local_id = await self._get_local_id()
+        sa_component = sa_component_lookup[component]
+        q = (sa_component.update()
+             .where(sa_component.c.conversation == local_id)
+             .values(**kwargs))
+        await self.conn.execute(q)
 
     async def delete_component(self, component, item_id):
         raise NotImplementedError()
@@ -126,6 +141,7 @@ class PostgresConversationDataStore(ConversationDataStore):
         local_id = await self._get_local_id()
         sa_component = sa_component_lookup[component]
         q = select([sa_component]).where(sa_participants.c.conversation == local_id)
+        # TODO can we make this into a generator or do something more efficient?
         data = []
         async for row in self.conn.execute(q):
             data.append(row)
