@@ -311,11 +311,13 @@ class Messages(_Component):
 
         parents = {data[0]['id']: data[0]['timestamp']}
         for d in data[1:]:
+            if d['id'] in parents:
+                raise BadDataException('message id {id} already exists'.format(**d))
             parent = parents.get(d['parent'])
             if parent is None:
-                raise ComponentNotFound('message {} not found in {}'.format(d['parent'], parents.keys()))
+                raise ComponentNotFound('message {parent} not found'.format(**d))
             if parent >= d['timestamp']:
-                raise BadDataException('timestamp not after parent timestamp: {timestamp}'.format(**d))
+                raise BadDataException('timestamp {timestamp} not after parent'.format(**d))
             parents[d['id']] = d['timestamp']
 
         participants = await ds.get_all_component_items(Components.PARTICIPANTS)
