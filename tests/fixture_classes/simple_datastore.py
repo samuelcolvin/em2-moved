@@ -73,7 +73,13 @@ class VoidContextManager:
 class SimpleConversationDataStore(ConversationDataStore):
     def __init__(self, *args, **kwargs):
         super(SimpleConversationDataStore, self).__init__(*args, **kwargs)
-        self.conv_obj = self.ds.get_conv(self.conv)
+        self._conv_obj = None
+
+    @property
+    def conv_obj(self):
+        if self._conv_obj is None:
+            self._conv_obj = self.ds.get_conv(self.conv)
+        return self._conv_obj
 
     async def get_core_properties(self):
         return {k: self.conv_obj[k] for k in self._core_property_keys}
@@ -142,6 +148,9 @@ class SimpleConversationDataStore(ConversationDataStore):
         self.conv_obj['locked'].remove('{}:{}'.format(component, item_id))
 
     async def check_component_locked(self, component, item_id):
+        items = self._get_conv_items(component)
+        if item_id not in items:
+            raise ComponentNotFound('message {} not found'.format(item_id))
         return '{}:{}'.format(component, item_id) in self.conv_obj['locked']
 
     async def get_all_component_items(self, component):

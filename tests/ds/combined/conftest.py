@@ -36,6 +36,8 @@ def get_ds(request, loop, db, dsn):
                 await engine.wait_closed()
         loop.run_until_complete(teardown())
     else:
+        msg = 'datastore_cls fixture not included in test {}'
+        assert request.keywords.get('SimpleDataStore'), msg.format(request.function.__name__)
         ds = None
         async def simple_ds_creator():
             nonlocal ds

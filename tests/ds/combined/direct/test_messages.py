@@ -1,5 +1,7 @@
+import pytest
 from em2.core.base import perms
 from em2.core.common import Components
+from em2.core.exceptions import ComponentNotFound
 from .test_conversations import create_conv
 
 
@@ -80,6 +82,8 @@ async def test_message_meta(get_ds, datastore_cls, timestamp):
         msg_meta = await cds.get_message_meta(msg_local_id)
         assert msg_meta['timestamp'].isoformat() == timestamp.isoformat()
         assert msg_meta['author'] == pid
+        with pytest.raises(ComponentNotFound):
+            await cds.get_message_meta('321')
 
 
 async def test_delete_message(get_ds, datastore_cls, timestamp):
@@ -129,3 +133,5 @@ async def test_message_locked(get_ds, datastore_cls, timestamp):
         await cds.unlock_component(Components.MESSAGES, item_id=msg_local_id)
 
         assert (await cds.check_component_locked(Components.MESSAGES, item_id=msg_local_id)) is False
+        with pytest.raises(ComponentNotFound):
+            await cds.check_component_locked(Components.MESSAGES, item_id='321')

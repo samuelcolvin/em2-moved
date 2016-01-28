@@ -42,7 +42,7 @@ class ConnectionContextManager:
         if exc_type:
             await self.tr.rollback()
         else:
-            if self.tr.is_active:
+            if self.tr.is_active:  # pragma: no branch
                 await self.tr.commit()
         self.tr = None
         self._engine.release(self.conn)

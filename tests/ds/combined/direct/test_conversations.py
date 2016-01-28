@@ -2,11 +2,11 @@ import datetime
 import pytest
 from em2.core.base import Conversations, perms, Action, Verbs
 from em2.core.common import Components
-from em2.core.exceptions import ComponentNotFound
+from em2.core.exceptions import ComponentNotFound, ConversationNotFound
 from tests.conftest import datetime_tz
 
 
-async def test_create_conversation(get_ds, timestamp):
+async def test_create_conversation(get_ds, datastore_cls, timestamp):
     ds = await get_ds()
     async with ds.connection() as conn:
         await ds.create_conversation(
@@ -74,7 +74,7 @@ async def test_get_participant(get_ds, datastore_cls):
             await cds.get_participant('foo@example.com')
 
 
-async def test_save_event(get_ds, timestamp):
+async def test_save_event(get_ds, datastore_cls, timestamp):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
@@ -91,6 +91,12 @@ async def test_save_event(get_ds, timestamp):
 
         # FIXME currently there are no api methods for returning updates and it's therefore not possible to check
         # these actions are saved correctly
+
+        # NOTE: action action.conv_id is ignored in save_event and the cds conv_id is used instead
+        cds2 = ds.new_conv_ds('bad', conn)
+        action.actor_id, action.perm = pid, perms.FULL
+        with pytest.raises(ConversationNotFound):
+            await cds2.save_event(action, {})
 
 
 async def test_set_published_id(get_ds, datastore_cls):

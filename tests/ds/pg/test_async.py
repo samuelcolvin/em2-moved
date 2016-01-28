@@ -1,6 +1,8 @@
+import pytest
 from aiopg.sa import create_engine
 
 from em2.core.base import Controller
+from em2.core.exceptions import ConversationNotFound
 from em2.ds.pg.datastore import PostgresDataStore
 from em2.ds.pg.models import sa_conversations
 
@@ -43,3 +45,22 @@ async def test_datastore_setup(loop, empty_db, dsn):
             cds = ds.new_conv_ds(conv_id, conn)
             props = await cds.get_core_properties()
             assert props.subject == 'the subject'
+
+
+async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
+    async with create_engine(dsn, loop=loop, timeout=5) as engine:
+        ds = PostgresDataStore(engine)
+        controller = Controller(ds, NullPropagator())
+        with pytest.raises(ConversationNotFound):
+            async with controller.ds.connection() as conn:
+                conversation = dict(conv_id='x', creator='x', subject='x', ref='x', timestamp=timestamp, status='draft')
+                await conn.execute(sa_conversations.insert().values(**conversation))
+                con_count = await conn.scalar(sa_conversations.count())
+                assert con_count == 1
+                cds = ds.new_conv_ds('123', conn)
+                await cds.get_core_properties()
+
+        # connection above should rollback on ConversationNotFound so there should now be no conversations
+        async with controller.ds.connection() as conn:
+            con_count = await conn.scalar(sa_conversations.count())
+            assert con_count == 0
