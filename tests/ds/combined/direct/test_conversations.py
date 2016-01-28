@@ -45,7 +45,7 @@ async def create_conv(conn, ds, conv_id='123'):
     return ds.new_conv_ds(conv_id, conn)
 
 
-async def test_create_first_participant(get_ds):
+async def test_create_first_participant(get_ds, datastore_cls):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
@@ -57,7 +57,7 @@ async def test_create_first_participant(get_ds):
         assert isinstance(pid, int)
 
 
-async def test_get_participant(get_ds):
+async def test_get_participant(get_ds, datastore_cls):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
@@ -93,7 +93,7 @@ async def test_save_event(get_ds, timestamp):
         # these actions are saved correctly
 
 
-async def test_set_published_id(get_ds):
+async def test_set_published_id(get_ds, datastore_cls):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
@@ -119,7 +119,7 @@ async def test_set_published_id(get_ds):
         assert cds.conv == '456'
 
 
-async def test_set_status_ref_subject(get_ds):
+async def test_set_status_ref_subject(get_ds, datastore_cls):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)

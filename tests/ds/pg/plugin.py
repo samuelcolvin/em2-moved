@@ -2,7 +2,6 @@ import os
 
 import pytest
 import psycopg2
-from aiopg.sa.engine import _create_engine
 from sqlalchemy import create_engine as sa_create_engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -103,24 +102,3 @@ class TestCtx(ConnectionContextManager):
         self.tr = None
         self._engine.release(self.conn)
         self.conn = None
-
-
-@pytest.yield_fixture
-def get_ds_postgres(loop, db, dsn):
-    ds = engine = None
-
-    async def postgres_datastore_creator():
-        nonlocal ds, engine
-        engine = await _create_engine(dsn, loop=loop, minsize=1, maxsize=4, timeout=5)
-        ds = TestPostgresDataStore(engine)
-        return ds
-
-    yield postgres_datastore_creator
-
-    async def teardown():
-        if ds is not None:
-            await ds.terminate()
-        if engine is not None:
-            engine.close()
-            await engine.wait_closed()
-    loop.run_until_complete(teardown())

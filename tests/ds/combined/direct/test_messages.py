@@ -3,7 +3,7 @@ from em2.core.common import Components
 from .test_conversations import create_conv
 
 
-async def test_add_component_message(get_ds, timestamp):
+async def test_add_component_message(get_ds, datastore_cls, timestamp):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
@@ -27,7 +27,7 @@ async def test_add_component_message(get_ds, timestamp):
         # TODO test other things eg. locked
 
 
-async def test_edit_component_message(get_ds, timestamp):
+async def test_edit_component_message(get_ds, datastore_cls, timestamp):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
@@ -65,7 +65,7 @@ async def test_edit_component_message(get_ds, timestamp):
         assert message2['body'] == 'hello2'
 
 
-async def test_message_meta(get_ds, timestamp):
+async def test_message_meta(get_ds, datastore_cls, timestamp):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
@@ -82,7 +82,7 @@ async def test_message_meta(get_ds, timestamp):
         assert msg_meta['author'] == pid
 
 
-async def test_delete_message(get_ds, timestamp):
+async def test_delete_message(get_ds, datastore_cls, timestamp):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
@@ -106,7 +106,7 @@ async def test_delete_message(get_ds, timestamp):
         assert messages[0]['body'] == 'hello2'
 
 
-async def test_message_locked(get_ds, timestamp):
+async def test_message_locked(get_ds, datastore_cls, timestamp):
     ds = await get_ds()
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
