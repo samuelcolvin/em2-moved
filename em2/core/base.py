@@ -156,13 +156,14 @@ class Controller:
         save_data = self._subdict(data, 'sb')
         event_id = action.calc_event_id()
         await action.ds.save_event(event_id, action, save_data)
-        if action.is_remote:
-            return
         status = await action.ds.get_status()
         if status == Conversations.Status.DRAFT:
             return
+        # TODO some way to propagate events to clients here
+        if action.is_remote:
+            return
         propagate_data = self._subdict(data, 'pb')
-        # FIXME what do we do when propagation fails, can we save status on update
+        # FIXME what happens when propagation fails, perhaps save status on update
         await self.prop.propagate(action, event_id, propagate_data, action.timestamp)
 
     def __repr__(self):
