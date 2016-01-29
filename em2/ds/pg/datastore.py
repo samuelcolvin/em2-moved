@@ -2,7 +2,7 @@ from sqlalchemy import select, column, join
 
 from em2.core.common import Components
 from em2.core.datastore import DataStore, ConversationDataStore
-from em2.core.exceptions import ConversationNotFound, ComponentNotFound
+from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
 
 from .models import sa_conversations, sa_participants, sa_messages, sa_events
 
@@ -170,6 +170,19 @@ class PostgresConversationDataStore(ConversationDataStore):
         async for row in self.conn.execute(q):
             data.append(row)
         return data
+
+    async def get_item_last_event(self, component, item_id):
+        local_id = await self._get_local_id()
+        q = (select([sa_events.c.id, sa_events.c.timestamp])
+             .where(sa_events.c.conversation == local_id)
+             .where(sa_events.c.component == component)
+             .where(sa_events.c.item == item_id)
+             .order_by(sa_events.c.seq_id.desc()))
+        result = await self.conn.execute(q)
+        row = await result.first()
+        if row is None:
+            raise EventNotFound('event for component {}:{} not found'.format(component, item_id))
+        return row.id, row.timestamp
 
     # Messages
 

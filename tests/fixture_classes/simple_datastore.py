@@ -5,7 +5,7 @@ from collections import OrderedDict
 import itertools
 from em2.core.common import Components
 from em2.core.datastore import DataStore, ConversationDataStore
-from em2.core.exceptions import ConversationNotFound, ComponentNotFound
+from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
 
 
 class UniversalEncoder(json.JSONEncoder):
@@ -160,9 +160,8 @@ class SimpleConversationDataStore(ConversationDataStore):
 
     async def get_item_last_event(self, component, item_id):
         events = [e for e in self.conv_obj['events'] if e['component'] == component and e['item'] == item_id]
-        print(events)
         if not events:
-            return None, None
+            raise EventNotFound('event for component {}:{} not found'.format(component, item_id))
         event = events[-1]
         return event['id'], event['timestamp']
 

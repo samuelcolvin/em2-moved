@@ -16,6 +16,10 @@ class ComponentNotFound(NotFoundException):
     pass
 
 
+class EventNotFound(NotFoundException):
+    pass
+
+
 class VerbNotFound(NotFoundException):
     pass
 

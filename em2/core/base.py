@@ -8,7 +8,7 @@ import pytz
 from cerberus import Validator
 
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
-                         ComponentLocked, BadDataException, BadHash, MisshapedDataException)
+                         ComponentLocked, BadDataException, BadHash, MisshapedDataException, DataConsistencyException)
 from .utils import get_options
 from .datastore import DataStore
 from .propagator import BasePropagator
@@ -238,7 +238,11 @@ class Conversations:
             creator_id = await self._participants.add_first(cds, creator)
 
             if body:
-                await self._messages.add_basic(cds, timestamp, creator, creator_id, body, None)
+                action = Action(creator, conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp)
+                action.actor_id = creator_id
+                action.ds = cds
+                action.item = await self._messages.add_basic(action, body, None)
+                await self.controller.event(action)
         return conv_id
 
     async def add(self, action, data):
@@ -340,13 +344,13 @@ class Messages(_Component):
 
         await ds.add_multiple_components(self.name, data)
 
-    async def add_basic(self, ds, timestamp, author, author_id, body, parent_id):
-        m_id = hash_id(author, timestamp.isoformat(), body, parent_id)
-        await ds.add_component(
+    async def add_basic(self, action, body, parent_id):
+        m_id = hash_id(action.actor_addr, action.timestamp.isoformat(), body, parent_id)
+        await action.ds.add_component(
             self.name,
             id=m_id,
-            author=author_id,
-            timestamp=timestamp,
+            author=action.actor_id,
+            timestamp=action.timestamp,
             body=body,
             parent=parent_id,
         )
@@ -370,8 +374,7 @@ class Messages(_Component):
                 parent=parent_id,
             )
         else:
-            action.item = await self.add_basic(action.ds, action.timestamp, action.actor_addr, action.actor_id, body,
-                                               parent_id)
+            action.item = await self.add_basic(action, body, parent_id)
         await self._event(action, p_parent_id=parent_id, p_body=body)
 
     async def edit(self, action, body):
@@ -399,6 +402,7 @@ class Messages(_Component):
         await self._check_permissions(action)
         if not await action.ds.check_component_locked(self.name, action.item):
             raise ComponentNotLocked('{} with id = {} not locked'.format(self.name, action.item))
+        await self._check_consistency(action)
         await action.ds.unlock_component(self.name, action.item)
         await self._event(action)
 
@@ -414,6 +418,20 @@ class Messages(_Component):
     async def _check_locked(self, action):
         if await action.ds.check_component_locked(self.name, action.item):
             raise ComponentLocked('{} with id = {} locked'.format(self.name, action.item))
+        if action.parent_event_id is None:
+            raise BadDataException('parent event id should not be none to {} a message'.format(action.verb))
+        await self._check_consistency(action)
+
+    async def _check_consistency(self, action):
+        last_event_id, last_event_ts = await action.ds.get_item_last_event(self.name, action.item)
+        if last_event_id is None:
+            return
+
+        if action.parent_event_id != last_event_id:
+            # TODO maybe we need a better way of dealing with this situation
+            raise DataConsistencyException('parent event id does not match the most recent event')
+        if action.timestamp <= last_event_ts:
+            raise BadDataException('timestamp before parent')
 
 
 class Participants(_Component):
