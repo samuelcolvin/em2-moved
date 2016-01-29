@@ -6,12 +6,12 @@ from tests.fixture_classes import NullPropagator
 
 
 async def test_datastore_type(get_ds, datastore_cls):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     assert isinstance(ds, DataStore)
 
 
 async def test_create_conversation(get_ds, datastore_cls):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
     conv_id = await controller.conversations.create('sender@example.com', 'the subject')
     async with ds.reuse_connection() as conn:
@@ -31,7 +31,7 @@ async def test_create_conversation(get_ds, datastore_cls):
 
 
 async def test_create_conversation_check_participants(get_ds, datastore_cls):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
     conv_id = await controller.conversations.create('sender@example.com', 'the subject')
     async with ds.reuse_connection() as conn:
@@ -46,7 +46,7 @@ async def test_create_conversation_check_participants(get_ds, datastore_cls):
 
 
 async def test_create_conversation_body(get_ds, datastore_cls):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
     conv_id = await controller.conversations.create('sender@example.com', 'the subject', 'the body', 'conv-ref')
     async with ds.reuse_connection() as conn:

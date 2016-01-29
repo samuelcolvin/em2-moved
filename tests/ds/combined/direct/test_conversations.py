@@ -7,7 +7,7 @@ from tests.conftest import datetime_tz
 
 
 async def test_create_conversation(get_ds, datastore_cls, timestamp):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:
         await ds.create_conversation(
             conn,
@@ -46,7 +46,7 @@ async def create_conv(conn, ds, conv_id='123'):
 
 
 async def test_create_first_participant(get_ds, datastore_cls):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(
@@ -58,7 +58,7 @@ async def test_create_first_participant(get_ds, datastore_cls):
 
 
 async def test_get_participant(get_ds, datastore_cls):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(
@@ -75,7 +75,7 @@ async def test_get_participant(get_ds, datastore_cls):
 
 
 async def test_save_event(get_ds, datastore_cls, timestamp):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(
@@ -100,7 +100,7 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
 
 
 async def test_set_published_id(get_ds, datastore_cls):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
         assert cds.conv == '123'
@@ -126,7 +126,7 @@ async def test_set_published_id(get_ds, datastore_cls):
 
 
 async def test_set_status_ref_subject(get_ds, datastore_cls):
-    ds = await get_ds()
+    ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:
         cds = await create_conv(conn, ds)
         cds2 = await create_conv(conn, ds, conv_id='other')
