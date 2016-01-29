@@ -85,9 +85,9 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
         )
         action = Action('test@example.com', '123', Verbs.ADD, Components.PARTICIPANTS, pid, timestamp)
         action.actor_id, action.perm = pid, perms.FULL
-        await cds.save_event(action, {})
+        await cds.save_event('event_1', action, {})
 
-        await cds.save_event(action, {'value': 'foobar'})
+        await cds.save_event('event_2', action, {'value': 'foobar'})
 
         # FIXME currently there are no api methods for returning updates and it's therefore not possible to check
         # these actions are saved correctly
@@ -96,7 +96,7 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
         cds2 = ds.new_conv_ds('bad', conn)
         action.actor_id, action.perm = pid, perms.FULL
         with pytest.raises(ConversationNotFound):
-            await cds2.save_event(action, {})
+            await cds2.save_event('event_3', action, {})
 
 
 async def test_set_published_id(get_ds, datastore_cls):

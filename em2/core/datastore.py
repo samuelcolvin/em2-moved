@@ -76,7 +76,7 @@ class ConversationDataStore:
         """
         raise NotImplementedError()
 
-    async def save_event(self, action, data):
+    async def save_event(self, event_id, action, data):
         raise NotImplementedError()
 
     async def set_published_id(self, new_timestamp, new_id):
@@ -132,6 +132,9 @@ class ConversationDataStore:
         raise NotImplementedError()
 
     async def get_all_component_items(self, component):
+        raise NotImplementedError()
+
+    async def get_item_last_event(self, component, item_id):
         raise NotImplementedError()
 
     # Messages

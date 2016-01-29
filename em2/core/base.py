@@ -30,7 +30,8 @@ class Verbs:
 
 
 class Action:
-    def __init__(self, actor, conversation, verb, component, item=None, timestamp=None, remote=False):
+    def __init__(self, actor, conversation, verb, component,
+                 item=None, timestamp=None, event_id=None, parent_event_id=None):
         self.ds = None
         self.actor_id = None
         self.perm = None
@@ -40,20 +41,29 @@ class Action:
         self.component = component
         self.item = item
         self.timestamp = timestamp
-        self.remote = remote
+        self.event_id = event_id
+        self.parent_event_id = parent_event_id
+
+    @property
+    def is_remote(self):
+        return self.event_id is not None
 
     async def prepare(self):
         self.actor_id, self.perm = await self.ds.get_participant(self.actor_addr)
-        return self.ds
+
+    def calc_event_id(self):
+        return hash_id(self.timestamp, self.actor_addr, self.conv, self.verb, self.component, self.item)
 
     def __repr__(self):
-        attrs = ['actor_addr', 'actor_id', 'perm', 'conv', 'verb', 'component', 'item', 'timestamp', 'remote']
+        attrs = ['actor_addr', 'actor_id', 'perm', 'conv', 'verb', 'component', 'item', 'timestamp',
+                 'event_id', 'parent_event_id']
         return '<Action({})>'.format(', '.join('{}={}'.format(a, getattr(self, a)) for a in attrs))
 
 
 def hash_id(*args, **kwargs):
     sha256 = kwargs.pop('sha256', False)
-    assert len(kwargs) == 0, 'unexpected keywords args: {}'.format(kwargs)
+    if kwargs != {}:  # pragma: no cover
+        raise TypeError('unexpected keywords args: {}'.format(kwargs))
     to_hash = '_'.join(map(str, args))
     to_hash = to_hash.encode()
     if sha256:
@@ -97,7 +107,9 @@ class Controller:
         if action.verb not in self.valid_verbs:
             raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, self.valid_verbs))
 
-        if action.remote:
+        if action.is_remote:
+            if action.event_id != action.calc_event_id():
+                raise BadHash('event_id "{}" incorrect'.format(action.event_id))
             if not isinstance(action.timestamp, datetime.datetime):
                 raise BadDataException('remote actions should always have a timestamp')
         else:
@@ -142,15 +154,16 @@ class Controller:
         logger.debug('event on %d: author: "%s", action: "%s", component: %s %s',
                      action.conv, action.actor_addr, action.verb, action.component, action.item)
         save_data = self._subdict(data, 'sb')
-        await action.ds.save_event(action, save_data)
-        if action.remote:
+        event_id = action.calc_event_id()
+        await action.ds.save_event(event_id, action, save_data)
+        if action.is_remote:
             return
         status = await action.ds.get_status()
         if status == Conversations.Status.DRAFT:
             return
         propagate_data = self._subdict(data, 'pb')
         # FIXME what do we do when propagation fails, can we save status on update
-        await self.prop.propagate(action, propagate_data, action.timestamp)
+        await self.prop.propagate(action, event_id, propagate_data, action.timestamp)
 
     def __repr__(self):
         return '<Controller({})>'.format(self.ref)
@@ -347,7 +360,7 @@ class Messages(_Component):
         if action.timestamp <= meta['timestamp']:
             raise BadDataException('timestamp not after parent timestamp: {}'.format(action.timestamp))
 
-        if action.remote:
+        if action.is_remote:
             await action.ds.add_component(
                 self.name,
                 id=action.item,
@@ -392,8 +405,7 @@ class Messages(_Component):
     async def _check_permissions(self, action):
         if action.perm == perms.WRITE:
             meta = await action.ds.get_message_meta(action.item)
-            author_pid = meta['author']
-            if author_pid != action.actor_id:
+            if action.actor_id != meta['author']:
                 raise InsufficientPermissions('To {} a message authored by another participant '
                                               'FULL permissions are requires'.format(action.verb))
         elif action.perm != perms.FULL:

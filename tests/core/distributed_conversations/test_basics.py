@@ -12,7 +12,7 @@ async def test_create_basic_conversation(controller):
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['participants']) == 1
-    assert len(con['updates']) == 0
+    assert len(con['events']) == 0
     assert con['creator'] == 'sender@example.com'
     assert con['status'] == 'draft'
     assert con['subject'] == 'foo bar'

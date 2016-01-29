@@ -30,6 +30,7 @@ async def test_publish_reply_bad_ts(timestamp, two_controllers):
 
     conv_id = ctrl1.ds.data[0]['conv_id']
     msg1_id = list(ctrl2.ds.data[0]['messages'])[0]
-    a = Action('user@ctrl2.com', conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp, remote=True)
+    a = Action('user@ctrl2.com', conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp)
+    a.event_id = a.calc_event_id()
     with pytest.raises(BadDataException):
         await ctrl1.act(a, parent_id=msg1_id, body='this is a reply')

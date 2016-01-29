@@ -33,8 +33,8 @@ class Conversation(Base):
 sa_conversations = Conversation.__table__
 
 
-class Update(Base):
-    __tablename__ = 'updates'
+class Event(Base):
+    __tablename__ = 'events'
 
     class ComponentEnum(Components, RichEnum):
         pass
@@ -43,7 +43,8 @@ class Update(Base):
         pass
 
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
-    id = Column(Integer, Sequence('update_id_seq'), primary_key=True, nullable=False)
+    id = Column(String(40), primary_key=True, nullable=False)
+    seq_id = Column(Integer, Sequence('update_id_seq'), index=True, nullable=False)
     actor = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
     component = Column(ComponentEnum.enum(), nullable=False)
@@ -51,7 +52,7 @@ class Update(Base):
     verb = Column(VerbEnum.enum(), nullable=False)
     data = Column(JSONB)  # TODO (maybe) possibly we only want "value" so this could be replaced by a text field
 
-sa_updates = Update.__table__
+sa_events = Event.__table__
 
 
 class Participant(Base):

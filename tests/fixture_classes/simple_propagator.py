@@ -43,16 +43,17 @@ class SimplePropagator(BasePropagator):
         if platform not in self.addr_lookups[conv].values():
             self.active_platforms[conv].remove(platform)
 
-    async def propagate(self, action, data, timestamp):
+    async def propagate(self, action, event_id, data, timestamp):
         try:
             ctrls = self.active_platforms[action.conv]
         except KeyError:
-            conv_obj = action.ds.ds.get_conv(action.conv)
+            conv_obj = action.ds.ds.get_conv(action.conv)  # TODO this is currently only compatible with simple ds
             # conv_id has changed, update active_platforms to correct key
             ctrls = self.active_platforms.pop(conv_obj['draft_conv_id'])
             self.active_platforms[action.conv] = ctrls
 
-        new_action = Action(action.actor_addr, action.conv, action.verb, action.component, action.item, timestamp, True)
+        new_action = Action(action.actor_addr, action.conv, action.verb, action.component,
+                            action.item, timestamp, event_id)
         prop_data = deepcopy(data)
         for ctrl in ctrls:
             await ctrl.act(new_action, **prop_data)

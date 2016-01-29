@@ -32,7 +32,7 @@ class SimpleDataStore(DataStore):
         id = next(self.conversation_counter)
         self.data[id] = dict(
             participant_counter=itertools.count(),  # special case with uses sequence id
-            updates=[],
+            events=[],
             locked=set(),
             expiration=None,
             **kwargs
@@ -84,8 +84,9 @@ class SimpleConversationDataStore(ConversationDataStore):
     async def get_core_properties(self):
         return {k: self.conv_obj[k] for k in self._core_property_keys}
 
-    async def save_event(self, action, data):
-        self.conv_obj['updates'].append({
+    async def save_event(self, event_id, action, data):
+        self.conv_obj['events'].append({
+            'id': event_id,
             'actor': action.actor_id,
             'verb': action.verb,
             'component': action.component,
@@ -156,6 +157,14 @@ class SimpleConversationDataStore(ConversationDataStore):
     async def get_all_component_items(self, component):
         data = self.conv_obj.get(component, {})
         return list(data.values())
+
+    async def get_item_last_event(self, component, item_id):
+        events = [e for e in self.conv_obj['events'] if e['component'] == component and e['item'] == item_id]
+        print(events)
+        if not events:
+            return None, None
+        event = events[-1]
+        return event['id'], event['timestamp']
 
     # Messages
 

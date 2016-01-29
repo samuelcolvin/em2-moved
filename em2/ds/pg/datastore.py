@@ -4,7 +4,7 @@ from em2.core.common import Components
 from em2.core.datastore import DataStore, ConversationDataStore
 from em2.core.exceptions import ConversationNotFound, ComponentNotFound
 
-from .models import sa_conversations, sa_participants, sa_messages, sa_updates
+from .models import sa_conversations, sa_participants, sa_messages, sa_events
 
 sa_component_lookup = {
     Components.CONVERSATIONS: sa_conversations,
@@ -66,8 +66,9 @@ class PostgresConversationDataStore(ConversationDataStore):
             raise ConversationNotFound('conversation {} not found'.format(self.conv))
         return row
 
-    async def save_event(self, action, data):
+    async def save_event(self, event_id, action, data):
         kwargs = {
+            'id': event_id,
             'conversation': await self._get_local_id(),
             'actor': action.actor_id,
             'verb': action.verb,
@@ -76,7 +77,7 @@ class PostgresConversationDataStore(ConversationDataStore):
             'data': data,
             'timestamp': action.timestamp,
         }
-        await self.conn.execute(sa_updates.insert().values(**kwargs))
+        await self.conn.execute(sa_events.insert().values(**kwargs))
 
     async def set_published_id(self, new_timestamp, new_id):
         await self._update_conv(draft_conv_id=self.conv, conv_id=new_id, timestamp=new_timestamp)

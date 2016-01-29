@@ -9,14 +9,14 @@ async def test_extra_participant(conversation):
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['participants']) == 1
-    assert len(con['updates']) == 0
+    assert len(con['events']) == 0
     a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='someone_different@example.com', permissions=perms.WRITE)
     assert con['participants'] == OrderedDict([
         (0, {'address': 'test@example.com', 'id': 0, 'permissions': 'full'}),
         (1, {'address': 'someone_different@example.com', 'id': 1, 'permissions': 'write'}),
     ])
-    assert len(con['updates']) == 1
+    assert len(con['events']) == 1
 
 
 async def test_add_participant_readonly(conversation):

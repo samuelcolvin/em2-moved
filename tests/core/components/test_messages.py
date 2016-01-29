@@ -11,7 +11,7 @@ async def test_create_conversation_with_message(conversation):
     con = ds.data[0]
     assert len(con['participants']) == 1
     assert len(con['messages']) == 1
-    assert len(con['updates']) == 0
+    assert len(con['events']) == 0
     msg = list(con['messages'].values())[0]
     assert msg['parent'] is None
     assert msg['author'] == 0
@@ -26,20 +26,20 @@ async def test_add_message(conversation):
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['messages']) == 1
-    assert len(con['updates']) == 0
+    assert len(con['events']) == 0
     msg1_id = list(con['messages'])[0]
     a = Action('test@example.com', con_id, Verbs.ADD, Components.MESSAGES)
     await ctrl.act(a, parent_id=msg1_id, body='I am fine thanks.')
     assert len(con['messages']) == 2
-    assert len(con['updates']) == 1
+    assert len(con['events']) == 1
 
-    assert con['updates'][0]['verb'] == 'add'
-    assert con['updates'][0]['actor'] == 0
-    assert con['updates'][0]['component'] == 'messages'
-    assert con['updates'][0]['data'] == {}
+    assert con['events'][0]['verb'] == 'add'
+    assert con['events'][0]['actor'] == 0
+    assert con['events'][0]['component'] == 'messages'
+    assert con['events'][0]['data'] == {}
 
     msg2_id = list(con['messages'])[1]
-    assert con['updates'][0]['item'] == msg2_id
+    assert con['events'][0]['item'] == msg2_id
     msg2 = con['messages'][msg2_id]
     # can't easily get the timestamp value in a sensible way
     timestamp = msg2.pop('timestamp')
@@ -58,7 +58,7 @@ async def test_edit_message(conversation):
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['messages']) == 1
-    assert len(con['updates']) == 0
+    assert len(con['events']) == 0
     msg1_id = list(con['messages'])[0]
     msg1 = con['messages'][msg1_id]
     assert msg1['body'] == 'hi, how are you?'
@@ -67,12 +67,12 @@ async def test_edit_message(conversation):
     await ctrl.act(a, body='hi, how are you again?')
     assert msg1['body'] == 'hi, how are you again?'
     assert msg1['author'] == 0
-    assert len(con['updates']) == 1
-    assert con['updates'][0]['verb'] == 'edit'
-    assert con['updates'][0]['actor'] == 0
-    assert con['updates'][0]['component'] == 'messages'
-    assert con['updates'][0]['data'] == {'value': 'hi, how are you again?'}
-    assert con['updates'][0]['item'] == msg1_id
+    assert len(con['events']) == 1
+    assert con['events'][0]['verb'] == 'edit'
+    assert con['events'][0]['actor'] == 0
+    assert con['events'][0]['component'] == 'messages'
+    assert con['events'][0]['data'] == {'value': 'hi, how are you again?'}
+    assert con['events'][0]['item'] == msg1_id
 
 
 async def test_delete_message(conversation):
@@ -80,17 +80,17 @@ async def test_delete_message(conversation):
     assert len(ds.data) == 1
     con = ds.data[0]
     assert len(con['messages']) == 1
-    assert len(con['updates']) == 0
+    assert len(con['events']) == 0
     msg1_id = list(con['messages'])[0]
     a = Action('test@example.com', con_id, Verbs.DELETE, Components.MESSAGES, item=msg1_id)
     await ctrl.act(a)
     assert len(con['messages']) == 0
-    assert len(con['updates']) == 1
-    assert con['updates'][0]['verb'] == 'delete'
-    assert con['updates'][0]['actor'] == 0
-    assert con['updates'][0]['component'] == 'messages'
-    assert con['updates'][0]['data'] == {}
-    assert con['updates'][0]['item'] == msg1_id
+    assert len(con['events']) == 1
+    assert con['events'][0]['verb'] == 'delete'
+    assert con['events'][0]['actor'] == 0
+    assert con['events'][0]['component'] == 'messages'
+    assert con['events'][0]['data'] == {}
+    assert con['events'][0]['item'] == msg1_id
 
 
 async def test_lock_unlock_message(conversation):
@@ -154,7 +154,7 @@ async def test_edit_message_missing_perms(conversation):
     assert 'To edit a message requires FULL or WRITE permissions' in str(excinfo)
 
 
-async def test_edit_message_right_person(conversation):
+async def test_edit_message_successful(conversation):
     ds, ctrl, con_id = await conversation()
     a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='writeonly@example.com', permissions=perms.WRITE)
@@ -163,6 +163,8 @@ async def test_edit_message_right_person(conversation):
     msg1_id = list(con['messages'])[0]
     a = Action('writeonly@example.com', con_id, Verbs.ADD, Components.MESSAGES)
     await ctrl.act(a, parent_id=msg1_id, body='reply')
+    # have to do after act so timestamp is set
+    parent_event_id = a.calc_event_id()
 
     msg2_id = None
     for msg2_id, info in con['messages'].items():
@@ -170,10 +172,10 @@ async def test_edit_message_right_person(conversation):
             break
     assert con['messages'][msg2_id]['body'] == 'reply'
 
-    a = Action('writeonly@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg2_id)
+    a = Action('writeonly@example.com', con_id, Verbs.EDIT, Components.MESSAGES, item=msg2_id,
+               parent_event_id=parent_event_id)
     await ctrl.act(a, body='changed message')
     assert con['messages'][msg2_id]['body'] == 'changed message'
-
 
 async def test_edit_message_wrong_person(conversation):
     ds, ctrl, con_id = await conversation()

@@ -8,5 +8,5 @@ class NullPropagator(BasePropagator):
     async def remove_participant(self, action, participant_addr):
         pass
 
-    async def propagate(self, action, data, timestamp):
+    async def propagate(self, action, event_id, data, timestamp):
         pass

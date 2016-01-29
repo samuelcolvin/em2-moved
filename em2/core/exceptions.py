@@ -4,23 +4,27 @@ class Em2Exception(Exception):
     pass
 
 
-class Em2NotFoundException(Em2Exception):
+class NotFoundException(Em2Exception):
     pass
 
 
-class ConversationNotFound(Em2NotFoundException):
+class ConversationNotFound(NotFoundException):
     pass
 
 
-class ComponentNotFound(Em2NotFoundException):
+class ComponentNotFound(NotFoundException):
     pass
 
 
-class VerbNotFound(Em2NotFoundException):
+class VerbNotFound(NotFoundException):
     pass
 
 
 class BadHash(Em2Exception):
+    pass
+
+
+class DataConsistencyException(Em2Exception):
     pass
 
 
