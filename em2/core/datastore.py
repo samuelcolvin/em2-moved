@@ -21,6 +21,9 @@ class DataStore:
     def connection(self):
         raise NotImplementedError()
 
+    async def finish(self):
+        pass
+
     def reuse_connection(self):
         """
         Only used for tests, should return the connection previously returned from connection()

@@ -1,3 +1,4 @@
+from aiopg.sa import Engine
 from sqlalchemy import select, column, join
 
 from em2.core.common import Components
@@ -15,6 +16,7 @@ sa_component_lookup = {
 
 class PostgresDataStore(DataStore):
     def __init__(self, engine):
+        assert isinstance(engine, Engine), 'engine is not an aiopg.sa.Engine'
         self.engine = engine
 
     async def create_conversation(self, conn, **kwargs):
@@ -27,6 +29,12 @@ class PostgresDataStore(DataStore):
 
     def connection(self):
         return ConnectionContextManager(self.engine)
+
+    async def finish(self):
+        print('closing postgres data store connection pool')  # TODO logging
+        self.engine.close()
+        await self.engine.wait_closed()
+        self.engine = None
 
 
 class ConnectionContextManager:

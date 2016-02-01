@@ -1,11 +1,11 @@
 
 async def test_add_message(client):
-    conv_id = await client.api.em2_ctrl.conversations.create('test@example.com', 'foo bar', 'hi, how are you?')
+    conv_id = await client.em2_ctrl.conversations.create('test@example.com', 'foo bar', 'hi, how are you?')
     headers = {
         'Authorization': 'Token 321',
         'Actor': 'test@example.com',
     }
-    conv_ds = client.api.em2_ctrl.ds.new_conv_ds(conv_id, None)
+    conv_ds = client.em2_ctrl.ds.new_conv_ds(conv_id, None)
     msg1_id = list(conv_ds.conv_obj['messages'])[0]
     data = '{"parent_id": "%s", "body": "reply"}' % msg1_id
     r = await client.post('/{}/messages/add/'.format(conv_id), data=data, headers=headers)
