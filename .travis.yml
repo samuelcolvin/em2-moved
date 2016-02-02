@@ -1,0 +1,24 @@
+language: python
+
+addons:
+  postgresql: "9.4"
+
+services:
+  - postgresql
+
+python:
+  - "3.5"
+  - "nightly"
+
+install:
+  - python setup.py install
+  - pip install -r requirements/test_requirements.txt
+  - pip install -r requirements/pg_requirements.txt
+  - pip install -r requirements/http_requirements.txt
+
+script:
+  - flake8 em2/ tests/
+  - py.test --cov=em2
+
+after_success:
+  - codecov
