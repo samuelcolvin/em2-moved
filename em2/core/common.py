@@ -1,5 +1,7 @@
+from .enums import Enum
 
-class Components:
+
+class Components(Enum):
     MESSAGES = 'messages'
     COMMENTS = 'comments'
     PARTICIPANTS = 'participants'

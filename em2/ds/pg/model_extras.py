@@ -1,13 +1,10 @@
-from sqlalchemy import DateTime, Enum
-from em2.core.utils import get_options
+from sqlalchemy import DateTime, Enum as _SAEnum
+from em2.core.enums import Enum as _EM2Enum
 
 TIMESTAMPTZ = DateTime(timezone=True)
 
 
-class RichEnum:
-    OPTIONS = None
-
+class SAEnum(_EM2Enum):
     @classmethod
-    def enum(cls):
-        cls.OPTIONS = get_options(cls)
-        return Enum(*cls.OPTIONS, name=cls.__name__.lower())
+    def sa_enum(cls):
+        return _SAEnum(*cls.__values__, name=cls.__name__.lower())

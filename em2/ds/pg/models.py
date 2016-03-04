@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean,
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
 from em2.core.base import Conversations, Verbs, Participants, Components
-from .model_extras import TIMESTAMPTZ, RichEnum
+from .model_extras import TIMESTAMPTZ, SAEnum
 
 Base = declarative_base()
 
@@ -11,7 +11,7 @@ Base = declarative_base()
 class Conversation(Base):
     __tablename__ = Components.CONVERSATIONS
 
-    class Status(Conversations.Status, RichEnum):
+    class Status(SAEnum, Conversations.Status):
         pass
 
     id = Column(Integer, Sequence('con_id_seq'), primary_key=True, nullable=False)
@@ -20,7 +20,7 @@ class Conversation(Base):
     creator = Column(String(255), nullable=False)
     timestamp = Column(TIMESTAMPTZ, nullable=False)
     signature = Column(Text)
-    status = Column(Status.enum(), nullable=False)
+    status = Column(Status.sa_enum(), nullable=False)
     ref = Column(String(255), nullable=False)
     expiration = Column(TIMESTAMPTZ)
     subject = Column(String(255), nullable=False)
@@ -36,10 +36,10 @@ sa_conversations = Conversation.__table__
 class Event(Base):
     __tablename__ = 'events'
 
-    class ComponentEnum(Components, RichEnum):
+    class ComponentEnum(SAEnum, Components):
         pass
 
-    class VerbEnum(Verbs, RichEnum):
+    class VerbEnum(SAEnum, Verbs):
         pass
 
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
@@ -47,9 +47,9 @@ class Event(Base):
     seq_id = Column(Integer, Sequence('update_id_seq'), index=True, nullable=False)
     actor = Column(Integer, ForeignKey('participants.id'), nullable=False)
     timestamp = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
-    component = Column(ComponentEnum.enum(), nullable=False)
+    component = Column(ComponentEnum.sa_enum(), nullable=False)
     item = Column(String(40))
-    verb = Column(VerbEnum.enum(), nullable=False)
+    verb = Column(VerbEnum.sa_enum(), nullable=False)
     data = Column(JSONB)  # TODO (maybe) possibly we only want "value" so this could be replaced by a text field
 
 sa_events = Event.__table__
@@ -58,7 +58,7 @@ sa_events = Event.__table__
 class Participant(Base):
     __tablename__ = Components.PARTICIPANTS
 
-    class Permissions(Participants.Permissions, RichEnum):
+    class Permissions(Participants.Permissions, SAEnum):
         pass
 
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
@@ -66,7 +66,7 @@ class Participant(Base):
     address = Column(String(255), nullable=False)
     display_name = Column(String(255))
     hidden = Column(Boolean, default=False)
-    permissions = Column(Permissions.enum())
+    permissions = Column(Permissions.sa_enum())
     __table_args__ = (
         UniqueConstraint('conversation', 'address', name='_participant_email'),
     )
@@ -75,14 +75,14 @@ sa_participants = Participant.__table__
 
 
 class MsgCmt:
-    class Status(RichEnum):
+    class Status(SAEnum):
         ACTIVE = 'active'
         DELETED = 'deleted'
 
     id = Column(String(40), primary_key=True)
     timestamp = Column(TIMESTAMPTZ, nullable=False)
     body = Column(Text, nullable=False)
-    status = Column(Status.enum(), server_default=Status.ACTIVE)
+    status = Column(Status.sa_enum(), server_default=Status.ACTIVE)
 
     @declared_attr
     def author(cls):

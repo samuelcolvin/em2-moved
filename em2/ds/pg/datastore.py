@@ -61,7 +61,7 @@ class PostgresConversationDataStore(ConversationDataStore):
     _sa_core_property_keys = [column(c) for c in ConversationDataStore._core_property_keys]
 
     def __init__(self, *args, **kwargs):
-        super(PostgresConversationDataStore, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._local_id = None
 
     async def get_core_properties(self):

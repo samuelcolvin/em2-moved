@@ -9,15 +9,15 @@ from cerberus import Validator
 
 from .exceptions import (InsufficientPermissions, ComponentNotFound, VerbNotFound, ComponentNotLocked,
                          ComponentLocked, BadDataException, BadHash, MisshapedDataException, DataConsistencyException)
-from .utils import get_options
 from .datastore import DataStore
 from .propagator import BasePropagator
 from .common import Components
+from .enums import Enum
 
 logger = logging.getLogger('em2')
 
 
-class Verbs:
+class Verbs(Enum):
     ADD = 'add'
     EDIT = 'edit'
     DELTA_EDIT = 'delta_edit'
@@ -86,7 +86,7 @@ class Controller:
         self.conversations = Conversations(self)
         components = [Messages, Participants]
         self.components = {c.name: c(self) for c in components}
-        self.valid_verbs = set(get_options(Verbs))
+        self.valid_verbs = set(Verbs.__values__)
 
     async def act(self, action, **kwargs):
         """
@@ -204,7 +204,7 @@ class Conversations:
     def __init__(self, controller):
         self.controller = controller
 
-    class Status:
+    class Status(Enum):
         DRAFT = 'draft'
         PENDING = 'pending'
         ACTIVE = 'active'
@@ -438,7 +438,7 @@ class Messages(_Component):
 class Participants(_Component):
     name = Components.PARTICIPANTS
 
-    class Permissions:
+    class Permissions(Enum):
         FULL = 'full'
         WRITE = 'write'
         COMMENT = 'comment'
