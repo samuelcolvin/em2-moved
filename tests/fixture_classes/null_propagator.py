@@ -1,4 +1,4 @@
-from em2.core.propagator import BasePropagator
+from em2.core import BasePropagator
 
 
 class NullPropagator(BasePropagator):

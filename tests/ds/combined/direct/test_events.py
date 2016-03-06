@@ -1,8 +1,6 @@
 import pytest
 
-from em2.core.controller import Action, Verbs
-from em2.core.components import perms
-from em2.core.common import Components
+from em2.core import Action, Verbs, Components, perms
 from em2.core.exceptions import ConversationNotFound, EventNotFound
 
 from .test_conversations import create_conv

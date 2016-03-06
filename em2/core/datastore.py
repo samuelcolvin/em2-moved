@@ -5,7 +5,8 @@ Database back-ends for em2 should define a child class for DataStore which imple
 """
 import logging
 from copy import deepcopy
-from .common import Components
+
+from .components import Components
 
 logger = logging.getLogger('em2')
 

@@ -1,8 +1,7 @@
 from aiopg.sa import Engine
 from sqlalchemy import select, column, join
 
-from em2.core.common import Components
-from em2.core.datastore import DataStore, ConversationDataStore
+from em2.core import Components, DataStore, ConversationDataStore
 from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
 
 from .models import sa_conversations, sa_participants, sa_messages, sa_events

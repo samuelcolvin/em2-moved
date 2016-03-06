@@ -4,7 +4,7 @@ import socket
 import aiohttp
 
 from tests.fixture_classes import SimpleDataStore, NullPropagator
-from em2.core.controller import Controller
+from em2.core import Controller
 from em2.comms.http import create_app
 
 

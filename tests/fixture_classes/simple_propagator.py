@@ -1,7 +1,6 @@
 from copy import deepcopy
 
-from em2.core.controller import Action
-from em2.core.propagator import BasePropagator
+from em2.core import Action, BasePropagator
 
 
 class SimplePropagator(BasePropagator):

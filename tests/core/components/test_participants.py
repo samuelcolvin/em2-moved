@@ -2,8 +2,7 @@ from collections import OrderedDict
 
 import pytest
 
-from em2.core.controller import Action, Verbs, Components
-from em2.core.components import perms
+from em2.core import Components, perms, Action, Verbs
 from em2.core.exceptions import InsufficientPermissions
 
 

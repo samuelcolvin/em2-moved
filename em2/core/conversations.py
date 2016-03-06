@@ -4,9 +4,8 @@ import json
 from cerberus import Validator
 
 from .exceptions import BadHash, MisshapedDataException
-from .common import Components
 from .enums import Enum
-from .components import hash_id
+from .components import Components, hash_id
 from .interactions import Action, Verbs
 
 logger = logging.getLogger('em2')

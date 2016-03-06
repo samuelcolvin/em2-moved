@@ -7,8 +7,7 @@ import pytz
 from .exceptions import ComponentNotFound, VerbNotFound, BadDataException, BadHash
 from .datastore import DataStore
 from .propagator import BasePropagator
-from .common import Components
-from .components import Messages, Participants
+from .components import Components, Messages, Participants
 from .conversations import Conversations
 from .interactions import Action, Verbs
 

@@ -1,10 +1,9 @@
 import json
 import datetime
+import itertools
 from collections import OrderedDict
 
-import itertools
-from em2.core.common import Components
-from em2.core.datastore import DataStore, ConversationDataStore
+from em2.core import Components, DataStore, ConversationDataStore
 from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
 
 
