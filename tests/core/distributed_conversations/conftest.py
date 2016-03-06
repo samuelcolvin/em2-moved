@@ -1,6 +1,7 @@
 import pytest
 
-from em2.core.base import Controller, Action, Verbs, perms
+from em2.core.base import Controller, Action, Verbs
+from em2.core.components import perms
 from em2.core.common import Components
 from tests.fixture_classes import SimpleDataStore, SimplePropagator
 

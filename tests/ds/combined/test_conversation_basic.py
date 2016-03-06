@@ -1,7 +1,10 @@
 import datetime
-from em2.core.base import Controller, perms
+
+from em2.core.base import Controller
+from em2.core.components import perms
 from em2.core.common import Components
 from em2.core.datastore import DataStore, ConversationDataStore
+
 from tests.fixture_classes import NullPropagator
 
 

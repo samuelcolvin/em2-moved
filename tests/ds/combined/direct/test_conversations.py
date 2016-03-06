@@ -1,6 +1,9 @@
 import datetime
+
 import pytest
-from em2.core.base import Conversations, perms
+
+from em2.core.base import Conversations
+from em2.core.components import perms
 from em2.core.common import Components
 from em2.core.exceptions import ComponentNotFound
 from tests.conftest import datetime_tz

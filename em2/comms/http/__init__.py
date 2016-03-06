@@ -17,8 +17,7 @@ def create_app(controller, loop=None, url_root=''):
 
     app.register_on_finish(finish_controller)
 
-    app.router.add_route('POST',
-                         url_root + '/{con:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}',
-                         act)
+    url = url_root + '/{con:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}'
+    app.router.add_route('POST', url, act)
 
     return app

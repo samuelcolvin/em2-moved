@@ -27,9 +27,11 @@ class EnumMeta(type):
                 if v in r_members:
                     raise EnumException('value "{}" of attribute "{}" is repeated'.format(v, k))
                 r_members[v] = k
-        classdict['__reverse_members__'] = r_members
-        classdict['__members__'] = OrderedDict([(v, k) for k, v in r_members.items()])
-        classdict['__values__'] = list(r_members.keys())
+        classdict.update(
+            __reverse_members__=r_members,
+            __members__=OrderedDict([(v, k) for k, v in r_members.items()]),
+            __values__=list(r_members.keys()),
+        )
         return super().__new__(mcs, cls, bases, classdict)
 
     def __call__(cls, value):
@@ -47,9 +49,9 @@ class EnumMeta(type):
 
 class Enum(metaclass=EnumMeta):
     """
-    Enumeration implementation similar to the stdlib enum.Enum but with out the frustrating "value" logic which
+    Enumeration implementation similar to the stdlib enum.Enum but without the frustrating "value" logic which
     means calling Foobar.FOO.value to get the value of Foobar.FOO.
 
-    Also forces unique like the @unique decorator.
+    Also forces unique like the @unique decorator, allows inheritance and has a simpler __member__ interface.
     """
     pass

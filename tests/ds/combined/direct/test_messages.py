@@ -1,7 +1,9 @@
 import pytest
-from em2.core.base import perms
+
+from em2.core.components import perms
 from em2.core.common import Components
 from em2.core.exceptions import ComponentNotFound
+
 from .test_conversations import create_conv
 
 

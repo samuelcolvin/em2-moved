@@ -1,6 +1,9 @@
 from collections import OrderedDict
+
 import pytest
-from em2.core.base import perms, Action, Verbs, Components
+
+from em2.core.base import Action, Verbs, Components
+from em2.core.components import perms
 from em2.core.exceptions import InsufficientPermissions
 
 
