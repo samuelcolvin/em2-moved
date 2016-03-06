@@ -135,8 +135,6 @@ async def test_set_status_ref_subject(get_ds, datastore_cls):
 
 
 async def test_list_conversations(get_ds, datastore_cls):
-    if datastore_cls == 'PostgresDataStore':
-        pytest.skip('skipping')
     ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:
         user1 = await ds.create_user(conn, 'test1@ex.com')

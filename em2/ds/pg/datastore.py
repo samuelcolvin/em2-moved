@@ -16,10 +16,25 @@ sa_component_lookup = {
 class PostgresDataStore(DataStore):
     def __init__(self, engine: Engine):
         self.engine = engine
+        # TODO qualify the columns in case of conflict
+        self._list_columns = [column('conv_id')] + PostgresConversationDataStore.sa_core_property_keys
 
     async def create_conversation(self, conn, **kwargs):
         # key word arguments to create_conversation exactly match the db.
         return await conn.execute(sa_conversations.insert().values(**kwargs))
+
+    async def list_conversations(self, conn, address, limit=None, offset=None):
+        j = join(sa_conversations, sa_participants, sa_conversations.c.id == sa_participants.c.conversation)
+        q = (select(self._list_columns, use_labels=True)
+             .select_from(j)
+             .where(sa_participants.c.address == address)
+             .order_by(sa_conversations.c.timestamp.desc())
+             .limit(limit)
+             .offset(offset))
+        results = []
+        async for row in conn.execute(q):
+            results.append(dict(row))
+        return results
 
     async def get_user_id(self, conn, address):
         q = select([sa_users.c.id]).where(sa_users.c.address == address)
@@ -72,14 +87,14 @@ class ConnectionContextManager:
 
 
 class PostgresConversationDataStore(ConversationDataStore):
-    _sa_core_property_keys = [column(c) for c in ConversationDataStore._core_property_keys]
+    sa_core_property_keys = [column(c) for c in ConversationDataStore._core_property_keys]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._local_id = None
 
     async def get_core_properties(self):
-        q = (select(self._sa_core_property_keys)
+        q = (select(self.sa_core_property_keys)
              .where(sa_conversations.c.conv_id == self.conv)
              .order_by(sa_conversations.c.timestamp.desc()))
         result = await self.conn.execute(q)
