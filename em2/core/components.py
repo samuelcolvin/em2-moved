@@ -61,7 +61,7 @@ class Messages(_Component):
 
     async def add_basic(self, action, body, parent_id):
         m_id = hash_id(action.actor_addr, action.timestamp.isoformat(), body, parent_id)
-        await action.ds.add_component(
+        await action.cds.add_component(
             self.name,
             id=m_id,
             author=action.actor_id,
@@ -75,12 +75,12 @@ class Messages(_Component):
         if action.perm not in {perms.FULL, perms.WRITE}:
             raise InsufficientPermissions('FULL or WRITE access required to add messages')
 
-        meta = await action.ds.get_message_meta(parent_id)
+        meta = await action.cds.get_message_meta(parent_id)
         if action.timestamp <= meta['timestamp']:
             raise BadDataException('timestamp not after parent timestamp: {}'.format(action.timestamp))
 
         if action.is_remote:
-            await action.ds.add_component(
+            await action.cds.add_component(
                 self.name,
                 id=action.item,
                 author=action.actor_id,
@@ -95,7 +95,7 @@ class Messages(_Component):
     async def edit(self, action, body):
         await self._check_permissions(action)
         await self._check_locked(action)
-        await action.ds.edit_component(self.name, action.item, body=body)
+        await action.cds.edit_component(self.name, action.item, body=body)
         await self._event(action, b_value=body)
 
     async def delta_edit(self, action, body):
@@ -104,26 +104,26 @@ class Messages(_Component):
     async def delete(self, action):
         await self._check_permissions(action)
         await self._check_locked(action)
-        await action.ds.delete_component(self.name, action.item)
+        await action.cds.delete_component(self.name, action.item)
         await self._event(action)
 
     async def lock(self, action):
         await self._check_permissions(action)
         await self._check_locked(action)
-        await action.ds.lock_component(self.name, action.item)
+        await action.cds.lock_component(self.name, action.item)
         await self._event(action)
 
     async def unlock(self, action):
         await self._check_permissions(action)
-        if not await action.ds.check_component_locked(self.name, action.item):
+        if not await action.cds.check_component_locked(self.name, action.item):
             raise ComponentNotLocked('{} with id = {} not locked'.format(self.name, action.item))
         await self._check_consistency(action)
-        await action.ds.unlock_component(self.name, action.item)
+        await action.cds.unlock_component(self.name, action.item)
         await self._event(action)
 
     async def _check_permissions(self, action):
         if action.perm == perms.WRITE:
-            meta = await action.ds.get_message_meta(action.item)
+            meta = await action.cds.get_message_meta(action.item)
             if action.actor_id != meta['author']:
                 raise InsufficientPermissions('To {} a message authored by another participant '
                                               'FULL permissions are requires'.format(action.verb))
@@ -131,14 +131,14 @@ class Messages(_Component):
             raise InsufficientPermissions('To {} a message requires FULL or WRITE permissions'.format(action.verb))
 
     async def _check_locked(self, action):
-        if await action.ds.check_component_locked(self.name, action.item):
+        if await action.cds.check_component_locked(self.name, action.item):
             raise ComponentLocked('{} with id = {} locked'.format(self.name, action.item))
         if action.parent_event_id is None:
             raise BadDataException('parent event id should not be none to {} a message'.format(action.verb))
         await self._check_consistency(action)
 
     async def _check_consistency(self, action):
-        last_event_id, last_event_ts = await action.ds.get_item_last_event(self.name, action.item)
+        last_event_id, last_event_ts = await action.cds.get_item_last_event(self.name, action.item)
         if last_event_id is None:
             return
 
@@ -180,7 +180,7 @@ class Participants(_Component):
         if action.perm == perms.WRITE and permissions == perms.FULL:
             raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions')
         # TODO check the address is valid
-        action.item = await action.ds.add_component(
+        action.item = await action.cds.add_component(
             self.name,
             address=address,
             permissions=permissions,

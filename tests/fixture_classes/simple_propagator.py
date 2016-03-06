@@ -47,7 +47,7 @@ class SimplePropagator(BasePropagator):
         try:
             ctrls = self.active_platforms[action.conv]
         except KeyError:
-            conv_obj = action.ds.ds.get_conv(action.conv)  # TODO this is currently only compatible with simple ds
+            conv_obj = action.cds.ds.get_conv(action.conv)  # TODO this is currently only compatible with simple ds
             # conv_id has changed, update active_platforms to correct key
             ctrls = self.active_platforms.pop(conv_obj['draft_conv_id'])
             self.active_platforms[action.conv] = ctrls

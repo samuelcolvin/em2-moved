@@ -31,7 +31,7 @@ class Verbs(Enum):
 class Action:
     def __init__(self, actor, conversation, verb, component,
                  item=None, timestamp=None, event_id=None, parent_event_id=None):
-        self.ds = None
+        self.cds = None
         self.actor_id = None
         self.perm = None
         self.actor_addr = actor
@@ -48,7 +48,7 @@ class Action:
         return self.event_id is not None
 
     async def prepare(self):
-        self.actor_id, self.perm = await self.ds.get_participant(self.actor_addr)
+        self.actor_id, self.perm = await self.cds.get_participant(self.actor_addr)
 
     def calc_event_id(self):
         return hash_id(self.timestamp, self.actor_addr, self.conv, self.verb, self.component, self.item)
@@ -117,7 +117,7 @@ class Controller:
             return await func(action, **kwargs)
 
         async with self.ds.connection() as conn:
-            action.ds = self.ds.new_conv_ds(action.conv, conn)
+            action.cds = self.ds.new_conv_ds(action.conv, conn)
             await action.prepare()
             return await func(action, **kwargs)
 
@@ -142,8 +142,8 @@ class Controller:
                      action.conv, action.actor_addr, action.verb, action.component, action.item)
         save_data = self._subdict(data, 'sb')
         event_id = action.calc_event_id()
-        await action.ds.save_event(event_id, action, save_data)
-        status = await action.ds.get_status()
+        await action.cds.save_event(event_id, action, save_data)
+        status = await action.cds.get_status()
         if status == Conversations.Status.DRAFT:
             return
         # TODO some way to propagate events to clients here
@@ -231,7 +231,7 @@ class Conversations:
             if body:
                 action = Action(creator, conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp)
                 action.actor_id = creator_id
-                action.ds = cds
+                action.cds = cds
                 action.item = await self._messages.add_basic(action, body, None)
                 await self.controller.event(action)
         return conv_id
@@ -277,18 +277,18 @@ class Conversations:
         AKA Send. Update a conversation (from draft) to active and tell other participants (and their platforms)
         about it.
         """
-        await action.ds.set_status(self.Status.ACTIVE)
+        await action.cds.set_status(self.Status.ACTIVE)
 
-        ref = await action.ds.get_ref()
+        ref = await action.cds.get_ref()
 
         new_conv_id = self._conv_id_hash(action.actor_addr, action.timestamp, ref)
-        await action.ds.set_published_id(action.timestamp, new_conv_id)
+        await action.cds.set_published_id(action.timestamp, new_conv_id)
 
         new_action = Action(action.actor_addr, new_conv_id, Verbs.ADD, Components.CONVERSATIONS,
                             timestamp=action.timestamp)
-        new_action.ds, new_action.actor_id, new_action.perm = action.ds, action.actor_id, action.perm
+        new_action.cds, new_action.actor_id, new_action.perm = action.cds, action.actor_id, action.perm
 
-        data = await action.ds.export()
+        data = await action.cds.export()
         await self.controller.event(new_action, p_data=data)
 
     async def get_by_id(self, id):
