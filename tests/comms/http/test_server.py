@@ -37,7 +37,7 @@ async def test_missing_conversation(client):
     r = await client.post('/123/messages/add/', headers=headers)
     assert r.status == 400
     content = await r.read()
-    assert content == b"BadDataException: Wrong kwargs for add, got: [], expected: ['body', 'parent_id']\n"
+    assert content == b"BadDataException: missing a required argument: 'body'\n"
 
 
 async def test_missing_conversation_valid_html(client):

@@ -68,27 +68,26 @@ class Conversations:
         timestamp = self.controller.now_tz()
         ref = ref or subject
         conv_id = self._conv_id_hash(creator, timestamp, ref)
-        async with self.controller.ds.connection() as conn:
-            await self.controller.ds.create_conversation(
-                conn,
-                conv_id=conv_id,
-                creator=creator,
-                timestamp=timestamp,
-                ref=ref,
-                subject=subject,
-                status=self.Status.DRAFT,
-            )
-            logger.info('created draft conversation %s..., creator: "%s"', conv_id[:6], creator)
+        await self.controller.ds.create_conversation(
+            action.conn,
+            conv_id=conv_id,
+            creator=creator,
+            timestamp=timestamp,
+            ref=ref,
+            subject=subject,
+            status=self.Status.DRAFT,
+        )
+        logger.info('created draft conversation %s..., creator: "%s"', conv_id[:6], creator)
 
-            cds = self.controller.ds.new_conv_ds(conv_id, conn)
-            creator_id = await self._participants.add_first(cds, creator)
+        cds = self.controller.ds.new_conv_ds(conv_id, action.conn)
+        creator_id = await self._participants.add_first(cds, creator)
 
-            if body:
-                action = Action(creator, conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp)
-                action.actor_id = creator_id
-                action.cds = cds
-                action.item = await self._messages.add_basic(action, body, None)
-                await self.controller.event(action)
+        if body:
+            action = Action(creator, conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp)
+            action.actor_id = creator_id
+            action.cds = cds
+            action.item = await self._messages.add_basic(action, body, None)
+            await self.controller.event(action)
         return conv_id
     add_local.verb_name = 'add'
 
@@ -108,25 +107,25 @@ class Conversations:
         check_conv_id = self._conv_id_hash(creator, timestamp, data['ref'])
         if check_conv_id != action.conv:
             raise BadHash('provided hash {} does not match computed hash {}'.format(action.conv, check_conv_id))
-        async with self.controller.ds.connection() as conn:
-            await self.controller.ds.create_conversation(
-                conn,
-                conv_id=action.conv,
-                creator=creator,
-                timestamp=timestamp,
-                ref=data['ref'],
-                subject=data['subject'],
-                status=self.Status.PENDING,
-            )
-            logger.info('created pending conversation %s..., creator: "%s"', action.conv[:6], creator)
 
-            ds = self.controller.ds.new_conv_ds(action.conv, conn)
+        await self.controller.ds.create_conversation(
+            action.conn,
+            conv_id=action.conv,
+            creator=creator,
+            timestamp=timestamp,
+            ref=data['ref'],
+            subject=data['subject'],
+            status=self.Status.PENDING,
+        )
+        logger.info('created pending conversation %s..., creator: "%s"', action.conv[:6], creator)
 
-            participant_data = data[Components.PARTICIPANTS]
-            await self._participants.add_multiple(ds, participant_data)
+        ds = self.controller.ds.new_conv_ds(action.conv, action.conn)
 
-            message_data = data[Components.MESSAGES]
-            await self._messages.add_multiple(ds, message_data)
+        participant_data = data[Components.PARTICIPANTS]
+        await self._participants.add_multiple(ds, participant_data)
+
+        message_data = data[Components.MESSAGES]
+        await self._messages.add_multiple(ds, message_data)
     add_remote.verb_name = 'add'
 
     async def publish(self, action):
@@ -148,7 +147,17 @@ class Conversations:
         data = await action.cds.export()
         await self.controller.event(new_action, p_data=data)
 
-    async def get_by_id(self, id):
+    async def list(self, retrieval, limit=None, offset=None):
+        """
+        Get all conversations for a given user by reverse date order.
+
+        :param: limit: for pagination, as per sql limit clause
+        :param: offset: for pagination, as per sql limit clause
+        :returns: list of dicts in reverse timestamp order, see datastore > get_core_properties for fields
+        """
+        pass
+
+    async def get(self, id):
         raise NotImplementedError()
 
     def _conv_id_hash(self, creator, timestamp, ref):

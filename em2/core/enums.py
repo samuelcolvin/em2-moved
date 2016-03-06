@@ -35,13 +35,7 @@ class EnumMeta(type):
         return super().__new__(mcs, cls, bases, classdict)
 
     def __call__(cls, value):
-        return cls.get_attr(value)
-
-    def get_attr(cls, value):
         return cls.__reverse_members__.get(value)
-
-    def get_value(cls, attr):
-        return cls.__members__.get(attr)
 
     def __repr__(cls):
         return '{}({})'.format(cls.__name__, ', '.join('{}: {}'.format(a, v) for a, v in cls.__members__.items()))
@@ -54,4 +48,11 @@ class Enum(metaclass=EnumMeta):
 
     Also forces unique like the @unique decorator, allows inheritance and has a simpler __member__ interface.
     """
-    pass
+
+    @classmethod
+    def get_attr(cls, value):
+        return cls(value)
+
+    @classmethod
+    def get_value(cls, attr):
+        return cls.__members__.get(attr)

@@ -14,8 +14,7 @@ sa_component_lookup = {
 
 
 class PostgresDataStore(DataStore):
-    def __init__(self, engine):
-        assert isinstance(engine, Engine), 'engine is not an aiopg.sa.Engine'
+    def __init__(self, engine: Engine):
         self.engine = engine
 
     async def create_conversation(self, conn, **kwargs):

@@ -9,7 +9,7 @@ from .datastore import DataStore
 from .propagator import BasePropagator
 from .components import Components, Messages, Participants
 from .conversations import Conversations
-from .interactions import Action, Verbs
+from .interactions import Action, Verbs, Retrieval, RVerbs
 
 logger = logging.getLogger('em2')
 
@@ -28,9 +28,8 @@ class Controller:
         self.conversations = Conversations(self)
         components = [Messages, Participants]
         self.components = {c.name: c(self) for c in components}
-        self.valid_verbs = set(Verbs.__values__)
 
-    async def act(self, action, **kwargs):
+    async def act(self, action: Action, **kwargs):
         """
         Routes actions to the appropriate component and executes the right verb.
         :param action: action instance
@@ -38,15 +37,9 @@ class Controller:
         :return: result of method associated with verb
         """
         assert isinstance(action, Action)
-        if action.component == Components.CONVERSATIONS:
-            component_cls = self.conversations
-        else:
-            component_cls = self.components.get(action.component)
-            if component_cls is None:
-                raise ComponentNotFound('{} is not a valid component'.format(action.component))
 
-        if action.verb not in self.valid_verbs:
-            raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, self.valid_verbs))
+        if Verbs.get_attr(action.verb) is None:
+            raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, Verbs.__values__))
 
         if action.is_remote:
             if action.event_id != action.calc_event_id():
@@ -56,41 +49,74 @@ class Controller:
         else:
             action.timestamp = self.now_tz()
 
-        if action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD:
-            # this is a special case, where we don't have an existing conversation, also func arguments differ
-            if action.is_remote:
-                func = component_cls.add_remote
-            else:
-                func = component_cls.add_local
-            self._check_arguments(func, kwargs, allow_subset=True)
-            return await func(action, **kwargs)
+        func = self._get_function(action, Verbs)
+        self._check_arguments(func, kwargs)
 
-        func = getattr(component_cls, action.verb, None)
-        if func is None:
-            raise VerbNotFound('{} is not an available verb on {}'.format(action.verb, action.component))
+        async with self.ds.connection() as conn:
+            if action.known_conversation:
+                action.cds = self.ds.new_conv_ds(action.conv, conn)
+                await action.set_participant()
+                return await func(action, **kwargs)
+            else:
+                action.conn = conn
+                return await func(action, **kwargs)
+
+    async def retrieve(self, retrieval: Retrieval, **kwargs):
+        """
+        Routes retrieval to the appropriate component and executes the right verb.
+        :param retrieval: retrieval instance
+        :param kwargs: extra key word arguments to pass to the method with retrieval
+        :return: result of method associated with verb
+        """
+        func = self._get_function(retrieval, RVerbs)
 
         self._check_arguments(func, kwargs)
 
         async with self.ds.connection() as conn:
-            action.cds = self.ds.new_conv_ds(action.conv, conn)
-            await action.prepare()
-            return await func(action, **kwargs)
+            if retrieval.known_conversation:
+                retrieval.cds = self.ds.new_conv_ds(retrieval.conv, conn)
+                await retrieval.set_participant()
+                return await func(retrieval, **kwargs)
+            else:
+                retrieval.conn = conn
+                return await func(retrieval, **kwargs)
+
+    def _get_function(self, inter, enum):
+        component_cls = self._get_component(inter.component)
+
+        if enum.get_attr(inter.verb) is None:
+            raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(inter.verb, enum.__values__))
+
+        for func_name in self._function_names(inter.verb, inter.is_remote):
+            func = getattr(component_cls, func_name, None)
+            if func:
+                return func
+        raise VerbNotFound('{} is not an available verb on {}'.format(inter.verb, inter.component))
+
+    def _get_component(self, component_name):
+        if component_name == Components.CONVERSATIONS:
+            component_cls = self.conversations
+        else:
+            component_cls = self.components.get(component_name)
+            if component_cls is None:
+                raise ComponentNotFound('{} is not a valid component'.format(component_name))
+        return component_cls
 
     @staticmethod
-    def _check_arguments(func, kwargs, allow_subset=False):
+    def _function_names(verb, is_remote):
+        yield verb
+        yield verb + ('_remote' if is_remote else '_local')
+
+    @staticmethod
+    def _check_arguments(func, kwargs):
         """
         Check kwargs passed match the signature of the function. This is a slight hack but is required since we can't
-        catching argument mismatches without catching all TypeErrors which is worse.
+        catch argument mismatches without catching all TypeErrors which is worse.
         """
-        expected_args = set(inspect.signature(func).parameters)
-        expected_args.remove('action')
-        kw_set = set(kwargs)
-        if allow_subset and kw_set.issubset(expected_args):
-            return
-        if expected_args != set(kwargs):
-            msg = 'Wrong kwargs for {}, got: {}, expected: {}'
-            func_name = getattr(func, 'verb_name', func.__name__)
-            raise BadDataException(msg.format(func_name, sorted(list(kwargs)), sorted(list(expected_args))))
+        try:
+            inspect.signature(func).bind(action=None, **kwargs)
+        except TypeError as e:
+            raise BadDataException(*e.args) from e
 
     @property
     def timezone(self):

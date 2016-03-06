@@ -47,7 +47,7 @@ async def test_publish_invalid_args(controller, timestamp):
     a.event_id = a.calc_event_id()
     with pytest.raises(BadDataException) as excinfo:
         await controller.act(a, foo='bar')
-    assert excinfo.value.args[0] == "Wrong kwargs for add, got: ['foo'], expected: ['data']"
+    assert excinfo.value.args[0] == "missing a required argument: 'data'"
     assert len(controller.ds.data) == 0
 
 
