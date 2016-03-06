@@ -1,7 +1,6 @@
 import json
 import datetime
 import itertools
-from operator import itemgetter
 
 from collections import OrderedDict
 
@@ -62,15 +61,17 @@ class SimpleDataStore(DataStore):
 
     async def list_conversations(self, conn, address, limit=None, offset=None):
         results = []
-        for conv in self.data.values():
+        for cid, conv in self.data.items():
             p = next((p for p in conv['participants'].values() if p['address'] == address), None)
             if not p:
                 continue
             cds = self.new_conv_ds(conv['conv_id'], conn)
             props = await cds.get_core_properties()
             props['conv_id'] = conv['conv_id']
+            props['_id'] = cid
             results.append(props)
-        results.sort(key=itemgetter('timestamp'), reverse=True)
+        results.sort(key=lambda c: (c['timestamp'], c['_id']), reverse=True)
+        [r.pop('_id') for r in results]
         return results
 
     @property

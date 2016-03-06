@@ -28,7 +28,7 @@ class PostgresDataStore(DataStore):
         q = (select(self._list_columns, use_labels=True)
              .select_from(j)
              .where(sa_participants.c.address == address)
-             .order_by(sa_conversations.c.timestamp.desc())
+             .order_by(sa_conversations.c.timestamp.desc(), sa_conversations.c.id.desc())
              .limit(limit)
              .offset(offset))
         results = []
