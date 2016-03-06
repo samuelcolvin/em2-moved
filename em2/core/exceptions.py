@@ -24,6 +24,14 @@ class VerbNotFound(NotFoundException):
     pass
 
 
+class UserNotFound(NotFoundException):
+    pass
+
+
+class DuplicateUser(UserNotFound):
+    pass
+
+
 class BadHash(Em2Exception):
     pass
 

@@ -20,7 +20,7 @@ class Verbs(Enum):
 
 class _Interaction:
     repr_attrs = []
-    cds = conn = actor_id = actor_addr = None
+    cds = conn = actor_id = actor_addr = None  # TODO clarify who this is, remove actor_id from retrieval
 
     async def set_participant(self):
         self.actor_id, self.perm = await self.cds.get_participant(self.actor_addr)

@@ -79,8 +79,10 @@ class Conversations:
         )
         logger.info('created draft conversation %s..., creator: "%s"', conv_id[:6], creator)
 
+        creator_user = None if action.is_remote else await self.controller.ds.get_user_id(action.conn, creator)
+
         cds = self.controller.ds.new_conv_ds(conv_id, action.conn)
-        creator_id = await self._participants.add_first(cds, creator)
+        creator_id = await self._participants.add_first(cds, creator, creator_user)
 
         if body:
             action = Action(creator, conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp)
@@ -155,7 +157,7 @@ class Conversations:
         :param: offset: for pagination, as per sql limit clause
         :returns: list of dicts in reverse timestamp order, see datastore > get_core_properties for fields
         """
-        pass
+        return await self.controller.ds.list_conversations(retrieval.conn, retrieval.actor_addr, limit, offset)
 
     async def get(self, id):
         raise NotImplementedError()

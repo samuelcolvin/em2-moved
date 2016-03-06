@@ -2,9 +2,9 @@ from aiopg.sa import Engine
 from sqlalchemy import select, column, join
 
 from em2.core import Components, DataStore, ConversationDataStore
-from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
+from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound, UserNotFound
 
-from .models import sa_conversations, sa_participants, sa_messages, sa_events
+from .models import sa_conversations, sa_participants, sa_messages, sa_events, sa_users
 
 sa_component_lookup = {
     Components.CONVERSATIONS: sa_conversations,
@@ -20,6 +20,22 @@ class PostgresDataStore(DataStore):
     async def create_conversation(self, conn, **kwargs):
         # key word arguments to create_conversation exactly match the db.
         return await conn.execute(sa_conversations.insert().values(**kwargs))
+
+    async def get_user_id(self, conn, address):
+        q = select([sa_users.c.id]).where(sa_users.c.address == address)
+        result = await conn.execute(q)
+        row = await result.first()
+        if row is None:
+            raise UserNotFound('No user found with address "{}"'.format(address))
+        return row.id
+
+    async def create_user(self, conn, address, full_name=None):
+        kwargs = {
+            'address': address,
+            'full_name': full_name,
+        }
+        v = await conn.execute(sa_users.insert().values(**kwargs))
+        return (await v.first()).id
 
     @property
     def conv_data_store(self):

@@ -50,7 +50,7 @@ class Controller:
             action.timestamp = self.now_tz()
 
         func = self._get_function(action, Verbs)
-        self._check_arguments(func, kwargs)
+        self._check_arguments(func, 'action', kwargs)
 
         async with self.ds.connection() as conn:
             if action.known_conversation:
@@ -70,7 +70,7 @@ class Controller:
         """
         func = self._get_function(retrieval, RVerbs)
 
-        self._check_arguments(func, kwargs)
+        self._check_arguments(func, 'retrieval', kwargs)
 
         async with self.ds.connection() as conn:
             if retrieval.known_conversation:
@@ -108,13 +108,13 @@ class Controller:
         yield verb + ('_remote' if is_remote else '_local')
 
     @staticmethod
-    def _check_arguments(func, kwargs):
+    def _check_arguments(func, std_arg_name, kwargs):
         """
         Check kwargs passed match the signature of the function. This is a slight hack but is required since we can't
         catch argument mismatches without catching all TypeErrors which is worse.
         """
         try:
-            inspect.signature(func).bind(action=None, **kwargs)
+            inspect.signature(func).bind(**{std_arg_name: None}, **kwargs)
         except TypeError as e:
             raise BadDataException(*e.args) from e
 

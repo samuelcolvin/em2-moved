@@ -72,12 +72,8 @@ class TestPostgresDataStore(PostgresDataStore):
     _conn_ctx = None
 
     def connection(self):
-        assert self._conn_ctx is None
-        self._conn_ctx = TestCtx(self.engine)
-        return self._conn_ctx
-
-    def reuse_connection(self):
-        assert self._conn_ctx is not None
+        # force the same connection to be used each time
+        self._conn_ctx = self._conn_ctx or TestCtx(self.engine)
         return self._conn_ctx
 
     async def terminate(self):

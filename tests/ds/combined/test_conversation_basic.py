@@ -13,9 +13,10 @@ async def test_datastore_type(get_ds, datastore_cls):
 async def test_create_conversation(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
-    action = Action('sender@example.com', None, Verbs.ADD)
-    conv_id = await controller.act(action, subject='the subject')
-    async with ds.reuse_connection() as conn:
+    async with ds.connection() as conn:
+        await ds.create_user(conn, 'sender@example.com')
+        action = Action('sender@example.com', None, Verbs.ADD)
+        conv_id = await controller.act(action, subject='the subject')
         cds = ds.new_conv_ds(conv_id, conn)
         assert isinstance(cds, ConversationDataStore)
         props = await cds.get_core_properties()
@@ -34,9 +35,10 @@ async def test_create_conversation(get_ds, datastore_cls):
 async def test_create_conversation_check_participants(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
-    action = Action('sender@example.com', None, Verbs.ADD)
-    conv_id = await controller.act(action, subject='the subject')
-    async with ds.reuse_connection() as conn:
+    async with ds.connection() as conn:
+        await ds.create_user(conn, 'sender@example.com')
+        action = Action('sender@example.com', None, Verbs.ADD)
+        conv_id = await controller.act(action, subject='the subject')
         cds = ds.new_conv_ds(conv_id, conn)
         participants = await cds.get_all_component_items(Components.PARTICIPANTS)
         assert len(participants) == 1
@@ -50,9 +52,10 @@ async def test_create_conversation_check_participants(get_ds, datastore_cls):
 async def test_create_conversation_body(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
-    action = Action('sender@example.com', None, Verbs.ADD)
-    conv_id = await controller.act(action, subject='the subject', body='the body', ref='conv-ref')
-    async with ds.reuse_connection() as conn:
+    async with ds.connection() as conn:
+        await ds.create_user(conn, 'sender@example.com')
+        action = Action('sender@example.com', None, Verbs.ADD)
+        conv_id = await controller.act(action, subject='the subject', body='the body', ref='conv-ref')
         cds = ds.new_conv_ds(conv_id, conn)
         messages = await cds.get_all_component_items(Components.MESSAGES)
         assert len(messages) == 1

@@ -1,10 +1,12 @@
 import json
 import datetime
 import itertools
+from operator import itemgetter
+
 from collections import OrderedDict
 
 from em2.core import Components, DataStore, ConversationDataStore
-from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
+from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound, UserNotFound, DuplicateUser
 
 
 class UniversalEncoder(json.JSONEncoder):
@@ -22,9 +24,12 @@ class UniversalEncoder(json.JSONEncoder):
 class SimpleDataStore(DataStore):
     _conn_ctx = None
 
-    def __init__(self):
+    def __init__(self, auto_create_users=True):
+        self.auto_create_users = auto_create_users
         self.conversation_counter = itertools.count()
         self.data = {}
+        self.users = {}
+        self.user_counter = itertools.count()
         super(SimpleDataStore, self).__init__()
 
     async def create_conversation(self, conn, **kwargs):
@@ -38,18 +43,42 @@ class SimpleDataStore(DataStore):
         )
         return id
 
+    async def get_user_id(self, conn, address):
+        user = self.users.get(address)
+        if user:
+            return user['id']
+        if self.auto_create_users:
+            # shortcut so we don't have to create a user in every test
+            return await self.create_user(conn, address)
+        else:
+            raise UserNotFound('No user found with address "{}"'.format(address))
+
+    async def create_user(self, conn, address, **kwargs):
+        if address in self.users:
+            raise DuplicateUser('user {} already exists'.format(address))
+        uid = next(self.user_counter)
+        self.users[address] = dict(id=uid, address=address, **kwargs)
+        return uid
+
+    async def list_conversations(self, conn, address, limit=None, offset=None):
+        results = []
+        for conv in self.data.values():
+            p = next((p for p in conv['participants'].values() if p['address'] == address), None)
+            if not p:
+                continue
+            cds = self.new_conv_ds(conv['conv_id'], conn)
+            props = await cds.get_core_properties()
+            props['conv_id'] = conv['conv_id']
+            results.append(props)
+        results.sort(key=itemgetter('timestamp'), reverse=True)
+        return results
+
     @property
     def conv_data_store(self):
         return SimpleConversationDataStore
 
     def connection(self):
-        # assert self._conn_ctx is None
-        self._conn_ctx = VoidContextManager()
-        return self._conn_ctx
-
-    def reuse_connection(self):
-        # assert self._conn_ctx is not None
-        return self._conn_ctx
+        return VoidContextManager()
 
     def get_conv(self, conv_id):
         for v in self.data.values():

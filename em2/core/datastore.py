@@ -15,7 +15,13 @@ class DataStore:
     async def create_conversation(self, conn, conv_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 
-    async def list_conversations(self, user_id, limit=None, offset=None):
+    async def list_conversations(self, conn, user_id, limit=None, offset=None):
+        raise NotImplementedError()
+
+    async def get_user_id(self, conn, address):
+        raise NotImplementedError()
+
+    async def create_user(self, conn, address, **kwargs):
         raise NotImplementedError()
 
     @property
@@ -27,12 +33,6 @@ class DataStore:
 
     async def finish(self):
         pass
-
-    def reuse_connection(self):
-        """
-        Only used for tests, should return the connection previously returned from connection()
-        """
-        raise NotImplementedError()
 
     def new_conv_ds(self, conv_id, conn):
         return self.conv_data_store(self, conv_id, conn)

@@ -177,13 +177,9 @@ class Participants(_Component):
         for address, _ in data:
             await self.controller.prop.add_participant(ds.conv, address)
 
-    async def add_first(self, ds, address):
-        new_participant_id = await ds.add_component(
-            self.name,
-            address=address,
-            permissions=perms.FULL,
-        )
-        logger.info('first participant added to %d: address: "%s"', ds.conv, address)
+    async def add_first(self, cds, address, user=None):
+        new_participant_id = await self._add(cds, address, perms.FULL, user=user)
+        logger.info('first participant added to %s: address: "%s"', cds.conv, address)
         return new_participant_id
 
     async def add(self, action, address, permissions):
@@ -192,15 +188,23 @@ class Participants(_Component):
         if action.perm == perms.WRITE and permissions == perms.FULL:
             raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions')
         # TODO check the address is valid
-        action.item = await action.cds.add_component(
-            self.name,
-            address=address,
-            permissions=permissions,
-        )
-        logger.info('added participant to %d: address: "%s", permissions: "%s"', action.conv, address, permissions)
+
+        user = None if action.is_remote else await self.controller.ds.get_user_id(action.cds.conn, address)
+
+        action.item = await self._add(action.cds, address, permissions, user)
+
+        logger.info('added participant to %s: address: "%s", permissions: "%s"', action.conv, address, permissions)
         await self.controller.prop.add_participant(action.conv, address)
         await self._event(action)
         return action.item
+
+    async def _add(self, cds, address, permissions, user=None):
+        return await cds.add_component(
+            self.name,
+            address=address,
+            permissions=permissions,
+            user=user,
+        )
 
 # shortcut
 perms = Participants.Permissions

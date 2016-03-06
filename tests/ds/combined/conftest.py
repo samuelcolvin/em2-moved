@@ -30,7 +30,7 @@ def get_ds(loop, db, dsn):
             ds = TestPostgresDataStore(engine)
             return ds
         else:
-            ds = SimpleDataStore()
+            ds = SimpleDataStore(auto_create_users=False)
             return ds
 
     yield datastore_creator

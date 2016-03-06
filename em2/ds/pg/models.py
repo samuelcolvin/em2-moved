@@ -68,7 +68,7 @@ class Participant(Base):
     display_name = Column(String(255))
     hidden = Column(Boolean, default=False)
     permissions = Column(Permissions.sa_enum())
-    user = Column(Integer, ForeignKey('users.id'))
+    user = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'))
 
     __table_args__ = (
         UniqueConstraint('conversation', 'address', name='_participant_email'),
@@ -128,6 +128,6 @@ class User(Base):
 
     address = Column(String(255), nullable=False)
 
-    password = Column(String(255))
-
     # TODO more to come
+
+sa_users = User.__table__

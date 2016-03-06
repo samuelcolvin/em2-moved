@@ -139,8 +139,22 @@ async def test_list_conversations(get_ds, datastore_cls):
         pytest.skip('skipping')
     ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:
+        user1 = await ds.create_user(conn, 'test1@ex.com')
         cds1 = await create_conv(conn, ds, '123')
-        await cds1.add_component(Components.PARTICIPANTS, address='test1@ex.com', permissions=perms.FULL, user=12)
+        await cds1.add_component(Components.PARTICIPANTS, address='test1@ex.com', permissions=perms.FULL, user=user1)
 
+        user2 = await ds.create_user(conn, 'test2@ex.com')
         cds2 = await create_conv(conn, ds, '456')
-        await cds2.add_component(Components.PARTICIPANTS, address='test2@ex.com', permissions=perms.FULL, user=45)
+        await cds2.add_component(Components.PARTICIPANTS, address='test2@ex.com', permissions=perms.FULL, user=user2)
+
+        convs = await ds.list_conversations(conn, 'test1@ex.com')
+        assert len(convs) == 1
+        assert isinstance(convs[0].pop('timestamp'), datetime.datetime)
+        assert convs[0] == {
+            'creator': 'test@example.com',
+            'ref': 'x',
+            'status': 'active',
+            'expiration': None,
+            'subject': 'sub',
+            'conv_id': '123',
+        }
