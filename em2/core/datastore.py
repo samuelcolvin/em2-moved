@@ -14,6 +14,9 @@ class DataStore:
     async def create_conversation(self, conn, conv_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 
+    async def list_conversations(self, user_id, limit=None, offset=None):
+        raise NotImplementedError()
+
     @property
     def conv_data_store(self):
         raise NotImplementedError()

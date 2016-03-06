@@ -2,7 +2,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence, UniqueConstraint, sql
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
-from em2.core.base import Conversations, Verbs, Participants, Components
+from em2.core.base import Verbs, Participants, Components
+from em2.core.conversations import Conversations
 from .model_extras import TIMESTAMPTZ, SAEnum
 
 Base = declarative_base()
@@ -67,6 +68,8 @@ class Participant(Base):
     display_name = Column(String(255))
     hidden = Column(Boolean, default=False)
     permissions = Column(Permissions.sa_enum())
+    user = Column(Integer, ForeignKey('users.id'))
+
     __table_args__ = (
         UniqueConstraint('conversation', 'address', name='_participant_email'),
     )
@@ -115,25 +118,16 @@ class Attachment(Base):
     generator = Column(JSONB)
     expires = Column(TIMESTAMPTZ)
 
+# TODO: organisations, collections
 
-# TODO uncomment once we're ready to implement extras:
-# class Extra(Base):
-#     __tablename__ = Components.EXTRAS
-#     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
-#     id = Column(String(40), primary_key=True)
-#     author = Column(Integer, ForeignKey('participants.id'), nullable=False)
-#     timestamp = Column(TIMESTAMPTZ, nullable=False)
-#     type = Column(String(40))
-#     name = Column(String(255))
-#     description = Column(Text)
-#     data = Column(JSONB)
-#     questions = Column(JSONB)
-#
-#
-# class Response(Base):
-#     __tablename__ = Components.RESPONSES
-#     id = Column(String(40), primary_key=True)
-#     extra = Column(String(40), ForeignKey('extras.id', ondelete='CASCADE'), nullable=False)
-#     author = Column(Integer, ForeignKey('participants.id'), nullable=False)
-#     timestamp = Column(TIMESTAMPTZ, nullable=False)
-#     response = Column(JSONB, nullable=False)
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, Sequence('user_id_seq'), primary_key=True, nullable=False)
+    full_name = Column(String(255))
+
+    address = Column(String(255), nullable=False)
+
+    password = Column(String(255))
+
+    # TODO more to come

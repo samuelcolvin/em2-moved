@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from em2.core.base import Conversations
+from em2.core.conversations import Conversations
 from em2.core.components import perms
 from em2.core.common import Components
 from em2.core.exceptions import ComponentNotFound
@@ -133,3 +133,15 @@ async def test_set_status_ref_subject(get_ds, datastore_cls):
         assert props['status'] == Conversations.Status.ACTIVE
         assert props['ref'] == 'x'
         assert props['subject'] == 'sub'
+
+
+async def test_list_conversations(get_ds, datastore_cls):
+    if datastore_cls == 'PostgresDataStore':
+        pytest.skip('skipping')
+    ds = await get_ds(datastore_cls)
+    async with ds.connection() as conn:
+        cds1 = await create_conv(conn, ds, '123')
+        await cds1.add_component(Components.PARTICIPANTS, address='test1@ex.com', permissions=perms.FULL, user=12)
+
+        cds2 = await create_conv(conn, ds, '456')
+        await cds2.add_component(Components.PARTICIPANTS, address='test2@ex.com', permissions=perms.FULL, user=45)
