@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from em2.core.base import Action
+from em2.core.controller import Action
 from em2.core.propagator import BasePropagator
 
 

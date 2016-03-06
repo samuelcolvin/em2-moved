@@ -1,5 +1,5 @@
 import pytest
-from em2.core.base import Action, Verbs, Components
+from em2.core.controller import Action, Verbs, Components
 from em2.core.exceptions import BadDataException
 
 

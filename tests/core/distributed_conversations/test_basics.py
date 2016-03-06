@@ -2,7 +2,7 @@ import datetime
 import hashlib
 from copy import deepcopy
 
-from em2.core.base import Controller, Action, Verbs, Components
+from em2.core.controller import Controller, Action, Verbs, Components
 from em2.core.components import perms
 from tests.fixture_classes import SimpleDataStore, NullPropagator, SimplePropagator
 

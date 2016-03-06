@@ -3,7 +3,7 @@ from json import JSONDecodeError
 
 from aiohttp import web
 
-from em2.core.base import Action
+from em2.core.controller import Action
 from em2.core.exceptions import Em2Exception
 from .utils import bad_request_response, logger, json_bytes
 

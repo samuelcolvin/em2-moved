@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import pytest
 
-from em2.core.base import Action, Verbs
+from em2.core.controller import Action, Verbs
 from em2.core.common import Components
 from em2.core.exceptions import BadDataException, BadHash, MisshapedDataException, ComponentNotFound
 

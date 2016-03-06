@@ -2,7 +2,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence, UniqueConstraint, sql
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declared_attr
-from em2.core.base import Verbs, Participants, Components
+from em2.core.controller import Verbs, Participants, Components
 from em2.core.conversations import Conversations
 from .model_extras import TIMESTAMPTZ, SAEnum
 

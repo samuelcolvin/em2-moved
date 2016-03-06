@@ -8,7 +8,7 @@ from sqlalchemy.engine.url import URL
 THIS_DIR = os.path.dirname(__file__)
 sys.path.append(os.path.join(THIS_DIR, '../..'))
 
-from em2.core.base import Controller  # noqa
+from em2.core.controller import Controller  # noqa
 from em2.comms.http import create_app  # noqa
 from em2.ds.pg.datastore import PostgresDataStore  # noqa
 from tests.fixture_classes import NullPropagator  # noqa

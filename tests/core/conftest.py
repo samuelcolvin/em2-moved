@@ -1,6 +1,6 @@
 import pytest
 
-from em2.core.base import Controller
+from em2.core.controller import Controller
 from tests.fixture_classes import SimpleDataStore, NullPropagator
 
 
