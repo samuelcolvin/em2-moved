@@ -1,7 +1,7 @@
 import pytest
 from aiopg.sa import create_engine
 
-from em2.core import Controller
+from em2.core import Controller, Action, Verbs
 from em2.core.exceptions import ConversationNotFound
 from em2.ds.pg.datastore import PostgresDataStore
 from em2.ds.pg.models import sa_conversations
@@ -40,7 +40,8 @@ async def test_datastore_setup(loop, empty_db, dsn):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
         ds = PostgresDataStore(engine)
         controller = Controller(ds, NullPropagator())
-        conv_id = await controller.conversations.create('sender@example.com', 'the subject')
+        action = Action('sender@example.com', None, Verbs.ADD)
+        conv_id = await controller.act(action, subject='the subject')
         async with ds.connection() as conn:
             cds = ds.new_conv_ds(conv_id, conn)
             props = await cds.get_core_properties()

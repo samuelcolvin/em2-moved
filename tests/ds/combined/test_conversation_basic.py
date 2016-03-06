@@ -1,6 +1,6 @@
 import datetime
 
-from em2.core import Controller, Components, perms, DataStore, ConversationDataStore
+from em2.core import Controller, Components, perms, DataStore, ConversationDataStore, Verbs, Action
 
 from tests.fixture_classes import NullPropagator
 
@@ -13,7 +13,8 @@ async def test_datastore_type(get_ds, datastore_cls):
 async def test_create_conversation(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
-    conv_id = await controller.conversations.create('sender@example.com', 'the subject')
+    action = Action('sender@example.com', None, Verbs.ADD)
+    conv_id = await controller.act(action, subject='the subject')
     async with ds.reuse_connection() as conn:
         cds = ds.new_conv_ds(conv_id, conn)
         assert isinstance(cds, ConversationDataStore)
@@ -33,7 +34,8 @@ async def test_create_conversation(get_ds, datastore_cls):
 async def test_create_conversation_check_participants(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
-    conv_id = await controller.conversations.create('sender@example.com', 'the subject')
+    action = Action('sender@example.com', None, Verbs.ADD)
+    conv_id = await controller.act(action, subject='the subject')
     async with ds.reuse_connection() as conn:
         cds = ds.new_conv_ds(conv_id, conn)
         participants = await cds.get_all_component_items(Components.PARTICIPANTS)
@@ -48,7 +50,8 @@ async def test_create_conversation_check_participants(get_ds, datastore_cls):
 async def test_create_conversation_body(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
-    conv_id = await controller.conversations.create('sender@example.com', 'the subject', 'the body', 'conv-ref')
+    action = Action('sender@example.com', None, Verbs.ADD)
+    conv_id = await controller.act(action, subject='the subject', body='the body', ref='conv-ref')
     async with ds.reuse_connection() as conn:
         cds = ds.new_conv_ds(conv_id, conn)
         messages = await cds.get_all_component_items(Components.MESSAGES)

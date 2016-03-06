@@ -43,7 +43,7 @@ async def test_publish_simple_conversation(controller, timestamp):
 
 
 async def test_publish_invalid_args(controller, timestamp):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     with pytest.raises(BadDataException) as excinfo:
         await controller.act(a, foo='bar')
@@ -52,7 +52,7 @@ async def test_publish_invalid_args(controller, timestamp):
 
 
 async def test_publish_wrong_event_id(controller, timestamp):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = 'foobar'
     with pytest.raises(BadHash) as excinfo:
         await controller.act(a, data=deepcopy(correct_data))
@@ -60,7 +60,7 @@ async def test_publish_wrong_event_id(controller, timestamp):
 
 
 async def test_publish_no_timestamp(controller):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=None)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=None)
     a.event_id = a.calc_event_id()
     with pytest.raises(BadDataException) as excinfo:
         await controller.act(a, data=deepcopy(correct_data))
@@ -136,7 +136,7 @@ bad_data = [
 
 @pytest.mark.parametrize('data,exc', [(v[1], v[2]) for v in bad_data], ids=[v[0] for v in bad_data])
 async def test_publish_misshaped_data(controller, timestamp, data, exc):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     with pytest.raises(BadDataException) as excinfo:
         await controller.act(a, data=data)
@@ -146,7 +146,7 @@ async def test_publish_misshaped_data(controller, timestamp, data, exc):
 
 async def test_wrong_hash(controller, timestamp):
     w_conv_id = conv_id + '+wrong'
-    a = Action('testing@example.com', w_conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', w_conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     with pytest.raises(BadHash) as excinfo:
         await controller.act(a, data=deepcopy(correct_data))
@@ -155,7 +155,7 @@ async def test_wrong_hash(controller, timestamp):
 
 
 async def test_publish_conversation_two_messages(controller, timestamp):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     ds = controller.ds
     assert len(ds.data) == 0
@@ -183,7 +183,7 @@ async def test_publish_conversation_two_messages(controller, timestamp):
 
 
 async def test_publish_conversation_wrong_message_id(controller, timestamp):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     ds = controller.ds
     assert len(ds.data) == 0
@@ -195,7 +195,7 @@ async def test_publish_conversation_wrong_message_id(controller, timestamp):
 
 
 async def test_publish_conversation_two_messages_wrong_id(controller, timestamp):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     ds = controller.ds
     assert len(ds.data) == 0
@@ -223,7 +223,7 @@ async def test_publish_conversation_two_messages_wrong_id(controller, timestamp)
 
 
 async def test_publish_conversation_two_messages_wrong_timestamp(controller, timestamp):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     ds = controller.ds
     assert len(ds.data) == 0
@@ -243,7 +243,7 @@ async def test_publish_conversation_two_messages_wrong_timestamp(controller, tim
 
 
 async def test_publish_conversation_two_messages_repeat_id(controller, timestamp):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
+    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     ds = controller.ds
     assert len(ds.data) == 0

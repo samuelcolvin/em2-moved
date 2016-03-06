@@ -1,7 +1,7 @@
 import logging
 
 from .enums import Enum
-from .components import hash_id
+from .components import Components, hash_id
 
 logger = logging.getLogger('em2')
 
@@ -20,9 +20,9 @@ class Verbs(Enum):
 
 class Action:
     """
-    Define something someone is doing.
+    Define something someone does.
     """
-    def __init__(self, actor, conversation, verb, component,
+    def __init__(self, actor, conversation, verb, component=Components.CONVERSATIONS,
                  item=None, timestamp=None, event_id=None, parent_event_id=None):
         self.cds = None
         self.actor_id = None

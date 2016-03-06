@@ -7,7 +7,8 @@ from tests.fixture_classes import SimpleDataStore, NullPropagator, SimplePropaga
 
 
 async def test_create_basic_conversation(controller):
-    await controller.conversations.create('sender@example.com', 'foo bar')
+    action = Action('sender@example.com', None, Verbs.ADD)
+    await controller.act(action, subject='foo bar')
     ds = controller.ds
     assert len(ds.data) == 1
     con = ds.data[0]
@@ -30,7 +31,8 @@ async def test_create_conversation_add_external_participant():
     remote_ctrl = Controller(SimpleDataStore(), NullPropagator(), ref='ctrl2')
     propagator.add_platform('@remote.com', remote_ctrl)
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 0)
-    conv_id = await ctrl.conversations.create('sender@local.com', 'foo bar')
+    action = Action('sender@local.com', None, Verbs.ADD)
+    conv_id = await ctrl.act(action, subject='foo bar')
     assert len(ds.data[0]['participants']) == 1
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
@@ -45,7 +47,8 @@ async def test_publish_conversation():
     other_ds = SimpleDataStore()
     remote_ctrl = Controller(other_ds, NullPropagator(), ref='ctrl2')
     propagator.add_platform('@remote.com', remote_ctrl)
-    conv_id = await ctrl.conversations.create('sender@local.com', 'the subject', 'the body')
+    action = Action('sender@local.com', None, Verbs.ADD)
+    conv_id = await ctrl.act(action, subject='the subject', body='the body')
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
 

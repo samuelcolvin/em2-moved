@@ -42,9 +42,8 @@ class Controller:
             component_cls = self.conversations
         else:
             component_cls = self.components.get(action.component)
-
-        if component_cls is None:
-            raise ComponentNotFound('{} is not a valid component'.format(action.component))
+            if component_cls is None:
+                raise ComponentNotFound('{} is not a valid component'.format(action.component))
 
         if action.verb not in self.valid_verbs:
             raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, self.valid_verbs))
@@ -57,24 +56,41 @@ class Controller:
         else:
             action.timestamp = self.now_tz()
 
+        if action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD:
+            # this is a special case, where we don't have an existing conversation, also func arguments differ
+            if action.is_remote:
+                func = component_cls.add_remote
+            else:
+                func = component_cls.add_local
+            self._check_arguments(func, kwargs, allow_subset=True)
+            return await func(action, **kwargs)
+
         func = getattr(component_cls, action.verb, None)
         if func is None:
             raise VerbNotFound('{} is not an available verb on {}'.format(action.verb, action.component))
 
-        args = set(inspect.signature(func).parameters)
-        args.remove('action')
-        if args != set(kwargs):
-            msg = 'Wrong kwargs for {}, got: {}, expected: {}'
-            raise BadDataException(msg.format(func.__name__, sorted(list(kwargs)), sorted(list(args))))
-
-        # TODO better way of dealing with this(ese) case(s)
-        if action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD:
-            return await func(action, **kwargs)
+        self._check_arguments(func, kwargs)
 
         async with self.ds.connection() as conn:
             action.cds = self.ds.new_conv_ds(action.conv, conn)
             await action.prepare()
             return await func(action, **kwargs)
+
+    @staticmethod
+    def _check_arguments(func, kwargs, allow_subset=False):
+        """
+        Check kwargs passed match the signature of the function. This is a slight hack but is required since we can't
+        catching argument mismatches without catching all TypeErrors which is worse.
+        """
+        expected_args = set(inspect.signature(func).parameters)
+        expected_args.remove('action')
+        kw_set = set(kwargs)
+        if allow_subset and kw_set.issubset(expected_args):
+            return
+        if expected_args != set(kwargs):
+            msg = 'Wrong kwargs for {}, got: {}, expected: {}'
+            func_name = getattr(func, 'verb_name', func.__name__)
+            raise BadDataException(msg.format(func_name, sorted(list(kwargs)), sorted(list(expected_args))))
 
     @property
     def timezone(self):

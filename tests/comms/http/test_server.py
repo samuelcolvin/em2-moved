@@ -1,6 +1,9 @@
+from em2.core import Action, Verbs
+
 
 async def test_add_message(client):
-    conv_id = await client.em2_ctrl.conversations.create('test@example.com', 'foo bar', 'hi, how are you?')
+    action = Action('test@example.com', None, Verbs.ADD)
+    conv_id = await client.em2_ctrl.act(action, subject='foo bar', body='hi, how are you?')
     headers = {
         'Authorization': 'Token 321',
         'Actor': 'test@example.com',

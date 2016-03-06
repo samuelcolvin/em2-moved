@@ -60,10 +60,11 @@ class Conversations:
     def _messages(self):
         return self.controller.components[Components.MESSAGES]
 
-    async def create(self, creator, subject, body=None, ref=None):
+    async def add_local(self, action, subject, body=None, ref=None):
         """
         Create a brand new conversation.
         """
+        creator = action.actor_addr
         timestamp = self.controller.now_tz()
         ref = ref or subject
         conv_id = self._conv_id_hash(creator, timestamp, ref)
@@ -89,8 +90,9 @@ class Conversations:
                 action.item = await self._messages.add_basic(action, body, None)
                 await self.controller.event(action)
         return conv_id
+    add_local.verb_name = 'add'
 
-    async def add(self, action, data):
+    async def add_remote(self, action, data):
         """
         Add a new conversation created on another platform.
         """
@@ -125,6 +127,7 @@ class Conversations:
 
             message_data = data[Components.MESSAGES]
             await self._messages.add_multiple(ds, message_data)
+    add_remote.verb_name = 'add'
 
     async def publish(self, action):
         """
