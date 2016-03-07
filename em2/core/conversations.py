@@ -64,7 +64,7 @@ class Conversations:
         """
         Create a brand new conversation.
         """
-        creator = action.actor_addr
+        creator = action.address
         timestamp = self.controller.now_tz()
         ref = ref or subject
         conv_id = self._conv_id_hash(creator, timestamp, ref)
@@ -84,7 +84,7 @@ class Conversations:
 
         if body:
             action = Action(creator, conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp)
-            action.actor_id = creator_id
+            action.participant_id = creator_id
             action.cds = cds
             action.item = await self._messages.add_basic(action, body, None)
             await self.controller.event(action)
@@ -137,12 +137,12 @@ class Conversations:
 
         ref = await action.cds.get_ref()
 
-        new_conv_id = self._conv_id_hash(action.actor_addr, action.timestamp, ref)
+        new_conv_id = self._conv_id_hash(action.address, action.timestamp, ref)
         await action.cds.set_published_id(action.timestamp, new_conv_id)
 
-        new_action = Action(action.actor_addr, new_conv_id, Verbs.ADD, Components.CONVERSATIONS,
+        new_action = Action(action.address, new_conv_id, Verbs.ADD, Components.CONVERSATIONS,
                             timestamp=action.timestamp)
-        new_action.cds, new_action.actor_id, new_action.perm = action.cds, action.actor_id, action.perm
+        new_action.cds, new_action.participant_id, new_action.perm = action.cds, action.participant_id, action.perm
 
         data = await action.cds.export()
         await self.controller.event(new_action, p_data=data)
@@ -155,7 +155,7 @@ class Conversations:
         :param: offset: for pagination, as per sql limit clause
         :returns: list of dicts in reverse timestamp order, see datastore > get_core_properties for fields
         """
-        return await self.controller.ds.list_conversations(retrieval.conn, retrieval.actor_addr, limit, offset)
+        return await self.controller.ds.list_conversations(retrieval.conn, retrieval.address, limit, offset)
 
     async def get(self, id):
         raise NotImplementedError()
@@ -164,4 +164,4 @@ class Conversations:
         return hash_id(creator, timestamp.isoformat(), ref, sha256=True)
 
     def __repr__(self):
-        return '<Conversations 0x{:x} on {}>'.format(id(self), self.controller)
+        return '<Conversations 0x{:x} on "{}">'.format(id(self), self.controller.ref)

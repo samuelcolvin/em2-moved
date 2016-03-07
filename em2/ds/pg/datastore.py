@@ -91,7 +91,7 @@ class PostgresConversationDataStore(ConversationDataStore):
         kwargs = {
             'id': event_id,
             'conversation': await self._get_local_id(),
-            'actor': action.actor_id,
+            'actor': action.participant_id,
             'verb': action.verb,
             'component': action.component,
             'item': action.item,

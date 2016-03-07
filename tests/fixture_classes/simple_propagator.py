@@ -51,7 +51,7 @@ class SimplePropagator(BasePropagator):
             ctrls = self.active_platforms.pop(conv_obj['draft_conv_id'])
             self.active_platforms[action.conv] = ctrls
 
-        new_action = Action(action.actor_addr, action.conv, action.verb, action.component,
+        new_action = Action(action.address, action.conv, action.verb, action.component,
                             action.item, timestamp, event_id)
         prop_data = deepcopy(data)
         for ctrl in ctrls:

@@ -13,6 +13,8 @@ def test_basic_enums():
     assert Foo.__reverse_members__ == OrderedDict([('pear', 'PEAR'), ('apple', 'APPLE'), (17, 'GRAPE')])
     assert Foo('apple') == 'APPLE'
     assert Foo.get_value('GRAPE') == 17
+    assert str(Foo) == 'Foo(PEAR: pear, APPLE: apple, GRAPE: 17)'
+    print(Foo)
 
 
 def test_inheritance():

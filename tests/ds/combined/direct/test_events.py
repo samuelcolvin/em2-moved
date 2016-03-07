@@ -16,7 +16,7 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
             permissions=perms.FULL,
         )
         action = Action('test@example.com', '123', Verbs.ADD, Components.PARTICIPANTS, pid, timestamp)
-        action.actor_id, action.perm = pid, perms.FULL
+        action.participant_id, action.perm = pid, perms.FULL
         await cds.save_event('event_1', action, {})
 
         await cds.save_event('event_2', action, {'value': 'foobar'})
@@ -26,7 +26,7 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
 
         # NOTE: action action.conv_id is ignored in save_event and the cds conv_id is used instead
         cds2 = ds.new_conv_ds('bad', conn)
-        action.actor_id, action.perm = pid, perms.FULL
+        action.participant_id, action.perm = pid, perms.FULL
         with pytest.raises(ConversationNotFound):
             await cds2.save_event('event_3', action, {})
 
@@ -41,7 +41,7 @@ async def test_get_last_event(get_ds, datastore_cls, timestamp):
             permissions=perms.FULL,
         )
         action = Action('test@example.com', '123', Verbs.ADD, Components.MESSAGES, 'msg_id', timestamp)
-        action.actor_id, action.perm = pid, perms.FULL
+        action.participant_id, action.perm = pid, perms.FULL
         await cds.save_event('event_1', action, {})
 
         event_id, event_timestamp = await cds.get_item_last_event(Components.MESSAGES, 'msg_id')

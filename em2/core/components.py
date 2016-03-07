@@ -72,11 +72,11 @@ class Messages(_Component):
         await ds.add_multiple_components(self.name, data)
 
     async def add_basic(self, action, body, parent_id):
-        m_id = hash_id(action.actor_addr, action.timestamp.isoformat(), body, parent_id)
+        m_id = hash_id(action.address, action.timestamp.isoformat(), body, parent_id)
         await action.cds.add_component(
             self.name,
             id=m_id,
-            author=action.actor_id,
+            author=action.participant_id,
             timestamp=action.timestamp,
             body=body,
             parent=parent_id,
@@ -95,7 +95,7 @@ class Messages(_Component):
             await action.cds.add_component(
                 self.name,
                 id=action.item,
-                author=action.actor_id,
+                author=action.participant_id,
                 timestamp=action.timestamp,
                 body=body,
                 parent=parent_id,
@@ -136,7 +136,7 @@ class Messages(_Component):
     async def _check_permissions(self, action):
         if action.perm == perms.WRITE:
             meta = await action.cds.get_message_meta(action.item)
-            if action.actor_id != meta['author']:
+            if action.participant_id != meta['author']:
                 raise InsufficientPermissions('To {} a message authored by another participant '
                                               'FULL permissions are requires'.format(action.verb))
         elif action.perm != perms.FULL:

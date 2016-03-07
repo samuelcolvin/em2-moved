@@ -136,7 +136,7 @@ class Controller:
         :param data: extra information to either be saved (s_*), propagated (p_*) or both (b_*)
         """
         logger.debug('event on %d: author: "%s", action: "%s", component: %s %s',
-                     action.conv, action.actor_addr, action.verb, action.component, action.item)
+                     action.conv, action.address, action.verb, action.component, action.item)
         save_data = self._subdict(data, 'sb')
         event_id = action.calc_event_id()
         await action.cds.save_event(event_id, action, save_data)

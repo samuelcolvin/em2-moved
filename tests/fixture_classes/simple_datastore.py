@@ -96,7 +96,7 @@ class SimpleConversationDataStore(ConversationDataStore):
     async def save_event(self, event_id, action, data):
         self.conv_obj['events'].append({
             'id': event_id,
-            'actor': action.actor_id,
+            'actor': action.participant_id,
             'verb': action.verb,
             'component': action.component,
             'item': action.item,
