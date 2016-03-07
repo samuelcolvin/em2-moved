@@ -14,7 +14,6 @@ async def test_create_conversation(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
     async with ds.connection() as conn:
-        await ds.create_user(conn, 'sender@example.com')
         action = Action('sender@example.com', None, Verbs.ADD)
         conv_id = await controller.act(action, subject='the subject')
         cds = ds.new_conv_ds(conv_id, conn)
@@ -36,7 +35,6 @@ async def test_create_conversation_check_participants(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
     async with ds.connection() as conn:
-        await ds.create_user(conn, 'sender@example.com')
         action = Action('sender@example.com', None, Verbs.ADD)
         conv_id = await controller.act(action, subject='the subject')
         cds = ds.new_conv_ds(conv_id, conn)
@@ -53,7 +51,6 @@ async def test_create_conversation_body(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     controller = Controller(ds, NullPropagator())
     async with ds.connection() as conn:
-        await ds.create_user(conn, 'sender@example.com')
         action = Action('sender@example.com', None, Verbs.ADD)
         conv_id = await controller.act(action, subject='the subject', body='the body', ref='conv-ref')
         cds = ds.new_conv_ds(conv_id, conn)

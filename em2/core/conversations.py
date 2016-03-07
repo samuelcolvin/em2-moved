@@ -79,10 +79,8 @@ class Conversations:
         )
         logger.info('created draft conversation %s..., creator: "%s"', conv_id[:6], creator)
 
-        creator_user = None if action.is_remote else await self.controller.ds.get_user_id(action.conn, creator)
-
         cds = self.controller.ds.new_conv_ds(conv_id, action.conn)
-        creator_id = await self._participants.add_first(cds, creator, creator_user)
+        creator_id = await self._participants.add_first(cds, creator)
 
         if body:
             action = Action(creator, conv_id, Verbs.ADD, Components.MESSAGES, timestamp=timestamp)
@@ -151,7 +149,7 @@ class Conversations:
 
     async def list(self, retrieval, limit=None, offset=None):
         """
-        Get all conversations for a given user by reverse date order.
+        Get all conversations for a given address by reverse date order.
 
         :param: limit: for pagination, as per sql limit clause
         :param: offset: for pagination, as per sql limit clause

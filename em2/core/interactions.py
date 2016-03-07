@@ -80,8 +80,8 @@ class Retrieval(_Interaction):
     """
     repr_attrs = ['actor_addr', 'actor_id', 'conv', 'verb', 'component', 'is_remote']
 
-    def __init__(self, user, conversation=None, verb=RVerbs.GET, component=Components.CONVERSATIONS, is_remote=False):
-        self.actor_addr = user
+    def __init__(self, addr, conversation=None, verb=RVerbs.GET, component=Components.CONVERSATIONS, is_remote=False):
+        self.actor_addr = addr
         self.conv = conversation
         self.verb = verb
         self.component = component

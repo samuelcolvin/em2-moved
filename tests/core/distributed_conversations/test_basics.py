@@ -65,7 +65,6 @@ async def test_publish_conversation():
     assert msg1['body'] == 'the body'
     assert other_ds.data[0]['timestamp'] == ds.data[0]['timestamp']
 
-    [v.pop('user') for v in ds.data[0]['participants'].values()]
     assert ds.data[0]['participants'] == other_ds.data[0]['participants']
     assert ds.data[0]['messages'] == other_ds.data[0]['messages']
 
@@ -82,6 +81,5 @@ async def test_publish_conversation2(two_controllers):
     assert new_conv_id != conv_id
     assert new_conv_id == ctrl2.ds.data[0]['conv_id']
 
-    [v.pop('user') for v in ctrl1.ds.data[0]['participants'].values()]
     assert ctrl1.ds.data[0]['participants'] == ctrl2.ds.data[0]['participants']
     assert ctrl1.ds.data[0]['messages'] == ctrl2.ds.data[0]['messages']

@@ -15,8 +15,8 @@ async def test_extra_participant(conversation):
     a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='someone_different@example.com', permissions=perms.WRITE)
     assert con['participants'] == OrderedDict([
-        (0, {'address': 'test@example.com', 'id': 0, 'permissions': 'full', 'user': 0}),
-        (1, {'address': 'someone_different@example.com', 'id': 1, 'permissions': 'write', 'user': 1}),
+        (0, {'address': 'test@example.com', 'id': 0, 'permissions': 'full'}),
+        (1, {'address': 'someone_different@example.com', 'id': 1, 'permissions': 'write'}),
     ])
     assert len(con['events']) == 2
 

@@ -17,8 +17,6 @@ async def test_publish_reply(two_controllers):
     a = Action('user@ctrl2.com', conv_id, Verbs.ADD, Components.MESSAGES)
     await ctrl2.act(a, parent_id=msg1_id, body='this is a reply')
 
-    [v.pop('user') for v in ctrl1.ds.data[0]['participants'].values()]
-
     assert ctrl1.ds.data[0]['participants'] == ctrl2.ds.data[0]['participants']
     assert ctrl1.ds.data[0]['messages'] == ctrl2.ds.data[0]['messages']
 

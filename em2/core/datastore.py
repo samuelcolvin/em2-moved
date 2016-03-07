@@ -18,12 +18,6 @@ class DataStore:
     async def list_conversations(self, conn, address, limit=None, offset=None):
         raise NotImplementedError()
 
-    async def get_user_id(self, conn, address):
-        raise NotImplementedError()
-
-    async def create_user(self, conn, address, **kwargs):
-        raise NotImplementedError()
-
     @property
     def conv_data_store(self):
         raise NotImplementedError()

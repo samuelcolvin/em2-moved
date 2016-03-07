@@ -68,7 +68,6 @@ class Participant(Base):
     display_name = Column(String(255))
     hidden = Column(Boolean, default=False)
     permissions = Column(Permissions.sa_enum())
-    user = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'))
 
     __table_args__ = (
         UniqueConstraint('conversation', 'address', name='_participant_email'),
@@ -117,17 +116,3 @@ class Attachment(Base):
     hash = Column(String(64), nullable=False)
     generator = Column(JSONB)
     expires = Column(TIMESTAMPTZ)
-
-# TODO: organisations, collections
-
-
-class User(Base):
-    __tablename__ = 'users'
-    id = Column(Integer, Sequence('user_id_seq'), primary_key=True, nullable=False)
-    full_name = Column(String(255))
-
-    address = Column(String(255), nullable=False)
-
-    # TODO more to come
-
-sa_users = User.__table__

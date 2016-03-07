@@ -177,8 +177,8 @@ class Participants(_Component):
         for address, _ in data:
             await self.controller.prop.add_participant(ds.conv, address)
 
-    async def add_first(self, cds, address, user=None):
-        new_participant_id = await self._add(cds, address, perms.FULL, user=user)
+    async def add_first(self, cds, address):
+        new_participant_id = await self._add(cds, address, perms.FULL)
         logger.info('first participant added to %s: address: "%s"', cds.conv, address)
         return new_participant_id
 
@@ -189,21 +189,18 @@ class Participants(_Component):
             raise InsufficientPermissions('FULL permission are required to add participants with FULL permissions')
         # TODO check the address is valid
 
-        user = None if action.is_remote else await self.controller.ds.get_user_id(action.cds.conn, address)
-
-        action.item = await self._add(action.cds, address, permissions, user)
+        action.item = await self._add(action.cds, address, permissions)
 
         logger.info('added participant to %s: address: "%s", permissions: "%s"', action.conv, address, permissions)
         await self.controller.prop.add_participant(action.conv, address)
         await self._event(action)
         return action.item
 
-    async def _add(self, cds, address, permissions, user=None):
+    async def _add(self, cds, address, permissions):
         return await cds.add_component(
             self.name,
             address=address,
             permissions=permissions,
-            user=user,
         )
 
 # shortcut

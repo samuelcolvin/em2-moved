@@ -5,7 +5,7 @@ import itertools
 from collections import OrderedDict
 
 from em2.core import Components, DataStore, ConversationDataStore
-from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound, UserNotFound, DuplicateUser
+from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
 
 
 class UniversalEncoder(json.JSONEncoder):
@@ -21,10 +21,7 @@ class UniversalEncoder(json.JSONEncoder):
 
 
 class SimpleDataStore(DataStore):
-    _conn_ctx = None
-
-    def __init__(self, auto_create_users=True):
-        self.auto_create_users = auto_create_users
+    def __init__(self):
         self.conversation_counter = itertools.count()
         self.data = {}
         self.users = {}
@@ -41,23 +38,6 @@ class SimpleDataStore(DataStore):
             **kwargs
         )
         return id
-
-    async def get_user_id(self, conn, address):
-        user = self.users.get(address)
-        if user:
-            return user['id']
-        if self.auto_create_users:
-            # shortcut so we don't have to create a user in every test
-            return await self.create_user(conn, address)
-        else:
-            raise UserNotFound('No user found with address "{}"'.format(address))
-
-    async def create_user(self, conn, address, **kwargs):
-        if address in self.users:
-            raise DuplicateUser('user {} already exists'.format(address))
-        uid = next(self.user_counter)
-        self.users[address] = dict(id=uid, address=address, **kwargs)
-        return uid
 
     async def list_conversations(self, conn, address, limit=None, offset=None):
         results = []

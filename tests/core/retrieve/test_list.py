@@ -5,9 +5,7 @@ from tests.fixture_classes import SimpleDataStore, NullPropagator
 
 
 async def test_list_single_conversation():
-    ds = SimpleDataStore(False)
-    user_id = await ds.create_user(None, 'sender@example.com')
-    assert user_id == 0
+    ds = SimpleDataStore()
 
     controller = Controller(ds, NullPropagator())
     action = Action('sender@example.com', None, Verbs.ADD)

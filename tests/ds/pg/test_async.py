@@ -41,9 +41,6 @@ async def test_datastore_setup(loop, empty_db, dsn):
         ds = PostgresDataStore(engine)
         controller = Controller(ds, NullPropagator())
         async with ds.connection() as conn:
-            await ds.create_user(conn, 'sender@example.com')
-
-        async with ds.connection() as conn:
             action = Action('sender@example.com', None, Verbs.ADD)
             conv_id = await controller.act(action, subject='the subject')
             cds = ds.new_conv_ds(conv_id, conn)
