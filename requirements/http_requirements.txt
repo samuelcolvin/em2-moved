@@ -1,3 +1,2 @@
 aiohttp==0.20.0
 cchardet==1.0.0
-gunicorn==19.4.5

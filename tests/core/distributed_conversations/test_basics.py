@@ -3,7 +3,7 @@ import hashlib
 from copy import deepcopy
 
 from em2.core import Controller, Components, perms, Action, Verbs
-from tests.fixture_classes import SimpleDataStore, NullPropagator, SimplePropagator
+from tests.fixture_classes import SimpleDataStore, SimplePropagator
 
 
 async def test_create_basic_conversation(controller):
@@ -28,7 +28,7 @@ async def test_create_conversation_add_external_participant():
     propagator = SimplePropagator()
     assert (propagator.all_platform_count, propagator.active_platform_count) == (0, 0)
     ctrl = Controller(ds, propagator, ref='ctrl1')
-    remote_ctrl = Controller(SimpleDataStore(), NullPropagator(), ref='ctrl2')
+    remote_ctrl = Controller(SimpleDataStore(), ref='ctrl2')
     propagator.add_platform('@remote.com', remote_ctrl)
     assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 0)
     action = Action('sender@local.com', None, Verbs.ADD)
@@ -45,7 +45,7 @@ async def test_publish_conversation():
     propagator = SimplePropagator()
     ctrl = Controller(ds, propagator, ref='ctrl1')
     other_ds = SimpleDataStore()
-    remote_ctrl = Controller(other_ds, NullPropagator(), ref='ctrl2')
+    remote_ctrl = Controller(other_ds, ref='ctrl2')
     propagator.add_platform('@remote.com', remote_ctrl)
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='the subject', body='the body')

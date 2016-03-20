@@ -1,10 +1,10 @@
 from em2.core import Controller, Action, Verbs, Retrieval, RVerbs, Components
-from tests.fixture_classes import SimpleDataStore, NullPropagator
+from tests.fixture_classes import SimpleDataStore
 
 
 async def test_basic_conversation():
     ds = SimpleDataStore()
-    controller = Controller(ds, NullPropagator())
+    controller = Controller(ds)
 
     action = Action('sender@example.com', None, Verbs.ADD)
     assert str(action) == ('<Action(address=sender@example.com, participant_id=None, perm=None, conv=None, verb=add, '
@@ -28,7 +28,7 @@ async def test_basic_conversation():
 
 async def test_reprs():
     ds = SimpleDataStore()
-    controller = Controller(ds, NullPropagator())
+    controller = Controller(ds)
 
     assert str(controller) == '<Controller(0x{:x})>'.format(id(controller))
     print('controller:', controller)

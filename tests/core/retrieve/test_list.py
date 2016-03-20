@@ -1,13 +1,13 @@
 from datetime import datetime
 
 from em2.core import Controller, Action, Verbs, Retrieval, RVerbs
-from tests.fixture_classes import SimpleDataStore, NullPropagator
+from tests.fixture_classes import SimpleDataStore
 
 
 async def test_list_single_conversation():
     ds = SimpleDataStore()
 
-    controller = Controller(ds, NullPropagator())
+    controller = Controller(ds)
     action = Action('sender@example.com', None, Verbs.ADD)
     await controller.act(action, subject='foo bar')
     assert len(ds.data) == 1

@@ -3,7 +3,7 @@ import socket
 
 import aiohttp
 
-from tests.fixture_classes import SimpleDataStore, NullPropagator
+from tests.fixture_classes import SimpleDataStore
 from em2.core import Controller
 from em2.comms.http import create_app
 
@@ -23,7 +23,7 @@ def server(loop, port):
         nonlocal app, handler, srv
 
         ds = SimpleDataStore()
-        ctrl = Controller(ds, NullPropagator())
+        ctrl = Controller(ds)
         app = create_app(ctrl, loop=loop)
 
         handler = app.make_handler(debug=debug, keep_alive_on=False)

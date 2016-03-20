@@ -6,7 +6,7 @@ import pytz
 
 from .exceptions import ComponentNotFound, VerbNotFound, BadDataException, BadHash
 from .datastore import DataStore
-from .propagator import BasePropagator
+from .propagator import BasePropagator, NullPropagator
 from .components import Components, Messages, Participants
 from .conversations import Conversations
 from .interactions import Action, Verbs, Retrieval, RVerbs
@@ -18,9 +18,8 @@ class Controller:
     """
     Top level class for accessing conversations and conversation components.
     """
-    def __init__(self, datastore, propagator, timezone_name='utc', ref=None):
-        assert isinstance(datastore, DataStore)
-        assert isinstance(propagator, BasePropagator)
+    def __init__(self, datastore: DataStore, propagator: BasePropagator=None, timezone_name='utc', ref=None):
+        propagator = propagator or NullPropagator()
         self.ds = datastore
         self.prop = propagator
         self.timezone_name = timezone_name

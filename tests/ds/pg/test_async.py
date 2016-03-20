@@ -6,8 +6,6 @@ from em2.core.exceptions import ConversationNotFound
 from em2.ds.pg.datastore import PostgresDataStore
 from em2.ds.pg.models import sa_conversations
 
-from tests.fixture_classes import NullPropagator
-
 
 async def test_conversation_insert_raw(timestamp, loop, db, dsn):
     async with create_engine(dsn, loop=loop) as engine:
@@ -39,7 +37,7 @@ async def test_conversation_insert_raw(timestamp, loop, db, dsn):
 async def test_datastore_setup(loop, empty_db, dsn):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
         ds = PostgresDataStore(engine)
-        controller = Controller(ds, NullPropagator())
+        controller = Controller(ds)
         async with ds.connection() as conn:
             action = Action('sender@example.com', None, Verbs.ADD)
             conv_id = await controller.act(action, subject='the subject')
@@ -51,7 +49,7 @@ async def test_datastore_setup(loop, empty_db, dsn):
 async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
         ds = PostgresDataStore(engine)
-        controller = Controller(ds, NullPropagator())
+        controller = Controller(ds)
         line = 0
         with pytest.raises(ConversationNotFound):
             async with controller.ds.connection() as conn:
