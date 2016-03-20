@@ -1,8 +1,7 @@
 import asyncio
 from aiohttp import web
 
-from .middleware import middleware_factories
-from .views import act
+from .propagation import act
 
 
 async def finish_controller(app):
@@ -12,7 +11,7 @@ async def finish_controller(app):
 
 def create_app(controller, loop=None, url_root=''):
     loop = loop or asyncio.get_event_loop()
-    app = web.Application(loop=loop, middlewares=middleware_factories)
+    app = web.Application(loop=loop)
     app['controller'] = controller
 
     app.register_on_finish(finish_controller)

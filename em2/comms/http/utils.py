@@ -6,9 +6,10 @@ from aiohttp import web
 logger = logging.getLogger('http')
 
 
-def bad_request_response(msg=''):
-    msg += '\n'
-    return web.HTTPBadRequest(body=msg.encode())
+class HTTPBadRequestStr(web.HTTPBadRequest):
+    def __init__(self, body):
+        body += '\n'
+        super().__init__(body=body.encode())
 
 
 def json_bytes(data, pretty=False):
