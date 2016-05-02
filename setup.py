@@ -6,6 +6,17 @@ em2
 ===
 """
 
+pg_extra = [
+    'SQLAlchemy>=1.0.12',
+    'aiopg>=0.9.2',
+    'psycopg2>=2.6.1',
+]
+
+http_extras = [
+    'aiohttp>=0.21.5',
+    'cchardet>=1.0.0',
+]
+
 setup(
     name='em2_core',
     version=str(VERSION),
@@ -26,5 +37,10 @@ setup(
     install_requires=[
         'pytz>=2015.7',
         'Cerberus>=0.9.2',
-    ]
+    ],
+    extras_require={
+        'postgres': pg_extra,
+        'http': http_extras,
+        'all': pg_extra + http_extras,
+    }
 )

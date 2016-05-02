@@ -9,3 +9,6 @@ __pycache__/
 /test*.py
 htmlcov/
 em2_tests
+/build
+/dist
+/em2_core.egg-info

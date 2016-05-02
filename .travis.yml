@@ -12,10 +12,8 @@ python:
   - "3.5"
 
 install:
-  - python setup.py install
-  - pip install -r requirements/test_requirements.txt
-  - pip install -r requirements/pg_requirements.txt
-  - pip install -r requirements/http_requirements.txt
+  - pip install -e .[all]
+  - pip install -r tests/requirements.txt
 
 script:
   - flake8 em2/ tests/
