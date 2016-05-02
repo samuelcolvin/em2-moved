@@ -11,4 +11,4 @@ htmlcov/
 em2_tests
 /build
 /dist
-/em2_core.egg-info
+/em2.egg-info

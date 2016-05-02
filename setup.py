@@ -18,7 +18,7 @@ http_extras = [
 ]
 
 setup(
-    name='em2_core',
+    name='em2',
     version=str(VERSION),
     description='em2',
     long_description=description,
