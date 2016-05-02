@@ -4,7 +4,7 @@ from aiohttp import web
 from .propagation import act
 
 
-async def _finish_controller(app):
+async def finish_controller(app):
     ctrl = app['controller']
     await ctrl.ds.finish()
 
@@ -14,7 +14,7 @@ def create_app(controller, loop=None):
     app = web.Application(loop=loop)
     app['controller'] = controller
 
-    app.register_on_finish(_finish_controller)
+    app.on_cleanup.append(finish_controller)
 
     # by prefixing all urls with /- we allow a web user interface to be served from the same domain and port
     # without the risk of confusing machine and human urls

@@ -1,3 +1,5 @@
+import asyncio
+
 import psycopg2
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
@@ -40,6 +42,7 @@ def dict_to_dsn(d):
     return str(URL(**d))
 
 
-def create_datastore(loop, database: dict=DEFAULT_DATABASE):
+def create_datastore(database: dict=DEFAULT_DATABASE, loop=None):
+    loop = loop or asyncio.get_event_loop()
     engine = loop.run_until_complete(_create_engine(dict_to_dsn(database), loop=loop))
     return PostgresDataStore(engine)
