@@ -1,5 +1,3 @@
-import os
-
 import pytest
 import psycopg2
 from sqlalchemy import create_engine as sa_create_engine
@@ -8,15 +6,10 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 
 from em2.ds.pg.datastore import PostgresDataStore, ConnectionContextManager
 from em2.ds.pg.models import Base
+from em2.ds.pg.utils import DEFAULT_DATABASE
 
-DATABASE = {
-    'drivername': 'postgres',
-    'host': 'localhost',
-    'port': '5432',
-    'username': 'postgres',
-    'password': os.getenv('PG_PASS', ''),
-    'database': 'em2_test'
-}
+DATABASE = dict(DEFAULT_DATABASE)
+DATABASE['database'] = 'em2_test'
 
 
 @pytest.fixture(scope='session')

@@ -20,6 +20,7 @@ def pytest_generate_tests(metafunc):
 def get_ds(loop, db, dsn):
     pg_ds = False
     ds = engine = None
+    print(dsn)
 
     async def datastore_creator(ds_cls):
         nonlocal pg_ds, ds, engine

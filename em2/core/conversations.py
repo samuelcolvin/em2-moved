@@ -157,8 +157,11 @@ class Conversations:
         """
         return await self.controller.ds.list_conversations(retrieval.conn, retrieval.address, limit, offset)
 
-    async def get(self, id):
-        raise NotImplementedError()
+    async def get(self, retrieval):
+        """
+        Get summary of data about the conversation.
+        """
+        return await retrieval.cds.export()
 
     def _conv_id_hash(self, creator, timestamp, ref):
         return hash_id(creator, timestamp.isoformat(), ref, sha256=True)

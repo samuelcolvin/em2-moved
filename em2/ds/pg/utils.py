@@ -15,7 +15,7 @@ DEFAULT_DATABASE = {
     'port': '5432',
     'username': 'postgres',
     'password': '',
-    'database': 'em2_test',
+    'database': 'em2',
 }
 
 
