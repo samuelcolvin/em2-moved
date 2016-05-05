@@ -1,6 +1,9 @@
 from datetime import datetime
 
+import pytest
+
 from em2.core import Retrieval, RVerbs
+from em2.core.exceptions import ConversationNotFound, ComponentNotFound
 
 
 async def test_list_single_conversation(conversation):
@@ -29,3 +32,19 @@ async def test_get_conversation(conversation):
     data = await ctrl.retrieve(retrieval)
     assert data['creator'] == 'test@example.com'
     assert data['subject'] == 'foo bar'
+
+
+async def test_get_conversation_does_not_exist(conversation):
+    ds, ctrl, con_id = await conversation()
+
+    retrieval = Retrieval('test@example.com', conversation='doesnt exist')
+    with pytest.raises(ConversationNotFound):
+        await ctrl.retrieve(retrieval)
+
+
+async def test_get_conversation_no_participant(conversation):
+    ds, ctrl, con_id = await conversation()
+
+    retrieval = Retrieval('not_test@example.com', conversation=con_id)
+    with pytest.raises(ComponentNotFound):
+        await ctrl.retrieve(retrieval)

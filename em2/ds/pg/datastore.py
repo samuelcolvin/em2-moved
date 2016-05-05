@@ -238,7 +238,13 @@ class PostgresConversationDataStore(ConversationDataStore):
         result = await self.conn.execute(q)
         row = await result.first()
         if row is None:
-            raise ComponentNotFound('participant {} not found'.format(participant_address))
+            # should raise ConversationNotFound if the conversation doesn't exist
+            try:
+                await self.get_core_properties()
+            except ConversationNotFound:
+                raise
+            else:
+                raise ComponentNotFound('participant {} not found'.format(participant_address))
         self._local_id = row.conversations_id
         return row.participants_id, row.participants_permissions
 
