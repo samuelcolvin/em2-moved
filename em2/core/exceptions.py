@@ -50,3 +50,7 @@ class BadDataException(Em2Exception):
 
 class MisshapedDataException(BadDataException):
     pass
+
+
+class InvalidEmail(Em2Exception):
+    pass

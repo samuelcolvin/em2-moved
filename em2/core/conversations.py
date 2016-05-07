@@ -146,6 +146,7 @@ class Conversations:
 
         data = await action.cds.export()
         await self.controller.event(new_action, p_data=data)
+        return new_conv_id
 
     async def list(self, retrieval, limit=None, offset=None):
         """

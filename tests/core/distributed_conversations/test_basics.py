@@ -74,12 +74,11 @@ async def test_publish_conversation2(two_controllers):
 
     assert len(ctrl2.ds.data) == 0
     a = Action('user@ctrl1.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
-    await ctrl1.act(a)
+    new_conv_id = await ctrl1.act(a)
     assert len(ctrl2.ds.data) == 1
 
-    new_conv_id = ctrl1.ds.data[0]['conv_id']
     assert new_conv_id != conv_id
-    assert new_conv_id == ctrl2.ds.data[0]['conv_id']
+    assert new_conv_id == ctrl1.ds.data[0]['conv_id']
 
     assert ctrl1.ds.data[0]['participants'] == ctrl2.ds.data[0]['participants']
     assert ctrl1.ds.data[0]['messages'] == ctrl2.ds.data[0]['messages']
