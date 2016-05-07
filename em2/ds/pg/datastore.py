@@ -85,7 +85,7 @@ class PostgresConversationDataStore(ConversationDataStore):
         row = await result.first()
         if row is None:
             raise ConversationNotFound('conversation {} not found'.format(self.conv))
-        return row
+        return dict(row)
 
     async def save_event(self, event_id, action, data):
         kwargs = {
@@ -189,7 +189,7 @@ class PostgresConversationDataStore(ConversationDataStore):
         # TODO can we make this into a generator or do something more efficient?
         data = []
         async for row in self.conn.execute(q):
-            data.append(row)
+            data.append(dict(row))
         return data
 
     async def get_item_last_event(self, component, item_id):

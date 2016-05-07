@@ -59,3 +59,9 @@ async def test_create_conversation_body(get_ds, datastore_cls):
         assert isinstance(message['timestamp'], datetime.datetime)
         assert message['body'] == 'the body'
         assert message['parent'] is None
+
+        data = await cds.export()
+        assert data['status'] == 'draft'
+        assert data['creator'] == 'sender@example.com'
+        assert len(data['participants']) == 1
+        assert len(data['messages']) == 1

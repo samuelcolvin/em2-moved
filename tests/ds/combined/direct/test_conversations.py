@@ -22,7 +22,7 @@ async def test_create_conversation(get_ds, datastore_cls, timestamp):
         )
         cds = ds.new_conv_ds('123', conn)
         props = await cds.get_core_properties()
-        props = dict(props)
+        assert isinstance(props, dict)
         ts = props.pop('timestamp')
         assert isinstance(ts, datetime.datetime)
         assert props == {

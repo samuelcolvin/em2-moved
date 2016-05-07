@@ -43,7 +43,7 @@ async def test_datastore_setup(loop, empty_db, dsn):
             conv_id = await controller.act(action, subject='the subject')
             cds = ds.new_conv_ds(conv_id, conn)
             props = await cds.get_core_properties()
-            assert props.subject == 'the subject'
+            assert props['subject'] == 'the subject'
 
 
 async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
