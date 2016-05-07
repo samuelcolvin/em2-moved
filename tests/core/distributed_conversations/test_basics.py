@@ -11,16 +11,16 @@ async def test_create_basic_conversation(controller):
     await controller.act(action, subject='foo bar')
     ds = controller.ds
     assert len(ds.data) == 1
-    con = ds.data[0]
-    assert len(con['participants']) == 1
-    assert len(con['events']) == 0
-    assert con['creator'] == 'sender@example.com'
-    assert con['status'] == 'draft'
-    assert con['subject'] == 'foo bar'
-    assert isinstance(con['timestamp'], datetime.datetime)
-    hash_data = bytes('sender@example.com_{}_foo bar'.format(con['timestamp'].isoformat()), 'utf8')
+    conv = ds.data[0]
+    assert len(conv['participants']) == 1
+    assert len(conv['events']) == 0
+    assert conv['creator'] == 'sender@example.com'
+    assert conv['status'] == 'draft'
+    assert conv['subject'] == 'foo bar'
+    assert isinstance(conv['timestamp'], datetime.datetime)
+    hash_data = bytes('sender@example.com_{}_foo bar'.format(conv['timestamp'].isoformat()), 'utf8')
     hash_result = hashlib.sha256(hash_data).hexdigest()
-    assert con['conv_id'] == hash_result
+    assert conv['conv_id'] == hash_result
 
 
 async def test_create_conversation_add_external_participant():

@@ -5,44 +5,44 @@ from em2.core.exceptions import ComponentNotFound, VerbNotFound, BadDataExceptio
 
 
 async def test_correct_action(conversation):
-    ds, ctrl, con_id = await conversation()
-    con = ds.data[0]
-    msg1_id = list(con['messages'])[0]
-    assert len(con['messages']) == 1
-    a = Action('test@example.com', con_id, Verbs.ADD, Components.MESSAGES)
+    ds, ctrl, conv_id = await conversation()
+    conv = ds.data[0]
+    msg1_id = list(conv['messages'])[0]
+    assert len(conv['messages']) == 1
+    a = Action('test@example.com', conv_id, Verbs.ADD, Components.MESSAGES)
     await ctrl.act(a, parent_id=msg1_id, body='reply')
-    assert len(con['messages']) == 2
+    assert len(conv['messages']) == 2
 
-    assert len(con['participants']) == 1
-    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    assert len(conv['participants']) == 1
+    a = Action('test@example.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='someone_different@example.com', permissions=perms.WRITE)
-    assert len(con['participants']) == 2
+    assert len(conv['participants']) == 2
 
 async def test_wrong_component(conversation):
-    ds, ctrl, con_id = await conversation()
-    con = ds.data[0]
-    msg1_id = list(con['messages'])[0]
-    a = Action('test@example.com', con_id, Verbs.ADD, 'foobar')
+    ds, ctrl, conv_id = await conversation()
+    conv = ds.data[0]
+    msg1_id = list(conv['messages'])[0]
+    a = Action('test@example.com', conv_id, Verbs.ADD, 'foobar')
     with pytest.raises(ComponentNotFound):
         await ctrl.act(a, parent_id=msg1_id, body='reply')
 
 async def test_non_existent_verb(conversation):
-    ds, ctrl, con_id = await conversation()
-    a = Action('test@example.com', con_id, 'foobar', Components.PARTICIPANTS)
+    ds, ctrl, conv_id = await conversation()
+    a = Action('test@example.com', conv_id, 'foobar', Components.PARTICIPANTS)
     with pytest.raises(VerbNotFound) as excinfo:
         await ctrl.act(a, address='someone_different@example.com', permissions=perms.WRITE)
     assert 'foobar is not a valid verb' in str(excinfo)
 
 async def test_wrong_verb(conversation):
-    ds, ctrl, con_id = await conversation()
-    a = Action('test@example.com', con_id, Verbs.LOCK, Components.PARTICIPANTS)
+    ds, ctrl, conv_id = await conversation()
+    a = Action('test@example.com', conv_id, Verbs.LOCK, Components.PARTICIPANTS)
     with pytest.raises(VerbNotFound) as excinfo:
         await ctrl.act(a, address='someone_different@example.com', permissions=perms.WRITE)
     assert 'is not an available verb on' in str(excinfo)
 
 async def test_wrong_args(conversation):
-    ds, ctrl, con_id = await conversation()
-    a = Action('test@example.com', con_id, Verbs.ADD, Components.PARTICIPANTS)
+    ds, ctrl, conv_id = await conversation()
+    a = Action('test@example.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     with pytest.raises(BadDataException) as excinfo:
         await ctrl.act(a, address='someone_different@example.com', foobar=True)
     assert excinfo.value.args[0] == "missing a required argument: 'permissions'"

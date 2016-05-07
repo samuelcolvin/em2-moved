@@ -13,9 +13,9 @@ async def test_basic_conversation():
     await controller.act(action, subject='foo bar')
     print(ds)
     assert len(ds.data) == 1
-    con = ds.data[0]
-    assert len(con['participants']) == 1
-    assert con['subject'] == 'foo bar'
+    conv = ds.data[0]
+    assert len(conv['participants']) == 1
+    assert conv['subject'] == 'foo bar'
 
     retrieval = Retrieval('sender@example.com', verb=RVerbs.LIST)
     assert str(retrieval) == ('<Retrieval(address=sender@example.com, participant_id=None, conv=None, verb=list, '
