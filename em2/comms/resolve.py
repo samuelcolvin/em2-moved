@@ -25,25 +25,25 @@ class Resolver:
         async with self._rpool.get() as redis:
             platform = await redis.get(cache_key)
             if platform:
-                return platform, await self.get_platform_key(platform, redis)
+                return platform, await self._get_platform_key(platform, redis)
             results = await self._resolver.query(domain, 'MX')
             results = [(r.priority, r.host) for r in results]
             results.sort()
             for _, platform in results:
-                platform_key = await self.get_platform_key(platform, redis)
+                platform_key = await self._get_platform_key(platform, redis)
                 if platform_key:
                     await redis.setex(cache_key, self._domain_timeout, platform)
                     return platform, platform_key
         raise ResolverException('no platform found for domain "{}"'.format(domain))
 
-    async def get_platform_key(self, platform_domain, redis):
+    async def _get_platform_key(self, platform_domain, redis):
         cache_key = 'plat:{}'.format(platform_domain)
         platform_key = await redis.get(cache_key)
         if platform_key:
             return platform_key
         results = await self._resolver.query(platform_domain, 'TXT')
         try:
-            platform_key = next(r for r in results if r.startswith('em2key:'))[7:].strip()
+            platform_key = next(r for r in results if r.lower().startswith('em2key='))[7:].strip()
         except StopIteration:
             return
         url = 'https://{}/-/status/'.format(platform_domain)
