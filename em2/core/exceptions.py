@@ -4,6 +4,10 @@ class Em2Exception(Exception):
     pass
 
 
+class ConfigException(Em2Exception):
+    pass
+
+
 class NotFoundException(Em2Exception):
     pass
 
@@ -53,4 +57,8 @@ class MisshapedDataException(BadDataException):
 
 
 class InvalidEmail(Em2Exception):
+    pass
+
+
+class ResolverException(Em2Exception):
     pass

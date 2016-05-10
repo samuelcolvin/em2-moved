@@ -6,9 +6,9 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 
 from em2.ds.pg.datastore import PostgresDataStore, ConnectionContextManager
 from em2.ds.pg.models import Base
-from em2.ds.pg.utils import DEFAULT_DATABASE
+from em2.settings import Settings
 
-DATABASE = dict(DEFAULT_DATABASE)
+DATABASE = dict(Settings.PG_DATABASE)
 DATABASE['database'] = 'em2_test'
 
 

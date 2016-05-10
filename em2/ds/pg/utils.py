@@ -5,21 +5,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 from aiopg.sa.engine import _create_engine
 
+from em2.utils import Settings
 from .models import Base
 from .datastore import PostgresDataStore
 
 
-DEFAULT_DATABASE = {
-    'drivername': 'postgres',
-    'host': 'localhost',
-    'port': '5432',
-    'username': 'postgres',
-    'password': '',
-    'database': 'em2',
-}
-
-
-def prepare_database(database: dict=DEFAULT_DATABASE, skip_existing=False):
+def prepare_database(settings: Settings, skip_existing=False):
+    database = settings.PG_DATABASE
     conn = psycopg2.connect(user=database['username'], password=database['password'],
                             host=database['host'], port=database['port'])
     conn.autocommit = True
@@ -42,7 +34,8 @@ def dict_to_dsn(d):
     return str(URL(**d))
 
 
-def create_datastore(database: dict=DEFAULT_DATABASE, loop=None):
+def create_datastore(settings: Settings, loop=None):
+    database = settings.PG_DATABASE
     loop = loop or asyncio.get_event_loop()
     engine = loop.run_until_complete(_create_engine(dict_to_dsn(database), loop=loop))
     return PostgresDataStore(engine)
