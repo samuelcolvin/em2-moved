@@ -4,9 +4,9 @@ import inspect
 
 import pytz
 
+from em2.comms import BasePropagator, NullPropagator
 from .exceptions import ComponentNotFound, VerbNotFound, BadDataException, BadHash
 from .datastore import DataStore
-from .propagator import BasePropagator, NullPropagator
 from .components import Components, Messages, Participants
 from .conversations import Conversations
 from .interactions import Action, Verbs, Retrieval, RVerbs

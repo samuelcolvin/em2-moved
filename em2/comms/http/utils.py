@@ -1,9 +1,6 @@
-import logging
 import json
 
 from aiohttp import web
-
-logger = logging.getLogger('http')
 
 
 class HTTPBadRequestStr(web.HTTPBadRequest):

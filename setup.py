@@ -42,6 +42,7 @@ setup(
         'pytz>=2015.7',
         'Cerberus>=0.9.2',
         'aiodns>=1.0.1',
+        'pycrypto==2.6.1',
     ],
     extras_require={
         'postgres': pg_extra,

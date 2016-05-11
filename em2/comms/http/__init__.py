@@ -1,7 +1,7 @@
 import asyncio
 from aiohttp import web
 
-from .propagation import act
+from .views import act
 
 
 async def finish_controller(app):

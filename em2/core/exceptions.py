@@ -60,5 +60,17 @@ class InvalidEmail(Em2Exception):
     pass
 
 
-class ResolverException(Em2Exception):
+class Em2AuthException(Em2Exception):
+    pass
+
+
+class FailedAuthentication(Em2AuthException):
+    pass
+
+
+class PlatformForbidden(Em2AuthException):
+    pass
+
+
+class DomainPlatformMismatch(Em2AuthException):
     pass

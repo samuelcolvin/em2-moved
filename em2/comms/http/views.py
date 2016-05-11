@@ -8,7 +8,8 @@ from aiohttp import web
 
 from em2.core import Action
 from em2.core.exceptions import Em2Exception
-from .utils import HTTPBadRequestStr, logger, json_bytes, get_ip
+from em2.comms.logger import logger
+from .utils import HTTPBadRequestStr, json_bytes, get_ip
 
 
 async def get_platform(request):
@@ -31,7 +32,7 @@ async def check_token(token):
 async def act(request):
     request.log_extra = {'ip': get_ip(request)}
     platform = await get_platform(request)
-    logger.info('request from %s', platform, extra=request.log_extra)
+    logger.info('act request from %s', platform, extra=request.log_extra)
 
     conversation = request.match_info['con']
     component = request.match_info['component']
