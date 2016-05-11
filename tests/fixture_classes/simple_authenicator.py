@@ -6,7 +6,7 @@ KEY_DIR = (Path(__file__).parent / 'keys').absolute()
 
 
 class SimpleAuthenticator(BaseAuthenticator):
-    def __init__(self, settings, loop):
+    def __init__(self, settings=None, loop=None):
         super().__init__(settings, loop)
         self._cache = {}
         with (KEY_DIR / 'public.pem').open() as f:
@@ -23,8 +23,8 @@ class SimpleAuthenticator(BaseAuthenticator):
     async def _store_key(self, key, expiresat):
         self._cache[key] = expiresat
 
-    def _check_domain_uses_platform(self, domain, platform_domain):
-        pass
+    async def _check_domain_uses_platform(self, domain, platform_domain):
+        return platform_domain.endswith(domain)
 
     def _valid_signature(self, signed_message, signature, public_key):
         if isinstance(self.valid_signature_override, bool):

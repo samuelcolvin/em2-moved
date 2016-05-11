@@ -15,8 +15,9 @@ from em2 import Settings
 
 
 class BaseAuthenticator:
-    def __init__(self, settings: Settings, loop: asyncio.AbstractEventLoop):
+    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
         self._loop = loop
+        settings = settings or Settings()
         self._head_request_timeout = settings.COMMS_HEAD_REQUEST_TIMEOUT
         self._domain_timeout = settings.COMMS_DOMAIN_CACHE_TIMEOUT
         self._platform_key_timeout = settings.COMMS_PLATFORM_KEY_TIMEOUT
@@ -59,7 +60,7 @@ class BaseAuthenticator:
 
         platform_domain = platform_key.split(':', 1)[0]
         if not await self._check_domain_uses_platform(domain, platform_domain):
-            raise DomainPlatformMismatch('"{}" != "{}"'.format(domain, platform_domain))
+            raise DomainPlatformMismatch('"{}" does not use "{}"'.format(domain, platform_domain))
 
     async def _platform_key_exists(self, platform_key):
         raise NotImplementedError
@@ -74,7 +75,10 @@ class BaseAuthenticator:
         raise NotImplementedError
 
     def _valid_signature(self, signed_message, signature, public_key):
-        key = RSA.importKey(public_key)
+        try:
+            key = RSA.importKey(public_key)
+        except ValueError as e:
+            raise FailedAuthentication(*e.args) from e
 
         # signature needs to decoded from base64
         signature = base64.urlsafe_b64decode(signature)
@@ -94,7 +98,7 @@ class RedisAuthenticator(BaseAuthenticator):
     __resolver = None
     _v = '1'
 
-    def __init__(self, settings: Settings, loop: asyncio.AbstractEventLoop):
+    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
         super().__init__(settings, loop)
         self._redis_pool = loop.run_until_complete(self.__redis_pool(settings.REDIS_CONN))
 
