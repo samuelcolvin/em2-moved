@@ -74,8 +74,12 @@ class BaseAuthenticator:
         raise NotImplementedError
 
     def _valid_signature(self, signed_message, signature, public_key):
-        h = SHA256.new(signed_message.encode('utf8'))
         key = RSA.importKey(public_key)
+
+        # signature needs to decoded from base64
+        signature = base64.urlsafe_b64decode(signature)
+
+        h = SHA256.new(signed_message.encode('utf8'))
         cipher = PKCS1_v1_5.new(key)
         return cipher.verify(h, signature)
 

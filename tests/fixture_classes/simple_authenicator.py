@@ -9,7 +9,8 @@ class SimpleAuthenticator(BaseAuthenticator):
     def __init__(self, settings, loop):
         super().__init__(settings, loop)
         self._cache = {}
-        self._key_file = KEY_DIR / 'public.pem'
+        with (KEY_DIR / 'public.pem').open() as f:
+            self.public_key_value = f.read()
         self.valid_signature_override = None
 
     async def _platform_key_exists(self, platform_key):
@@ -17,8 +18,7 @@ class SimpleAuthenticator(BaseAuthenticator):
         return exp > self._now_unix()
 
     async def _get_public_key(self, platform):
-        with self._key_file.open() as f:
-            return f.read()
+        return self.public_key_value
 
     async def _store_key(self, key, expiresat):
         self._cache[key] = expiresat
