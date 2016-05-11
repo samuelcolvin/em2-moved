@@ -5,7 +5,7 @@ import inspect
 import pytz
 
 from em2.comms import BasePropagator, NullPropagator
-from .exceptions import ComponentNotFound, VerbNotFound, BadDataException, BadHash
+from em2.exceptions import ComponentNotFound, VerbNotFound, BadDataException, BadHash
 from .datastore import DataStore
 from .components import Components, Messages, Participants
 from .conversations import Conversations

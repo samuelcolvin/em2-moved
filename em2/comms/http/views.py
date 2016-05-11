@@ -7,7 +7,7 @@ from json import JSONDecodeError
 from aiohttp import web
 
 from em2.core import Action
-from em2.core.exceptions import Em2Exception
+from em2.exceptions import Em2Exception
 from em2.comms.logger import logger
 from .utils import HTTPBadRequestStr, json_bytes, get_ip
 

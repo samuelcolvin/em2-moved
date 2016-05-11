@@ -4,7 +4,7 @@ import datetime
 import pytest
 
 from em2.core import Components, perms, Action, Verbs
-from em2.core.exceptions import InsufficientPermissions, ComponentLocked, ComponentNotLocked
+from em2.exceptions import InsufficientPermissions, ComponentLocked, ComponentNotLocked
 
 
 async def test_create_conversation_with_message(conversation):

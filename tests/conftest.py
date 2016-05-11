@@ -14,11 +14,11 @@ def pytest_pyfunc_call(pyfuncitem):
     Run coroutines in an event loop instead of a normal function call.
     """
     if asyncio.iscoroutinefunction(pyfuncitem.function):
-        loop = pyfuncitem.funcargs.get('loop') or asyncio.new_event_loop()
+        _loop = pyfuncitem.funcargs.get('loop') or asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
         testargs = {arg: pyfuncitem.funcargs[arg] for arg in pyfuncitem._fixtureinfo.argnames}
-        loop.run_until_complete(loop.create_task(pyfuncitem.obj(**testargs)))
+        _loop.run_until_complete(_loop.create_task(pyfuncitem.obj(**testargs)))
 
         asyncio.set_event_loop(None)
         return True
@@ -26,13 +26,13 @@ def pytest_pyfunc_call(pyfuncitem):
 
 @pytest.yield_fixture
 def loop():
-    loop = asyncio.new_event_loop()
+    _loop = asyncio.new_event_loop()
 
-    yield loop
+    yield _loop
 
-    loop.stop()
-    loop.run_forever()
-    loop.close()
+    _loop.stop()
+    _loop.run_forever()
+    _loop.close()
 
 
 def datetime_tz(day=1, month=1, year=2015):

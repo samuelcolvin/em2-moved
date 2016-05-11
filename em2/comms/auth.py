@@ -10,8 +10,8 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 
-from em2.core.exceptions import FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
-from em2.settings import Settings
+from em2.exceptions import FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
+from em2 import Settings
 
 
 class BaseAuthenticator:
@@ -50,17 +50,19 @@ class BaseAuthenticator:
         await self._store_key(platform_key, key_expiresat)
         return platform_key
 
-    async def check_platform_key(self, platform_key):
-        """
-        Should raise PlatformForbidden or return None
-        """
-        raise NotImplementedError
+    async def valid_platform_key(self, platform_key):
+        if not await self._platform_key_exists(platform_key):
+            raise PlatformForbidden('platform "{}" not found'.format(platform_key))
 
     async def check_domain(self, domain, platform_key):
-        await self.check_platform_key(platform_key)
+        await self.valid_platform_key(platform_key)
+
         platform_domain = platform_key.split(':', 1)[0]
         if not await self._check_domain_uses_platform(domain, platform_domain):
             raise DomainPlatformMismatch('"{}" != "{}"'.format(domain, platform_domain))
+
+    async def _platform_key_exists(self, platform_key):
+        raise NotImplementedError
 
     async def _get_public_key(self, platform):
         raise NotImplementedError
@@ -78,10 +80,10 @@ class BaseAuthenticator:
         return cipher.verify(h, signature)
 
     def _now_unix(self):
-        return (datetime.utcnow() - self._epoch).total_seconds()
+        return int((datetime.utcnow() - self._epoch).total_seconds())
 
     def _generate_random(self):
-        return base64.urlsafe_b64encode(os.urandom(self._key_length))[:self._key_length]
+        return base64.urlsafe_b64encode(os.urandom(self._key_length))[:self._key_length].decode('utf8')
 
 
 class RedisAuthenticator(BaseAuthenticator):
@@ -101,11 +103,9 @@ class RedisAuthenticator(BaseAuthenticator):
             self.__resolver = aiodns.DNSResolver(loop=self._loop)
         return self.__resolver
 
-    async def check_platform_key(self, platform_key):
+    async def _platform_key_exists(self, platform_key):
         async with self._redis_pool.get() as redis:
-            exists = await redis.exists(platform_key)
-        if not exists:
-            raise PlatformForbidden('platform "{}" not found'.format(platform_key))
+            return await redis.exists(platform_key)
 
     async def _store_key(self, key, expiresat):
         async with self._redis_pool.get() as redis:

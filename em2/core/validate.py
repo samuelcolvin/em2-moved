@@ -1,6 +1,6 @@
 import re
 
-from .exceptions import InvalidEmail
+from em2.exceptions import InvalidEmail
 
 PRETTY_REGEX = re.compile(r'^([\w ]*?) *<(.*)> *$')
 

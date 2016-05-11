@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 from aiopg.sa.engine import _create_engine
 
-from em2.utils import Settings
+from em2 import Settings
 from .models import Base
 from .datastore import PostgresDataStore
 

@@ -5,7 +5,7 @@ import itertools
 from collections import OrderedDict
 
 from em2.core import Components, DataStore, ConversationDataStore
-from em2.core.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
+from em2.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
 
 
 class UniversalEncoder(json.JSONEncoder):

@@ -4,9 +4,9 @@ from sqlalchemy import create_engine as sa_create_engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker, scoped_session
 
+from em2 import Settings
 from em2.ds.pg.datastore import PostgresDataStore, ConnectionContextManager
 from em2.ds.pg.models import Base
-from em2.settings import Settings
 
 DATABASE = dict(Settings.PG_DATABASE)
 DATABASE['database'] = 'em2_test'

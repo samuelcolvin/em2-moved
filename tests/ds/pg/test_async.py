@@ -2,7 +2,7 @@ import pytest
 from aiopg.sa import create_engine
 
 from em2.core import Controller, Action, Verbs
-from em2.core.exceptions import ConversationNotFound
+from em2.exceptions import ConversationNotFound
 from em2.ds.pg.datastore import PostgresDataStore
 from em2.ds.pg.models import sa_conversations
 

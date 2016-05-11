@@ -3,7 +3,7 @@ import datetime
 import pytest
 
 from em2.core import Conversations, Components, perms
-from em2.core.exceptions import ComponentNotFound
+from em2.exceptions import ComponentNotFound
 
 from tests.conftest import datetime_tz
 

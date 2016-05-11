@@ -1,4 +1,4 @@
-from .core.exceptions import ConfigException
+from .exceptions import ConfigException
 
 
 class Settings:
@@ -25,5 +25,5 @@ class Settings:
     def __init__(self, **custom_settings):
         for name, value in custom_settings.items():
             if not hasattr(self, name):
-                ConfigException('{} is not a valid setting name'.format(name))
+                raise ConfigException('{} is not a valid setting name'.format(name))
             setattr(self, name, value)

@@ -3,7 +3,7 @@ from collections import OrderedDict
 import pytest
 
 from em2.core import Components, perms, Action, Verbs
-from em2.core.exceptions import InsufficientPermissions
+from em2.exceptions import InsufficientPermissions
 
 
 async def test_extra_participant(conversation):

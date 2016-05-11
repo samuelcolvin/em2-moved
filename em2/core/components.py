@@ -1,8 +1,8 @@
 import logging
 import hashlib
 
-from .exceptions import (InsufficientPermissions, ComponentNotFound, ComponentNotLocked,
-                         ComponentLocked, BadDataException, MisshapedDataException, DataConsistencyException)
+from em2.exceptions import (InsufficientPermissions, ComponentNotFound, ComponentNotLocked,
+                            ComponentLocked, BadDataException, MisshapedDataException, DataConsistencyException)
 from .enums import Enum
 
 logger = logging.getLogger('em2')

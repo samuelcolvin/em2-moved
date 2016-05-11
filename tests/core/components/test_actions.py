@@ -1,7 +1,7 @@
 import pytest
 
 from em2.core import Components, perms, Action, Verbs
-from em2.core.exceptions import ComponentNotFound, VerbNotFound, BadDataException
+from em2.exceptions import ComponentNotFound, VerbNotFound, BadDataException
 
 
 async def test_correct_action(conversation):

@@ -1,6 +1,6 @@
 import pytest
 
-from em2.core.exceptions import InvalidEmail
+from em2.exceptions import InvalidEmail
 from em2.core.validate import validate_address, parse_addresses
 
 
