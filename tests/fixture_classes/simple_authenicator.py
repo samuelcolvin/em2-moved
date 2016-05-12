@@ -6,8 +6,8 @@ KEY_DIR = (Path(__file__).parent / 'keys').absolute()
 
 
 class SimpleAuthenticator(BaseAuthenticator):
-    def __init__(self, settings=None, loop=None):
-        super().__init__(settings, loop)
+    def __init__(self, settings=None):
+        super().__init__(settings)
         self._cache = {}
         with (KEY_DIR / 'public.pem').open() as f:
             self.public_key_value = f.read()

@@ -1,30 +1,28 @@
 import pytest
 import psycopg2
 from sqlalchemy import create_engine as sa_create_engine
-from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker, scoped_session
 
 from em2 import Settings
 from em2.ds.pg.datastore import PostgresDataStore, ConnectionContextManager
 from em2.ds.pg.models import Base
+from em2.ds.pg.utils import pg_connect_kwargs, create_dsn
 
-DATABASE = dict(Settings.PG_DATABASE)
-DATABASE['database'] = 'em2_test'
+settings = Settings(PG_DATABASE='em2_test')
 
 
 @pytest.fixture(scope='session')
 def dsn():
-    return str(URL(**DATABASE))
+    return create_dsn(settings)
 
 
 @pytest.yield_fixture(scope='session')
 def db(dsn):
-    conn = psycopg2.connect(user=DATABASE['username'], password=DATABASE['password'],
-                            host=DATABASE['host'], port=DATABASE['port'])
+    conn = psycopg2.connect(**pg_connect_kwargs(settings))
     conn.autocommit = True
     cur = conn.cursor()
-    cur.execute('DROP DATABASE IF EXISTS {}'.format(DATABASE['database']))
-    cur.execute('CREATE DATABASE {}'.format(DATABASE['database']))
+    cur.execute('DROP DATABASE IF EXISTS {}'.format(settings.PG_DATABASE))
+    cur.execute('CREATE DATABASE {}'.format(settings.PG_DATABASE))
 
     engine = sa_create_engine(dsn)
     Base.metadata.create_all(engine)
@@ -32,7 +30,7 @@ def db(dsn):
     yield engine
 
     engine.dispose()
-    cur.execute('DROP DATABASE {}'.format(DATABASE['database']))
+    cur.execute('DROP DATABASE {}'.format(settings.PG_DATABASE))
     cur.close()
     conn.close()
 

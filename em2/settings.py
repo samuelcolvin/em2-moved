@@ -8,19 +8,15 @@ class Settings:
     COMMS_PLATFORM_KEY_LENGTH = 64
     COMMS_AUTHENTICATION_TS_LENIENCY = [-10, 1]
 
-    PG_DATABASE = {
-        'drivername': 'postgres',
-        'host': 'localhost',
-        'port': '5432',
-        'username': 'postgres',
-        'password': '',
-        'database': 'em2',
-    }
+    PG_HOST = 'localhost'
+    PG_PORT = '5432'
+    PG_USER = 'postgres'
+    PG_PASSWORD = ''
+    PG_DATABASE = 'em2'
 
-    REDIS_CONN = {
-        'host': 'localhost',
-        'port': 6379,
-    }
+    REDIS_HOST = 'localhost'
+    REDIS_PORT = 6379
+    REDIS_DATABASE = 0
 
     def __init__(self, **custom_settings):
         for name, value in custom_settings.items():

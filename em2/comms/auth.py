@@ -10,13 +10,12 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 
-from em2.exceptions import FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
+from em2.exceptions import Em2Exception, FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
 from em2 import Settings
 
 
 class BaseAuthenticator:
-    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
-        self._loop = loop
+    def __init__(self, settings: Settings=None):
         settings = settings or Settings()
         self._head_request_timeout = settings.COMMS_HEAD_REQUEST_TIMEOUT
         self._domain_timeout = settings.COMMS_DOMAIN_CACHE_TIMEOUT
@@ -94,16 +93,22 @@ class BaseAuthenticator:
         return base64.urlsafe_b64encode(os.urandom(self._key_length))[:self._key_length].decode('utf8')
 
 
-class RedisAuthenticator(BaseAuthenticator):
+class RedisDNSAuthenticator(BaseAuthenticator):
     __resolver = None
     _v = '1'
 
-    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
-        super().__init__(settings, loop)
-        self._redis_pool = loop.run_until_complete(self.__redis_pool(settings.REDIS_CONN))
+    def __init__(self, settings: Settings, loop: asyncio.AbstractEventLoop):
+        super().__init__(settings)
+        self._loop = loop
+        self._settings = settings
+        self._redis_pool = None
 
-    async def __redis_pool(self, conn):
-        return await aioredis.create_pool((conn['host'], conn['port']), encoding='utf8', loop=self._loop)
+    async def init(self):
+        if self._redis_pool is not None:
+            raise Em2Exception('redis pool already initialised')
+        address = self._settings.REDIS_HOST, self._settings.REDIS_PORT
+        self._redis_pool = await aioredis.create_pool(address, db=self._settings.REDIS_DATABASE,
+                                                      encoding='utf8', loop=self._loop)
 
     @property
     def _resolver(self):
@@ -153,6 +158,9 @@ class RedisAuthenticator(BaseAuthenticator):
                 if platform == platform_domain:
                     await redis.setex(cache_key, self._domain_timeout, platform)
                     return True
+
+    async def finish(self):
+        await self._redis_pool.clear()
 
     # __session = None
     #
