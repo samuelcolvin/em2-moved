@@ -141,9 +141,10 @@ class RedisDNSAuthenticator(BaseAuthenticator):
                 key = r[8:].strip()[2:]
                 for extra in results:
                     key += extra.strip()
-                    if extra.endswith('=='):
+                    if extra.endswith('='):
                         # key finished
                         return key
+        raise FailedAuthentication('no "em2key" TXT dns record found')
 
     async def _check_domain_uses_platform(self, domain, platform_domain):
         cache_key = 'dm:{}'.format(domain)

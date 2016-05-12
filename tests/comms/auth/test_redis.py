@@ -2,32 +2,99 @@ import pytest
 
 from em2 import Settings
 from em2.comms import RedisDNSAuthenticator
+from em2.exceptions import FailedAuthentication, Em2Exception
+from tests.fixture_classes.authenicator import RedisMockDNSAuthenticator, PLATFORM_TIMESTAMP, VALID_SIGNATURE
 
 
 @pytest.yield_fixture
 def redis_auth(loop):
     settings = Settings(REDIS_DATABASE=2)
-    auth = RedisDNSAuthenticator(settings, loop=loop)
-    async def flushdb(_auth):
-        async with _auth._redis_pool.get() as redis:
+    auth = None
+
+    async def flushdb():
+        async with auth._redis_pool.get() as redis:
             await redis.flushdb()
 
-    loop.run_until_complete(auth.init())
-    loop.run_until_complete(flushdb(auth))
+    async def setup(auth_class=RedisDNSAuthenticator):
+        nonlocal auth
+        auth = auth_class(settings, loop=loop)
+        await auth.init()
+        await flushdb()
+        return auth
 
-    yield auth
+    yield setup
 
-    loop.run_until_complete(flushdb(auth))
-    loop.run_until_complete(auth.finish())
+    if auth:
+        loop.run_until_complete(flushdb())
+        loop.run_until_complete(auth.finish())
 
 
 async def test_key_set_get(redis_auth):
-    expireat = redis_auth._now_unix() + 100
-    await redis_auth._store_key('testing', expireat)
-    assert await redis_auth._platform_key_exists('testing') is True
-    async with redis_auth._redis_pool.get() as redis:
+    auth = await redis_auth()
+    expireat = auth._now_unix() + 100
+    await auth._store_key('testing', expireat)
+    assert await auth._platform_key_exists('testing') is True
+    async with auth._redis_pool.get() as redis:
         assert 99 <= await redis.ttl('testing') <= 100
 
 
 async def test_key_set_get_missing(redis_auth):
-    assert await redis_auth._platform_key_exists('other') is False
+    auth = await redis_auth()
+    assert await auth._platform_key_exists('other') is False
+
+
+async def test_key_verification(redis_auth):
+    auth = await redis_auth(RedisMockDNSAuthenticator)
+    auth._now_unix = lambda: 2461449600
+
+    platform_key = await auth.authenticate_platform(PLATFORM_TIMESTAMP, VALID_SIGNATURE)
+    await auth.valid_platform_key(platform_key)
+
+
+async def test_key_verification_missing_dns(redis_auth):
+    auth = await redis_auth(RedisMockDNSAuthenticator)
+    auth._now_unix = lambda: 2461449600
+
+    with pytest.raises(FailedAuthentication) as excinfo:
+        await auth.authenticate_platform('notfoobar.com:2461449600', VALID_SIGNATURE)
+    assert excinfo.value.args[0] == 'no "em2key" TXT dns record found'
+
+
+async def test_key_verification_bad_em2key(redis_auth):
+    auth = await redis_auth(RedisMockDNSAuthenticator)
+    auth._now_unix = lambda: 2461449600
+
+    with pytest.raises(FailedAuthentication) as excinfo:
+        await auth.authenticate_platform('badkey.com:2461449600', VALID_SIGNATURE)
+    assert excinfo.value.args[0] == 'no "em2key" TXT dns record found'
+
+
+async def test_check_domain_platform_cache(redis_auth):
+    auth = await redis_auth(RedisMockDNSAuthenticator)
+    assert await auth._check_domain_uses_platform('whatever.com', 'whoever.com') is None
+    async with auth._redis_pool.get() as redis:
+        await redis.set('dm:whatever.com', 'whoever.com')
+    assert await auth._check_domain_uses_platform('whatever.com', 'whoever.com') is True
+
+
+async def test_check_domain_platform_mx_match(redis_auth):
+    auth = await redis_auth(RedisMockDNSAuthenticator)
+    assert await auth._check_domain_uses_platform('whatever.com', 'ten.example.com') is True
+    async with auth._redis_pool.get() as redis:
+        await redis.get('dm:whatever.com') == 'ten.example.com'
+
+
+async def test_reinit(redis_auth):
+    auth = await redis_auth()
+    with pytest.raises(Em2Exception) as excinfo:
+        await auth.init()
+    assert excinfo.value.args[0] == 'redis pool already initialised'
+
+
+async def test_mx_lookup(redis_auth):
+    auth = await redis_auth()
+    r = auth._resolver
+    results = await r.query('gmail.com', 'MX')
+    assert results[0].host.endswith('google.com')
+    # check we get back the same resolver each time
+    assert id(r) == id(auth._resolver)

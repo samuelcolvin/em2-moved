@@ -3,22 +3,7 @@ from datetime import datetime
 import pytest
 
 from em2.exceptions import PlatformForbidden, FailedAuthentication, DomainPlatformMismatch
-from tests.fixture_classes.authenicator import SimpleAuthenticator
-
-
-# printf 'foobar.com:2461449600' > test2.txt
-# openssl dgst -sha256 -sign tests/fixture_classes/keys/private.pem -out test.sig test.txt
-# python -c "import base64; print(base64.urlsafe_b64encode(open('test.sig', 'rb').read()).decode('utf8'))"
-PLATFORM_TIMESTAMP = 'foobar.com:2461449600'
-VALID_SIGNATURE = (
-    'hzr-wL7mFQcTymT1xnF1cTgWTL-8Sxc_AJejZiARXFjGcLbOW32bnSjYAKMa-vPdQlB0G2Vz8FJQ2kNzsV12G15LIjb-8FyaPoF0Axman'
-    'U_gYzShZMQSpPyt9kP8x7VwKFe3DdExJBlWgVw0gB_O5fh6SZ7RppkMiXlZoS3OXT1y4x1ZmTqwFcZZARfeSZa2BK3kJ2xbyHn9CdXh88'
-    'iFwYLh_eMWcaOgTYOw4YWsX9EktUZUTdknJfjLr_5mK-jiHNvVfjS11PdImHMQGu7MhkkQiXbmjFzgYNoS5_phdSB8UGkkCVJ-txm2JEI'
-    'aZZ-Q-yl19hEoHqg-PhEVi30tdAyGifldSZfbT8gxk2laer__unGJQF_WB46UiKTgxJODh9hNRM4e-9opwH5MLX7nNPLsFa3QjfY9EJb9'
-    'OHqFfmEtWM8-aqhf-3HHBxLfjvTm9ZdH-zbesnSb6NbdY8BOWK6G2iVQQbH2YAQN_QjNvoZedI7ZQCZeuHm9XjRpi1ECLn8jjN8PtIJ84'
-    'eYYbgI0b6gcFkB0YBJcM59MNGYkdJkJtfQI-EHqPaSByrFEMME3RerbjePMSVHoBlbpKgFRGNzAgFX0s3zbIxA-0g25skMAY_mIS_XWQE'
-    '3JnlcZOSIyrff4LcU_ZEwIOxdKKWkPIq6oZKXfM8fsXz4yA7vY9K0='
-)
+from tests.fixture_classes.authenicator import SimpleAuthenticator, PLATFORM_TIMESTAMP, VALID_SIGNATURE
 
 
 async def test_key_doesnt_exists():
