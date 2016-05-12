@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from em2.exceptions import PlatformForbidden, FailedAuthentication, DomainPlatformMismatch
-from tests.fixture_classes.simple_authenicator import SimpleAuthenticator
+from tests.fixture_classes.authenicator import SimpleAuthenticator
 
 
 # printf 'foobar.com:2461449600' > test2.txt

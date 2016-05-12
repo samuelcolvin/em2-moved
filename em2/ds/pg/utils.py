@@ -19,7 +19,7 @@ def pg_connect_kwargs(settings: Settings):
     )
 
 
-def create_dsn(settings: Settings):
+def get_dsn(settings: Settings):
     kwargs = pg_connect_kwargs(settings)
     kwargs.update(
         database=settings.PG_DATABASE,
@@ -34,18 +34,23 @@ def prepare_database(settings: Settings, skip_existing=False):
     conn.autocommit = True
     cur = conn.cursor()
     if skip_existing:
-        cur.execute('SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=%s)', settings.PG_DATABASE)
+        args = settings.PG_DATABASE,
+        cur.execute('SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=%s)', args)
         if cur.fetchone()[0]:
             return True
     cur.execute('DROP DATABASE IF EXISTS {}'.format(settings.PG_DATABASE))
     cur.execute('CREATE DATABASE {}'.format(settings.PG_DATABASE))
+    cur.close()
+    conn.close()
 
-    engine = create_engine(create_dsn(settings))
+    engine = create_engine(get_dsn(settings))
     Base.metadata.create_all(engine)
-    return False
+    engine.dispose()
+    if skip_existing:
+        return False
 
 
 def create_datastore(settings: Settings, loop=None):
     loop = loop or asyncio.get_event_loop()
-    engine = loop.run_until_complete(_create_engine(create_dsn(settings), loop=loop))
+    engine = loop.run_until_complete(_create_engine(get_dsn(settings), loop=loop))
     return PostgresDataStore(engine)

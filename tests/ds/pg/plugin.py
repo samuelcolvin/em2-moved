@@ -6,14 +6,14 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from em2 import Settings
 from em2.ds.pg.datastore import PostgresDataStore, ConnectionContextManager
 from em2.ds.pg.models import Base
-from em2.ds.pg.utils import pg_connect_kwargs, create_dsn
+from em2.ds.pg.utils import pg_connect_kwargs, get_dsn
 
 settings = Settings(PG_DATABASE='em2_test')
 
 
 @pytest.fixture(scope='session')
 def dsn():
-    return create_dsn(settings)
+    return get_dsn(settings)
 
 
 @pytest.yield_fixture(scope='session')
