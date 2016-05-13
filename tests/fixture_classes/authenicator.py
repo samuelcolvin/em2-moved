@@ -8,7 +8,8 @@ KEY_DIR = (Path(__file__).parent / 'keys').absolute()
 # printf 'foobar.com:2461449600' > test2.txt
 # openssl dgst -sha256 -sign tests/fixture_classes/keys/private.pem -out test.sig test.txt
 # python -c "import base64; print(base64.urlsafe_b64encode(open('test.sig', 'rb').read()).decode('utf8'))"
-PLATFORM_TIMESTAMP = 'foobar.com:2461449600'
+PLATFORM = 'foobar.com'
+TIMESTAMP = 2461449600
 VALID_SIGNATURE = (
     'hzr-wL7mFQcTymT1xnF1cTgWTL-8Sxc_AJejZiARXFjGcLbOW32bnSjYAKMa-vPdQlB0G2Vz8FJQ2kNzsV12G15LIjb-8FyaPoF0Axman'
     'U_gYzShZMQSpPyt9kP8x7VwKFe3DdExJBlWgVw0gB_O5fh6SZ7RppkMiXlZoS3OXT1y4x1ZmTqwFcZZARfeSZa2BK3kJ2xbyHn9CdXh88'
@@ -28,7 +29,9 @@ def _get_public_key():
 class SimpleAuthenticator(BaseAuthenticator):
     def __init__(self, settings=None):
         super().__init__(settings)
-        self._cache = {}
+        self._cache = {
+            'already-authenticated.com:123:whatever': 2461449700
+        }
         self.public_key_value = _get_public_key()
         self.valid_signature_override = None
 

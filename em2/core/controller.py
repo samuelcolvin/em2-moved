@@ -35,8 +35,6 @@ class Controller:
         :param kwargs: extra key word arguments to pass to the method with action
         :return: result of method associated with verb
         """
-        assert isinstance(action, Action)
-
         if Verbs.get_attr(action.verb) is None:
             raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, Verbs.__values__))
 

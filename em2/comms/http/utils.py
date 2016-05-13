@@ -3,10 +3,18 @@ import json
 from aiohttp import web
 
 
-class HTTPBadRequestStr(web.HTTPBadRequest):
+class _StringException:
     def __init__(self, body):
         body += '\n'
         super().__init__(body=body.encode())
+
+
+class HTTPBadRequestStr(_StringException, web.HTTPBadRequest):
+    pass
+
+
+class HTTPForbiddenStr(_StringException, web.HTTPForbidden):
+    pass
 
 
 def json_bytes(data, pretty=False):

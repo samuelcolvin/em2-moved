@@ -24,26 +24,23 @@ class BaseAuthenticator:
         self._key_length = settings.COMMS_PLATFORM_KEY_LENGTH
         self._epoch = datetime(1970, 1, 1)
 
-    async def authenticate_platform(self, platform_timestamp: str, signature: str):
+    async def authenticate_platform(self, platform: str, timestamp: int, signature: str):
         """
         Check a request is "from" a domain by asserting that the signature of the supplied string is valid.
-        :param platform_timestamp: string "<platform>:<timestamp>", timestamp must be close to now
+        :param platform: domain of platform being authenticated
+        :param timestamp: unix timestamp, must be close to now
         :param signature: signature of platform_timestamp
         :return: new API key for the platform which is valid for COMMS_PLATFORM_KEY_TIMEOUT
         """
-        platform, timestamp = platform_timestamp.split(':', 1)
-        try:
-            ts_int = int(timestamp)
-        except ValueError:
-            raise FailedAuthentication('"{}" is not a valid timestamp'.format(timestamp))
 
         now = self._now_unix()
         lower_limit, upper_limit = now + self._past_ts_limit, now + self._future_ts_limit
-        if not lower_limit < ts_int < upper_limit:
-            raise FailedAuthentication('{} was not between {} and {}'.format(ts_int, lower_limit, upper_limit))
+        if not lower_limit < timestamp < upper_limit:
+            raise FailedAuthentication('{} was not between {} and {}'.format(timestamp, lower_limit, upper_limit))
 
         public_key = await self._get_public_key(platform)
-        if not self._valid_signature(platform_timestamp, signature, public_key):
+        signed_message = '{}:{}'.format(platform, timestamp)
+        if not self._valid_signature(signed_message, signature, public_key):
             raise FailedAuthentication('invalid signature')
         key_expiresat = now + self._domain_timeout
         platform_key = '{}:{}:{}'.format(platform, key_expiresat, self._generate_random())
@@ -54,7 +51,7 @@ class BaseAuthenticator:
         if not await self._platform_key_exists(platform_key):
             raise PlatformForbidden('platform "{}" not found'.format(platform_key))
 
-    async def check_domain(self, domain, platform_key):
+    async def check_domain_platform(self, domain, platform_key):
         await self.valid_platform_key(platform_key)
 
         platform_domain = platform_key.split(':', 1)[0]

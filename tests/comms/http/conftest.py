@@ -3,9 +3,9 @@ import socket
 
 import aiohttp
 
-from tests.fixture_classes import SimpleDataStore
 from em2.core import Controller
 from em2.comms.http import create_app
+from tests.fixture_classes import SimpleDataStore, SimpleAuthenticator
 
 
 @pytest.fixture
@@ -24,7 +24,9 @@ def server(loop, port):
 
         ds = SimpleDataStore()
         ctrl = Controller(ds)
-        app = create_app(ctrl, loop=loop)
+        auth = SimpleAuthenticator()
+        auth._now_unix = lambda: 2461449600
+        app = create_app(ctrl, auth, loop=loop)
 
         handler = app.make_handler(debug=debug, keep_alive_on=False)
         srv = await loop.create_server(handler, '127.0.0.1', port, ssl=ssl_ctx)
