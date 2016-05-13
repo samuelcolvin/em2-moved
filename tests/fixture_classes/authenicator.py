@@ -35,7 +35,7 @@ class SimpleAuthenticator(BaseAuthenticator):
         self.public_key_value = _get_public_key()
         self.valid_signature_override = None
 
-    async def _platform_key_exists(self, platform_key):
+    async def _platform_token_exists(self, platform_key):
         exp = self._cache.get(platform_key, 1)
         return exp > self._now_unix()
 

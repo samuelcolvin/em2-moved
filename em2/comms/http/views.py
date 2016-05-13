@@ -6,8 +6,10 @@ from json import JSONDecodeError
 
 from aiohttp import web
 from cerberus import Validator
+import pytz
 
 from em2.core import Action
+from em2.core.utils import from_unix_timestamp
 from em2.exceptions import Em2Exception, DomainPlatformMismatch, PlatformForbidden, FailedAuthentication
 from em2.comms.logger import logger
 from .utils import HTTPBadRequestStr, HTTPForbiddenStr, json_bytes, get_ip
@@ -39,41 +41,61 @@ async def authenticate(request):
     return web.Response(body=json_bytes({'key': key}), status=201, content_type='application/json')
 
 
+ACT_SCHEMA = {
+    'address': {'type': 'string', 'required': True, 'empty': False},
+    'timestamp': {'type': 'integer', 'required': True, 'min': 0},
+    'event_id': {'type': 'string', 'required': True, 'empty': False},
+    'timezone': {'type': 'string', 'required': False},
+    'item': {'type': 'string', 'required': False},
+    'parent_event_id': {'type': 'string', 'required': False},
+    'kwargs': {'type': 'dict', 'required': False},
+}
+
+
 async def act(request):
     platform_token = request.headers.get('Authorization')
     if platform_token is None:
         raise HTTPBadRequestStr('No "Authorization" header found')
     platform_token = platform_token.replace('Token ', '')
 
-    actor = request.headers.get('actor')
-    if actor is None:
-        raise HTTPBadRequestStr('No "Actor" header found')
-
-    actor_domain = actor[actor.index('@') + 1:]
     auth = request.app['authenticator']
     try:
-        await auth.check_domain_platform(actor_domain, platform_token)
+        await auth.valid_platform_token(platform_token)
     except PlatformForbidden as e:
         raise HTTPForbiddenStr('Invalid Authorization token') from e
+
+    try:
+        body_data = await request.json()
+    except JSONDecodeError as e:
+        raise HTTPBadRequestStr('Error Decoding JSON: {}'.format(e)) from e
+
+    if not isinstance(body_data, dict):
+        raise HTTPBadRequestStr('request data is not a dictionary')
+
+    v = Validator(ACT_SCHEMA)
+    if not v(body_data):
+        raise HTTPBadRequestStr(json.dumps(v.errors, sort_keys=True))
+
+    address = body_data.pop('address')
+    address_domain = address[address.index('@') + 1:]
+    try:
+        await auth.check_domain_platform(address_domain, platform_token)
     except DomainPlatformMismatch as e:
         raise HTTPForbiddenStr(e.args[0]) from e
 
     conversation = request.match_info['con']
     component = request.match_info['component']
     verb = request.match_info['verb']
-    item = request.match_info['item'] or None
 
-    data = await request.text()
-    kwargs = {}
-    if data:
-        try:
-            kwargs = json.loads(data)
-        except JSONDecodeError as e:
-            raise HTTPBadRequestStr('Error Decoding JSON: {}'.format(e)) from e
+    timestamp = from_unix_timestamp(body_data.pop('timestamp')).replace(tzinfo=pytz.utc)
+    try:
+        timezone = pytz.timezone(body_data.pop('timezone', 'utc'))
+    except pytz.UnknownTimeZoneError as e:
+        raise HTTPBadRequestStr(e.args[0]) from e
 
-        if not isinstance(kwargs, dict):
-            raise HTTPBadRequestStr('request data is not a dictionary')
-    action = Action(actor, conversation, verb, component, item)
+    timestamp = timestamp.astimezone(timezone)
+    kwargs = body_data.pop('kwargs', {})
+    action = Action(address, conversation, verb, component, timestamp=timestamp, **body_data)
     controller = request.app['controller']
     try:
         response = await controller.act(action, **kwargs)

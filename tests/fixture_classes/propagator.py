@@ -53,7 +53,7 @@ class SimplePropagator(BasePropagator):
             self.active_platforms[action.conv] = ctrls
 
         new_action = Action(action.address, action.conv, action.verb, action.component,
-                            action.item, timestamp, event_id)
+                            item=action.item, timestamp=timestamp, event_id=event_id)
         prop_data = deepcopy(data)
         for ctrl in ctrls:
             await ctrl.act(new_action, **prop_data)

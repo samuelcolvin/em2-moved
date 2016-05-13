@@ -120,7 +120,7 @@ class Controller:
         return pytz.timezone(self.timezone_name)
 
     def now_tz(self):
-        return self.timezone.localize(datetime.datetime.utcnow())
+        return self.timezone.localize(datetime.datetime.now())
 
     def _subdict(self, data, first_chars):
         return {k[2:]: v for k, v in data.items() if k[0] in first_chars}

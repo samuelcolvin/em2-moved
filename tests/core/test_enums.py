@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import pytest
-from em2.core.enums import Enum, EnumException
+from em2.core.utils import Enum, EnumException
 
 
 def test_basic_enums():

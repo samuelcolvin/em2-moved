@@ -4,7 +4,7 @@ import json
 from cerberus import Validator
 
 from em2.exceptions import BadHash, MisshapedDataException
-from .enums import Enum
+from .utils import Enum
 from .components import Components, hash_id
 from .interactions import Action, Verbs
 

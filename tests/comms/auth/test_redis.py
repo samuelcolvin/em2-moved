@@ -33,14 +33,14 @@ async def test_key_set_get(redis_auth):
     auth = await redis_auth()
     expireat = auth._now_unix() + 100
     await auth._store_key('testing', expireat)
-    assert await auth._platform_key_exists('testing') is True
+    assert await auth._platform_token_exists('testing') is True
     async with auth._redis_pool.get() as redis:
         assert 99 <= await redis.ttl('testing') <= 100
 
 
 async def test_key_set_get_missing(redis_auth):
     auth = await redis_auth()
-    assert await auth._platform_key_exists('other') is False
+    assert await auth._platform_token_exists('other') is False
 
 
 async def test_key_verification(redis_auth):
@@ -48,7 +48,7 @@ async def test_key_verification(redis_auth):
     auth._now_unix = lambda: 2461449600
 
     platform_key = await auth.authenticate_platform(PLATFORM, TIMESTAMP, VALID_SIGNATURE)
-    await auth.valid_platform_key(platform_key)
+    await auth.valid_platform_token(platform_key)
 
 
 async def test_key_verification_missing_dns(redis_auth):

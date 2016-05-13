@@ -9,7 +9,7 @@ from tests.fixture_classes import SimpleAuthenticator, PLATFORM, TIMESTAMP, VALI
 async def test_key_doesnt_exists():
     auth = SimpleAuthenticator()
     with pytest.raises(PlatformForbidden):
-        await auth.valid_platform_key('foobar.com:123:whatever')
+        await auth.valid_platform_token('foobar.com:123:whatever')
 
 
 async def test_key_does_exists():
@@ -25,14 +25,14 @@ async def test_key_does_exists():
     assert 86390 < (int(exp) - n) < 86410
     assert len(rand) == 64
 
-    await auth.valid_platform_key(platform_key)
+    await auth.valid_platform_token(platform_key)
 
 async def test_key_verification():
     auth = SimpleAuthenticator()
     auth._now_unix = lambda: 2461449600
 
     platform_key = await auth.authenticate_platform(PLATFORM, TIMESTAMP, VALID_SIGNATURE)
-    await auth.valid_platform_key(platform_key)
+    await auth.valid_platform_token(platform_key)
 
 
 async def test_key_verification_bad_signature():
@@ -66,7 +66,7 @@ async def test_check_domain():
     auth.valid_signature_override = True
     ts = int(datetime.now().strftime('%s'))
     platform_key = await auth.authenticate_platform('testing.foobar.com', ts, 'anything')
-    await auth.valid_platform_key(platform_key)
+    await auth.valid_platform_token(platform_key)
     await auth.check_domain_platform('foobar.com', platform_key)
 
 
@@ -75,7 +75,7 @@ async def test_check_domain_missing():
     auth.valid_signature_override = True
     ts = int(datetime.now().strftime('%s'))
     platform_key = await auth.authenticate_platform('testing.foobar.com', ts, 'anything')
-    await auth.valid_platform_key(platform_key)
+    await auth.valid_platform_token(platform_key)
     with pytest.raises(DomainPlatformMismatch) as excinfo:
         await auth.check_domain_platform('bang.com', platform_key)
     assert excinfo.value.args[0] == '"bang.com" does not use "testing.foobar.com"'

@@ -15,7 +15,7 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
             address='test@example.com',
             permissions=perms.FULL,
         )
-        action = Action('test@example.com', '123', Verbs.ADD, Components.PARTICIPANTS, pid, timestamp)
+        action = Action('test@example.com', '123', Verbs.ADD, Components.PARTICIPANTS, item=pid, timestamp=timestamp)
         action.participant_id, action.perm = pid, perms.FULL
         await cds.save_event('event_1', action, {})
 
@@ -40,7 +40,7 @@ async def test_get_last_event(get_ds, datastore_cls, timestamp):
             address='test@example.com',
             permissions=perms.FULL,
         )
-        action = Action('test@example.com', '123', Verbs.ADD, Components.MESSAGES, 'msg_id', timestamp)
+        action = Action('test@example.com', '123', Verbs.ADD, Components.MESSAGES, item='msg_id', timestamp=timestamp)
         action.participant_id, action.perm = pid, perms.FULL
         await cds.save_event('event_1', action, {})
 

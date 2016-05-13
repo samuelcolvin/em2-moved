@@ -1,4 +1,7 @@
 from collections import OrderedDict
+from datetime import datetime, timedelta
+
+import pytz
 
 
 class EnumException(Exception):
@@ -56,3 +59,16 @@ class Enum(metaclass=EnumMeta):
     @classmethod
     def get_value(cls, attr):
         return cls.__members__.get(attr)
+
+
+_EPOCH = datetime(1970, 1, 1)
+_EPOCH_TZ = datetime(1970, 1, 1, tzinfo=pytz.utc)
+
+
+def to_unix_timestamp(dt):
+    epoch = _EPOCH if dt.tzinfo is None else _EPOCH_TZ
+    return int((dt - epoch).total_seconds())
+
+
+def from_unix_timestamp(ts):
+    return _EPOCH + timedelta(seconds=ts)

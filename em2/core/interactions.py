@@ -1,7 +1,7 @@
 import logging
 
-from .enums import Enum
 from .components import Components, hash_id
+from .utils import Enum, to_unix_timestamp
 
 logger = logging.getLogger('em2')
 
@@ -46,7 +46,17 @@ class Action(_Interaction):
                   'event_id', 'parent_event_id']
 
     def __init__(self, address, conversation, verb, component=Components.CONVERSATIONS,
-                 item=None, timestamp=None, event_id=None, parent_event_id=None):
+                 *, item=None, timestamp=None, event_id=None, parent_event_id=None):
+        """
+        :param address: address of person performing action
+        :param conversation: id of the conversation being acted upon
+        :param verb: what is being done, see Verb
+        :param component: what it's being done to, see Components
+        :param item: id of the item being acted upon
+        :param timestamp: remote only, datetime action originally occurred
+        :param event_id: remote only, hash of event
+        :param parent_event_id: id of the event which this action follows
+        """
         self.perm = None
         self.address = address
         self.conv = conversation
@@ -66,7 +76,8 @@ class Action(_Interaction):
         return not (self.component == Components.CONVERSATIONS and self.verb == Verbs.ADD)
 
     def calc_event_id(self):
-        return hash_id(self.timestamp, self.address, self.conv, self.verb, self.component, self.item)
+        ts = self.timestamp and to_unix_timestamp(self.timestamp)
+        return hash_id(ts, self.address, self.conv, self.verb, self.component, self.item)
 
 
 class RVerbs(Enum):
