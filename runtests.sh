@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-py.test --cov=em2
+py.test --cov=em2 --fast
 pytest=$?
 if [ $pytest == 0 ] ; then
     echo building coverage html

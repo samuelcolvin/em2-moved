@@ -74,7 +74,7 @@ class BaseAuthenticator:
         except ValueError as e:
             raise FailedAuthentication(*e.args) from e
 
-        # signature needs to decoded from base64
+        # signature needs to be decoded from base64
         signature = base64.urlsafe_b64decode(signature)
 
         h = SHA256.new(signed_message.encode('utf8'))

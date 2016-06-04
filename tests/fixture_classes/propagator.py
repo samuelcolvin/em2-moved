@@ -16,10 +16,6 @@ class SimplePropagator(BasePropagator):
         self.all_platforms[domain] = controller
 
     @property
-    def all_platform_count(self):
-        return len(self.all_platforms)
-
-    @property
     def active_platform_count(self):
         return len(self.active_platforms)
 

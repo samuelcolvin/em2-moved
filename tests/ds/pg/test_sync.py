@@ -8,6 +8,8 @@ from em2.core import RVerbs, Retrieval, Controller, Verbs, Action
 from em2.ds.pg.models import Conversation
 from em2.ds.pg.utils import prepare_database, create_datastore
 
+slow = pytest.mark.skipif(pytest.config.getoption('--fast'), reason='not run with --fast flag')
+
 
 def test_create_retrieve_conversation(Session):
     session = Session()
@@ -51,6 +53,7 @@ def test_create_conversation_duplicate_id(Session):
         session.flush()
 
 
+@slow
 def test_prepare_database(pg_conn):
     settings, cur = pg_conn
     cur.execute('SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=%s)', (settings.PG_DATABASE,))

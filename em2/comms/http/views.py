@@ -52,7 +52,7 @@ ACT_SCHEMA = {
 }
 
 
-async def act(request):
+async def _check_token(request):
     platform_token = request.headers.get('Authorization')
     if platform_token is None:
         raise HTTPBadRequestStr('No "Authorization" header found')
@@ -63,6 +63,11 @@ async def act(request):
         await auth.valid_platform_token(platform_token)
     except PlatformForbidden as e:
         raise HTTPForbiddenStr('Invalid Authorization token') from e
+    return auth, platform_token
+
+
+async def act(request):
+    auth, platform_token = await _check_token(request)
 
     try:
         body_data = await request.json()

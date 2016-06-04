@@ -24,6 +24,10 @@ def pytest_pyfunc_call(pyfuncitem):
         return True
 
 
+def pytest_addoption(parser):
+    parser.addoption('--fast', action='store_true', help="don't run slow tests")
+
+
 @pytest.yield_fixture
 def loop():
     _loop = asyncio.new_event_loop()

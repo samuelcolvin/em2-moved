@@ -26,18 +26,19 @@ async def test_create_basic_conversation(controller):
 async def test_create_conversation_add_external_participant():
     ds = SimpleDataStore()
     propagator = SimplePropagator()
-    assert (propagator.all_platform_count, propagator.active_platform_count) == (0, 0)
+    assert propagator.active_platform_count == 0
     ctrl = Controller(ds, propagator, ref='ctrl1')
     remote_ctrl = Controller(SimpleDataStore(), ref='ctrl2')
     propagator.add_platform('@remote.com', remote_ctrl)
-    assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 0)
+    assert propagator.active_platform_count == 0
+
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar')
     assert len(ds.data[0]['participants']) == 1
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
     assert len(ds.data[0]['participants']) == 2
-    assert (propagator.all_platform_count, propagator.active_platform_count) == (1, 1)
+    assert propagator.active_platform_count == 1
 
 
 async def test_publish_conversation():
