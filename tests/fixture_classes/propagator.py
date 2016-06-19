@@ -4,6 +4,15 @@ from em2.core import Action
 from em2.comms import BasePropagator
 
 
+class Network:
+    def __init__(self):
+        self.platforms = {}
+
+    def add_platform(self, domain, controller):
+        assert domain not in self.platforms
+        self.platforms[domain] = controller
+
+
 class SimplePropagator(BasePropagator):
     def __init__(self, local_domain='@local.com'):
         self.all_platforms = {}

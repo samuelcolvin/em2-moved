@@ -81,7 +81,6 @@ class ConversationDataStore:
         raise NotImplementedError()
 
     async def set_published_id(self, new_timestamp, new_id):
-        self.conv = new_id
         raise NotImplementedError()
 
     # Status
