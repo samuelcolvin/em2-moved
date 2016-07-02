@@ -1,6 +1,6 @@
 import pytest
 
-from em2.core import Action, Verbs, Components
+from em2.core import Action, Verbs, Components, perms
 from em2.exceptions import BadDataException
 from tests.conftest import datetime_tz
 
@@ -13,7 +13,7 @@ async def test_publish_reply(two_controllers):
     await ctrl1.act(a)
     assert (len(ctrl1.ds.data), len(ctrl2.ds.data)) == (1, 1)
 
-    conv_id = ctrl1.ds.data[0]['conv_id']
+    conv_id = ctrl1.ds.data[0]['conv_id']  # conv published, get new id
     msg1_id = list(ctrl2.ds.data[0]['messages'])[0]
     a = Action('user@ctrl2.com', conv_id, Verbs.ADD, Components.MESSAGES)
     await ctrl2.act(a, parent_id=msg1_id, body='this is a reply')
@@ -37,3 +37,18 @@ async def test_publish_reply_bad_ts(two_controllers):
     with pytest.raises(BadDataException) as excinfo:
         await ctrl1.act(a, parent_id=msg1_id, body='this is a reply')
     assert excinfo.value.args[0] == 'timestamp not after parent timestamp: 2000-01-01 00:00:00+00:00'
+
+
+async def test_publish_add_recipient(two_controllers):
+    ctrl1, ctrl2, conv_id = await two_controllers()
+
+    assert (len(ctrl1.ds.data), len(ctrl2.ds.data)) == (1, 0)
+    a = Action('user@ctrl1.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
+    await ctrl1.act(a)
+    assert (len(ctrl1.ds.data), len(ctrl2.ds.data)) == (1, 1)
+
+    conv_id = ctrl1.ds.data[0]['conv_id']
+    a = Action('user@ctrl1.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
+    await ctrl1.act(a, address='someone_else@ctrl1.com', permissions=perms.READ)
+
+    assert ctrl1.ds.data[0]['participants'] == ctrl2.ds.data[0]['participants']

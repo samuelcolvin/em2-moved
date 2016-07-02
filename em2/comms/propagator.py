@@ -23,7 +23,7 @@ class BasePropagator:
         raise NotImplementedError()
 
 
-class NullPropagator(BasePropagator):
+class NullPropagator(BasePropagator):  # pragma: no cover
     """
     Propagator with no functionality to connect to other platforms. Used for testing or trial purposes only.
     """

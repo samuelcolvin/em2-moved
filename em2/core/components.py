@@ -187,8 +187,6 @@ class Participants(_Component):
         # TODO validate
         prepared_data = [{'address': address, 'permissions': permissions} for address, permissions in data]
         await ds.add_multiple_components(self.name, prepared_data)
-        # for address, _ in data:
-        #     await self.controller.prop.add_participant(ds.conv, address)
 
     async def add_first(self, cds, address):
         new_participant_id = await self._add(cds, address, perms.FULL)
@@ -207,7 +205,7 @@ class Participants(_Component):
         logger.info('added participant to %s: address: "%s", permissions: "%s"', action.conv, address, permissions)
         if (await action.get_conv_status()) != ConversationsStatus.DRAFT:
             await self.controller.prop.add_participant(action.conv, address)
-        await self._event(action)
+        await self._event(action, b_address=address, b_permissions=permissions)
         return action.item
 
     async def _add(self, cds, address, permissions):
