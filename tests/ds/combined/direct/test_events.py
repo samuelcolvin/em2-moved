@@ -17,9 +17,9 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
         )
         action = Action('test@example.com', '123', Verbs.ADD, Components.PARTICIPANTS, item=pid, timestamp=timestamp)
         action.participant_id, action.perm = pid, perms.FULL
-        await cds.save_event('event_1', action, {})
+        await cds.save_event('event_1', action)
 
-        await cds.save_event('event_2', action, {'value': 'foobar'})
+        await cds.save_event('event_2', action, value='foobar')
 
         # FIXME currently there are no api methods for returning updates and it's therefore not possible to check
         # these actions are saved correctly
@@ -28,7 +28,7 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
         cds2 = ds.new_conv_ds('bad', conn)
         action.participant_id, action.perm = pid, perms.FULL
         with pytest.raises(ConversationNotFound):
-            await cds2.save_event('event_3', action, {})
+            await cds2.save_event('event_3', action)
 
 
 async def test_get_last_event(get_ds, datastore_cls, timestamp):
@@ -42,20 +42,20 @@ async def test_get_last_event(get_ds, datastore_cls, timestamp):
         )
         action = Action('test@example.com', '123', Verbs.ADD, Components.MESSAGES, item='msg_id', timestamp=timestamp)
         action.participant_id, action.perm = pid, perms.FULL
-        await cds.save_event('event_1', action, {})
+        await cds.save_event('event_1', action)
 
         event_id, event_timestamp = await cds.get_item_last_event(Components.MESSAGES, 'msg_id')
         assert event_id == 'event_1'
         assert event_timestamp == timestamp
 
         # go 1, 3, 2 to make sure we're ordering on the commit sequence not event_id
-        await cds.save_event('event_3', action, {})
+        await cds.save_event('event_3', action)
 
         event_id, event_timestamp = await cds.get_item_last_event(Components.MESSAGES, 'msg_id')
         assert event_id == 'event_3'
         assert event_timestamp == timestamp
 
-        await cds.save_event('event_2', action, {})
+        await cds.save_event('event_2', action)
 
         event_id, event_timestamp = await cds.get_item_last_event(Components.MESSAGES, 'msg_id')
         assert event_id == 'event_2'

@@ -93,7 +93,7 @@ class SimpleConversationDataStore(ConversationDataStore):
     async def get_core_properties(self):
         return {k: self.conv_obj[k] for k in self._core_property_keys}
 
-    async def save_event(self, event_id, action, data):
+    async def save_event(self, event_id, action, **data):
         self.conv_obj['events'].append({
             'id': event_id,
             'actor': action.participant_id,

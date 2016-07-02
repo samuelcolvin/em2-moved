@@ -8,6 +8,14 @@ from .utils import Enum
 logger = logging.getLogger('em2')
 
 
+class ConversationsStatus(Enum):
+    DRAFT = 'draft'
+    PENDING = 'pending'
+    ACTIVE = 'active'
+    EXPIRED = 'expired'
+    DELETED = 'deleted'
+
+
 class Components(Enum):
     MESSAGES = 'messages'
     COMMENTS = 'comments'
@@ -21,10 +29,7 @@ class Components(Enum):
     CONVERSATIONS = 'conversations'
 
 
-def hash_id(*args, **kwargs):
-    sha256 = kwargs.pop('sha256', False)
-    if kwargs != {}:  # pragma: no cover
-        raise TypeError('unexpected keywords args: {}'.format(kwargs))
+def hash_id(*args, sha256=False):
     to_hash = '_'.join(map(str, args))
     to_hash = to_hash.encode()
     if sha256:
@@ -50,6 +55,9 @@ class Messages(_Component):
     name = Components.MESSAGES
 
     async def add_multiple(self, ds, data):
+        if not data:
+            return
+
         if data[0]['parent'] is not None:
             raise MisshapedDataException('first message parent should be None')
 
@@ -171,11 +179,16 @@ class Participants(_Component):
         READ = 'read'
 
     async def add_multiple(self, ds, data):
+        """
+        Add multiple participants to a conversation, this does not propagate the to other platforms.
+
+        Used when a new remotely created conversation is added.
+        """
         # TODO validate
         prepared_data = [{'address': address, 'permissions': permissions} for address, permissions in data]
         await ds.add_multiple_components(self.name, prepared_data)
-        for address, _ in data:
-            await self.controller.prop.add_participant(ds.conv, address)
+        # for address, _ in data:
+        #     await self.controller.prop.add_participant(ds.conv, address)
 
     async def add_first(self, cds, address):
         new_participant_id = await self._add(cds, address, perms.FULL)
@@ -192,7 +205,8 @@ class Participants(_Component):
         action.item = await self._add(action.cds, address, permissions)
 
         logger.info('added participant to %s: address: "%s", permissions: "%s"', action.conv, address, permissions)
-        await self.controller.prop.add_participant(action.conv, address)
+        if (await action.get_conv_status()) != ConversationsStatus.DRAFT:
+            await self.controller.prop.add_participant(action.conv, address)
         await self._event(action)
         return action.item
 

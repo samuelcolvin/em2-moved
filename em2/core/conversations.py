@@ -4,8 +4,7 @@ import json
 from cerberus import Validator
 
 from em2.exceptions import BadHash, MisshapedDataException
-from .utils import Enum
-from .components import Components, hash_id
+from .components import Components, hash_id, ConversationsStatus
 from .interactions import Action, Verbs
 
 logger = logging.getLogger('em2')
@@ -45,12 +44,7 @@ class Conversations:
     def __init__(self, controller):
         self.controller = controller
 
-    class Status(Enum):
-        DRAFT = 'draft'
-        PENDING = 'pending'
-        ACTIVE = 'active'
-        EXPIRED = 'expired'
-        DELETED = 'deleted'
+    Status = ConversationsStatus
 
     @property
     def _participants(self):
@@ -122,6 +116,8 @@ class Conversations:
         ds = self.controller.ds.new_conv_ds(action.conv, action.conn)
 
         participant_data = data[Components.PARTICIPANTS]
+        addresses = [p[0] for p in participant_data]
+        await self.controller.prop.participants_added(action.conv, *addresses)
         await self._participants.add_multiple(ds, participant_data)
 
         message_data = data[Components.MESSAGES]
@@ -140,12 +136,11 @@ class Conversations:
         new_conv_id = self._conv_id_hash(action.address, action.timestamp, ref)
         await action.cds.set_published_id(action.timestamp, new_conv_id)
 
-        new_action = Action(action.address, new_conv_id, Verbs.ADD, Components.CONVERSATIONS,
-                            timestamp=action.timestamp)
+        new_action = Action(action.address, new_conv_id, Verbs.ADD, timestamp=action.timestamp)
         new_action.cds, new_action.participant_id, new_action.perm = action.cds, action.participant_id, action.perm
 
         data = await action.cds.export()
-        await self.controller.event(new_action, p_data=data)
+        await self.controller.publish(new_action, **data)
         return new_conv_id
 
     async def list(self, retrieval, limit=None, offset=None):

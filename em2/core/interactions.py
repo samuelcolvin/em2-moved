@@ -66,6 +66,7 @@ class Action(_Interaction):
         self.timestamp = timestamp
         self.event_id = event_id
         self.parent_event_id = parent_event_id
+        self._status = None
 
     @property
     def is_remote(self):
@@ -78,6 +79,11 @@ class Action(_Interaction):
     def calc_event_id(self):
         ts = self.timestamp and to_unix_timestamp(self.timestamp)
         return hash_id(ts, self.address, self.conv, self.verb, self.component, self.item)
+
+    async def get_conv_status(self):
+        if self._status is None:
+            self._status = await self.cds.get_status()
+        return self._status
 
 
 class RVerbs(Enum):

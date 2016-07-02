@@ -45,4 +45,4 @@ async def test_wrong_args(conversation):
     a = Action('test@example.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     with pytest.raises(BadDataException) as excinfo:
         await ctrl.act(a, address='someone_different@example.com', foobar=True)
-    assert excinfo.value.args[0] == "missing a required argument: 'permissions'"
+    assert excinfo.value.args[0] == "Participants.add: missing a required argument: 'permissions'"

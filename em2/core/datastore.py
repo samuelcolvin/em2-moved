@@ -77,7 +77,7 @@ class ConversationDataStore:
         """
         raise NotImplementedError()
 
-    async def save_event(self, event_id, action, data):
+    async def save_event(self, event_id, action, **data):
         raise NotImplementedError()
 
     async def set_published_id(self, new_timestamp, new_id):

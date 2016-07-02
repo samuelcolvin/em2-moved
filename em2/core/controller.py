@@ -113,7 +113,7 @@ class Controller:
         try:
             inspect.signature(func).bind(**{std_arg_name: None}, **kwargs)
         except TypeError as e:
-            raise BadDataException(*e.args) from e
+            raise BadDataException('{}: {}'.format(func.__qualname__, e.args[0])) from e
 
     @property
     def timezone(self):
@@ -136,16 +136,21 @@ class Controller:
                      action.conv, action.address, action.verb, action.component, action.item)
         save_data = self._subdict(data, 'sb')
         event_id = action.calc_event_id()
-        await action.cds.save_event(event_id, action, save_data)
-        status = await action.cds.get_status()
-        if status == Conversations.Status.DRAFT:
+        await action.cds.save_event(event_id, action, **save_data)
+        if (await action.get_conv_status()) == Conversations.Status.DRAFT:
             return
-        # TODO some way to propagate events to clients here
         if action.is_remote:
+            # TODO some way to propagate events to clients here
             return
         propagate_data = self._subdict(data, 'pb')
         # FIXME what happens when propagation fails, perhaps save status on update
         await self.prop.propagate(action, event_id, propagate_data, action.timestamp)
+
+    async def publish(self, action, **data):
+        logger.debug('publishing %d, author: "%s"', action.conv, action.address)
+        event_id = action.calc_event_id()
+        await action.cds.save_event(event_id, action)
+        await self.prop.publish(action, event_id, data, action.timestamp)
 
     def __repr__(self):
         return '<Controller({})>'.format(self.ref)
