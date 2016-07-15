@@ -1,5 +1,6 @@
 import pytest
 
+from em2 import Settings
 from em2.core import Controller, Components, perms, Action, Verbs
 
 from tests.fixture_classes import SimpleDataStore, SimplePusher, Network
@@ -7,11 +8,11 @@ from tests.fixture_classes import SimpleDataStore, SimplePusher, Network
 
 def create_controller(name, network=None):
     ds = SimpleDataStore()
-    pusher = SimplePusher()
+    local_domain = name + '.com'
+    pusher = SimplePusher(Settings(LOCAL_DOMAIN=local_domain))
     pusher.network = network or Network()
-    pusher.local_domain = name + '.com'
     ctrl = Controller(ds, pusher, ref=name)
-    pusher.network.add_node(pusher.local_domain, ctrl)
+    pusher.network.add_node(local_domain, ctrl)
     return ctrl, ds, pusher
 
 

@@ -2,6 +2,7 @@ import datetime
 import hashlib
 from copy import deepcopy
 
+from em2 import Settings
 from em2.core import Controller, Components, perms, Action, Verbs
 from tests.fixture_classes import SimpleDataStore, SimplePusher
 
@@ -25,7 +26,7 @@ async def test_create_basic_conversation(controller):
 
 async def test_create_conversation_add_external_participant():
     ds = SimpleDataStore()
-    pusher = SimplePusher()
+    pusher = SimplePusher(Settings(LOCAL_DOMAIN='local.com'))
     assert len(pusher.remotes) == 0
     ctrl = Controller(ds, pusher, ref='ctrl1')
     remote_ctrl = Controller(SimpleDataStore(), ref='ctrl2')
@@ -45,7 +46,7 @@ async def test_create_conversation_add_external_participant():
 
 async def test_publish_conversation():
     ds = SimpleDataStore()
-    pusher = SimplePusher()
+    pusher = SimplePusher(Settings(LOCAL_DOMAIN='local.com'))
     ctrl = Controller(ds, pusher, ref='ctrl1')
     other_ds = SimpleDataStore()
     remote_ctrl = Controller(other_ds, ref='ctrl2')

@@ -18,15 +18,14 @@ class SimplePusher(BasePusher):
         super().__init__(*args, **kwargs)
         self.remotes = {}
         self.network = Network()
-        self.local_domain = 'local.com'
 
     async def add_participant(self, conv, participant_addr):
         d = self.get_domain(participant_addr)
         if d not in self.remotes[conv]:
-            self.remotes[conv][d] = await self.get_node(d)
+            self.remotes[conv][d] = await self.get_node(conv, d, participant_addr)
 
     async def save_nodes(self, conv, *addresses):
-        self.remotes[conv] = await self.get_nodes(*addresses)
+        self.remotes[conv] = await self.get_nodes(conv, *addresses)
 
     async def remove_domain(self, conv, domain):
         self.remotes[conv].pop(domain)
@@ -49,8 +48,5 @@ class SimplePusher(BasePusher):
             if ctrl != self.LOCAL:
                 await ctrl.act(new_action, **prop_data)
 
-    async def get_node(self, domain):
-        return self.LOCAL if domain == self.local_domain else self.network.nodes[domain]
-
-    def __repr__(self):
-        return 'SimplePusher<{}>'.format(self.local_domain)
+    async def get_node(self, conv, domain, *addresses):
+        return self.LOCAL if domain == self._settings.LOCAL_DOMAIN else self.network.nodes[domain]

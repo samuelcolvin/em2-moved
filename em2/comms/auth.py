@@ -117,7 +117,7 @@ class RedisDNSAuthenticator(RedisDNSMixin, BaseAuthenticator):
         raise FailedAuthentication('no "em2key" TXT dns record found')
 
     async def _check_domain_uses_platform(self, domain, platform_domain):
-        cache_key = 'dm:{}'.format(domain)
+        cache_key = 'pl:{}'.format(domain)
         async with self._redis_pool.get() as redis:
             platform = await redis.get(cache_key)
             if platform == platform_domain:

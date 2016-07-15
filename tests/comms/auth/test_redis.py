@@ -73,7 +73,7 @@ async def test_check_domain_platform_cache(redis_auth):
     auth = await redis_auth(RedisMockDNSAuthenticator)
     assert await auth._check_domain_uses_platform('whatever.com', 'whoever.com') is None
     async with auth._redis_pool.get() as redis:
-        await redis.set('dm:whatever.com', 'whoever.com')
+        await redis.set('pl:whatever.com', 'whoever.com')
     assert await auth._check_domain_uses_platform('whatever.com', 'whoever.com') is True
 
 
@@ -81,7 +81,7 @@ async def test_check_domain_platform_mx_match(redis_auth):
     auth = await redis_auth(RedisMockDNSAuthenticator)
     assert await auth._check_domain_uses_platform('whatever.com', 'ten.example.com') is True
     async with auth._redis_pool.get() as redis:
-        await redis.get('dm:whatever.com') == 'ten.example.com'
+        await redis.get('pl:whatever.com') == 'ten.example.com'
 
 
 async def test_reinit(redis_auth):

@@ -7,6 +7,7 @@ class Settings:
     COMMS_PLATFORM_KEY_TIMEOUT = 86400
     COMMS_PLATFORM_KEY_LENGTH = 64
     COMMS_AUTHENTICATION_TS_LENIENCY = [-10, 1]
+    COMMS_HTTP_TIMEOUT = 4
 
     PG_HOST = 'localhost'
     PG_PORT = '5432'
@@ -17,6 +18,8 @@ class Settings:
     REDIS_HOST = 'localhost'
     REDIS_PORT = 6379
     REDIS_DATABASE = 0
+
+    LOCAL_DOMAIN = 'no-domain-set'
 
     def __init__(self, **custom_settings):
         for name, value in custom_settings.items():
