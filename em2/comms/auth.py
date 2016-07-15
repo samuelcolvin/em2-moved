@@ -4,25 +4,25 @@ import base64
 from datetime import datetime
 from textwrap import wrap
 
-import aiodns
-import aioredis
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 
-from em2.core.utils import to_unix_timestamp
-from em2.exceptions import Em2Exception, FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
 from em2 import Settings
+from em2.core.utils import to_unix_timestamp
+from em2.exceptions import FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
+from .redis import RedisDNSMixin
 
 
 class BaseAuthenticator:
-    def __init__(self, settings: Settings=None):
-        settings = settings or Settings()
-        self._head_request_timeout = settings.COMMS_HEAD_REQUEST_TIMEOUT
-        self._domain_timeout = settings.COMMS_DOMAIN_CACHE_TIMEOUT
-        self._platform_key_timeout = settings.COMMS_PLATFORM_KEY_TIMEOUT
-        self._past_ts_limit, self._future_ts_limit = settings.COMMS_AUTHENTICATION_TS_LENIENCY
-        self._key_length = settings.COMMS_PLATFORM_KEY_LENGTH
+    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
+        self._settings = settings or Settings()
+        self._loop = loop
+        self._head_request_timeout = self._settings.COMMS_HEAD_REQUEST_TIMEOUT
+        self._domain_timeout = self._settings.COMMS_DOMAIN_CACHE_TIMEOUT
+        self._platform_key_timeout = self._settings.COMMS_PLATFORM_KEY_TIMEOUT
+        self._past_ts_limit, self._future_ts_limit = self._settings.COMMS_AUTHENTICATION_TS_LENIENCY
+        self._key_length = self._settings.COMMS_PLATFORM_KEY_LENGTH
 
     async def authenticate_platform(self, platform: str, timestamp: int, signature: str):
         """
@@ -88,29 +88,7 @@ class BaseAuthenticator:
         return base64.urlsafe_b64encode(os.urandom(self._key_length))[:self._key_length].decode('utf8')
 
 
-class RedisDNSAuthenticator(BaseAuthenticator):
-    __resolver = None
-    _v = '1'
-
-    def __init__(self, settings: Settings, loop: asyncio.AbstractEventLoop):
-        super().__init__(settings)
-        self._loop = loop
-        self._settings = settings
-        self._redis_pool = None
-
-    async def init(self):
-        if self._redis_pool is not None:
-            raise Em2Exception('redis pool already initialised')
-        address = self._settings.REDIS_HOST, self._settings.REDIS_PORT
-        self._redis_pool = await aioredis.create_pool(address, db=self._settings.REDIS_DATABASE,
-                                                      encoding='utf8', loop=self._loop)
-
-    @property
-    def _resolver(self):
-        if self.__resolver is None:
-            self.__resolver = aiodns.DNSResolver(loop=self._loop)
-        return self.__resolver
-
+class RedisDNSAuthenticator(RedisDNSMixin, BaseAuthenticator):
     async def _platform_token_exists(self, platform_token):
         async with self._redis_pool.get() as redis:
             return await redis.exists(platform_token)
@@ -118,12 +96,12 @@ class RedisDNSAuthenticator(BaseAuthenticator):
     async def _store_key(self, key, expiresat):
         async with self._redis_pool.get() as redis:
             pipe = redis.pipeline()
-            pipe.set(key, self._v)
+            pipe.set(key, self._dft_value)
             pipe.expireat(key, expiresat)
             await pipe.execute()
 
     async def _get_public_key(self, platform):
-        dns_results = await self._resolver.query(platform, 'TXT')
+        dns_results = await self.resolver.query(platform, 'TXT')
         key_data = self._get_key(dns_results)
         # return the key in a format openssl / RSA.importKey can cope with
         return '-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n'.format('\n'.join(wrap(key_data, width=65)))
@@ -147,7 +125,7 @@ class RedisDNSAuthenticator(BaseAuthenticator):
             platform = await redis.get(cache_key)
             if platform == platform_domain:
                 return True
-            results = await self._resolver.query(domain, 'MX')
+            results = await self.resolver.query(domain, 'MX')
             results = [(r.priority, r.host) for r in results]
             results.sort()
             for _, platform in results:

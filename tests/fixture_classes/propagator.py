@@ -1,5 +1,7 @@
+import asyncio
 from copy import deepcopy
 
+from em2 import Settings
 from em2.core import Action, Verbs, Components
 from em2.comms import BasePropagator
 
@@ -14,11 +16,12 @@ class Network:
 
 
 class SimplePropagator(BasePropagator):
-    def __init__(self, network:  Network, local_domain='local.com'):
-        self.network = network
+    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
+        super().__init__(settings, loop)
         self.conv_platforms = {}
         self.addr_lookups = {}
-        self.local_domain = local_domain
+        self.network = Network()
+        self.local_domain = 'local.com'
 
     async def add_participant(self, conv, participant_addr):
         platform = await self._get_platform(participant_addr)

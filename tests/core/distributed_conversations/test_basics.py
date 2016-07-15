@@ -3,7 +3,7 @@ import hashlib
 from copy import deepcopy
 
 from em2.core import Controller, Components, perms, Action, Verbs
-from tests.fixture_classes import SimpleDataStore, SimplePropagator, Network
+from tests.fixture_classes import SimpleDataStore, SimplePropagator
 
 
 async def test_create_basic_conversation(controller):
@@ -25,12 +25,11 @@ async def test_create_basic_conversation(controller):
 
 async def test_create_conversation_add_external_participant():
     ds = SimpleDataStore()
-    network = Network()
-    propagator = SimplePropagator(network)
+    propagator = SimplePropagator()
     assert len(propagator.conv_platforms) == 0
     ctrl = Controller(ds, propagator, ref='ctrl1')
     remote_ctrl = Controller(SimpleDataStore(), ref='ctrl2')
-    network.add_platform('remote.com', remote_ctrl)
+    propagator.network.add_platform('remote.com', remote_ctrl)
     assert len(propagator.conv_platforms) == 0
 
     action = Action('sender@local.com', None, Verbs.ADD)
@@ -46,12 +45,11 @@ async def test_create_conversation_add_external_participant():
 
 async def test_publish_conversation():
     ds = SimpleDataStore()
-    network = Network()
-    propagator = SimplePropagator(network)
+    propagator = SimplePropagator()
     ctrl = Controller(ds, propagator, ref='ctrl1')
     other_ds = SimpleDataStore()
     remote_ctrl = Controller(other_ds, ref='ctrl2')
-    network.add_platform('remote.com', remote_ctrl)
+    propagator.network.add_platform('remote.com', remote_ctrl)
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='the subject', body='the body')
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)

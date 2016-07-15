@@ -93,7 +93,7 @@ async def test_reinit(redis_auth):
 
 async def test_mx_lookup(redis_auth):
     auth = await redis_auth()
-    r = auth._resolver
+    r = auth.resolver
     results = await r.query('gmail.com', 'MX')
     assert results[0].host.endswith('google.com')
     # check we get back the same resolver each time

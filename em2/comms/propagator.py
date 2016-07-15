@@ -1,6 +1,13 @@
+import asyncio
+
+from em2 import Settings
 
 
 class BasePropagator:
+    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
+        self._settings = settings or Settings()
+        self._loop = loop
+
     async def add_participant(self, conv, participant_addr):
         raise NotImplementedError()
 

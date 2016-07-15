@@ -7,11 +7,11 @@ from tests.fixture_classes import SimpleDataStore, SimplePropagator, Network
 
 def create_controller(name, network=None):
     ds = SimpleDataStore()
-    network = network or Network()
-    domain = name + '.com'
-    propagator = SimplePropagator(network, local_domain=domain)
+    propagator = SimplePropagator()
+    propagator.network = network or Network()
+    propagator.local_domain = name + '.com'
     ctrl = Controller(ds, propagator, ref=name)
-    network.add_platform(domain, ctrl)
+    propagator.network.add_platform(propagator.local_domain, ctrl)
     return ctrl, ds, propagator
 
 
