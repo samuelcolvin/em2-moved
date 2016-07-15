@@ -192,6 +192,11 @@ class SimpleConversationDataStore(ConversationDataStore):
                 return v['id'], v['permissions']
         raise ComponentNotFound('participant {} not found'.format(participant_address))
 
+    async def domain_count(self, domain):
+        prefixed_domain = '@' + domain
+        participants = self.conv_obj.get(Components.PARTICIPANTS, {})
+        return sum(v['address'].endswith(prefixed_domain) for v in participants.values())
+
     # internal methods
 
     def _get_conv_items(self, component):

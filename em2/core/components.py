@@ -180,7 +180,7 @@ class Participants(_Component):
 
     async def add_multiple(self, ds, data):
         """
-        Add multiple participants to a conversation, this does not propagate the to other platforms.
+        Add multiple participants to a conversation, this does not propagate to other platforms.
 
         Used when a new remotely created conversation is added.
         """
@@ -204,9 +204,27 @@ class Participants(_Component):
 
         logger.info('added participant to %s: address: "%s", permissions: "%s"', action.conv, address, permissions)
         if (await action.get_conv_status()) != ConversationsStatus.DRAFT:
-            await self.controller.prop.add_participant(action.conv, address)
+            await self.controller.pusher.add_participant(action.conv, address)
         await self._event(action, b_address=address, b_permissions=permissions)
         return action.item
+
+    async def delete(self, action, address):
+        # TODO cope wit special case of removing ones self
+        # TODO what about when someone is removed from a conv? some way for them to see the conv in it's previous state
+        if action.perm not in {perms.FULL, perms.WRITE}:
+            raise InsufficientPermissions('FULL or WRITE permission are required to delete participants')
+
+        participant_id, perm = await action.cds.get_participant(address)
+        if action.perm == perms.WRITE and perm == perms.FULL:
+            raise InsufficientPermissions('FULL permission are required to delete participants with FULL permissions')
+
+        await action.cds.delete_component(self.name, participant_id)
+
+        if (await action.get_conv_status()) != ConversationsStatus.DRAFT:
+            domain = self.controller.pusher.get_domain(address)
+            if (await action.cds.domain_count(domain)) == 0:
+                await self.controller.pusher.remove_domain(action.conv, domain)
+        await self._event(action, b_address=address)
 
     async def _add(self, cds, address, permissions):
         return await cds.add_component(

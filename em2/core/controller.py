@@ -4,7 +4,7 @@ import inspect
 
 import pytz
 
-from em2.comms import BasePropagator, NullPropagator
+from em2.comms import BasePusher, NullPusher
 from em2.exceptions import ComponentNotFound, VerbNotFound, BadDataException, BadHash
 from .datastore import DataStore
 from .components import Components, Messages, Participants
@@ -18,10 +18,10 @@ class Controller:
     """
     Top level class for accessing conversations and conversation components.
     """
-    def __init__(self, datastore: DataStore, propagator: BasePropagator=None, timezone_name='utc', ref=None):
-        propagator = propagator or NullPropagator()
+    def __init__(self, datastore: DataStore, pusher: BasePusher=None, timezone_name='utc', ref=None):
+        pusher = pusher or NullPusher()
         self.ds = datastore
-        self.prop = propagator
+        self.pusher = pusher
         self.timezone_name = timezone_name
         self.ref = ref if ref is not None else hex(id(self))
         self.conversations = Conversations(self)
@@ -127,10 +127,10 @@ class Controller:
 
     async def event(self, action, **data):
         """
-        Record and propagate updates of conversations and conversation components.
+        Record and push updates of conversations and conversation components.
 
         :param action: Action instance
-        :param data: extra information to either be saved (s_*), propagated (p_*) or both (b_*)
+        :param data: extra information to either be saved (s_*), pushed (p_*) or both (b_*)
         """
         logger.debug('event on %d: author: "%s", action: "%s", component: %s %s',
                      action.conv, action.address, action.verb, action.component, action.item)
@@ -140,17 +140,17 @@ class Controller:
         if (await action.get_conv_status()) == Conversations.Status.DRAFT:
             return
         if action.is_remote:
-            # TODO some way to propagate events to clients here
+            # TODO some way to push events to clients here
             return
-        propagate_data = self._subdict(data, 'pb')
-        # FIXME what happens when propagation fails, perhaps save status on update
-        await self.prop.propagate(action, event_id, propagate_data, action.timestamp)
+        push_data = self._subdict(data, 'pb')
+        # FIXME what happens when pushing fails, perhaps save status on update
+        await self.pusher.push(action, event_id, push_data, action.timestamp)
 
     async def publish(self, action, **data):
         logger.debug('publishing %d, author: "%s"', action.conv, action.address)
         event_id = action.calc_event_id()
         await action.cds.save_event(event_id, action)
-        await self.prop.publish(action, event_id, data, action.timestamp)
+        await self.pusher.publish(action, event_id, data, action.timestamp)
 
     def __repr__(self):
         return '<Controller({})>'.format(self.ref)

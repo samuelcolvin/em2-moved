@@ -117,7 +117,7 @@ class Conversations:
 
         participant_data = data[Components.PARTICIPANTS]
         addresses = [p[0] for p in participant_data]
-        await self.controller.prop.participants_added(action.conv, *addresses)
+        await self.controller.pusher.save_nodes(action.conv, *addresses)
         await self._participants.add_multiple(ds, participant_data)
 
         message_data = data[Components.MESSAGES]

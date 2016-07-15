@@ -158,3 +158,10 @@ class ConversationDataStore:
         :return: tuple (id - local id participant, permissions - participants permissions)
         """
         raise NotImplementedError()
+
+    async def domain_count(self, domain):
+        """
+        :param domain: domain to count
+        :return: number of participants in the conversation with this domain
+        """
+        raise NotImplementedError()

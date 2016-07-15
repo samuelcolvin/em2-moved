@@ -3,7 +3,7 @@ import hashlib
 from copy import deepcopy
 
 from em2.core import Controller, Components, perms, Action, Verbs
-from tests.fixture_classes import SimpleDataStore, SimplePropagator
+from tests.fixture_classes import SimpleDataStore, SimplePusher
 
 
 async def test_create_basic_conversation(controller):
@@ -25,12 +25,12 @@ async def test_create_basic_conversation(controller):
 
 async def test_create_conversation_add_external_participant():
     ds = SimpleDataStore()
-    propagator = SimplePropagator()
-    assert len(propagator.conv_platforms) == 0
-    ctrl = Controller(ds, propagator, ref='ctrl1')
+    pusher = SimplePusher()
+    assert len(pusher.remotes) == 0
+    ctrl = Controller(ds, pusher, ref='ctrl1')
     remote_ctrl = Controller(SimpleDataStore(), ref='ctrl2')
-    propagator.network.add_platform('remote.com', remote_ctrl)
-    assert len(propagator.conv_platforms) == 0
+    pusher.network.add_node('remote.com', remote_ctrl)
+    assert len(pusher.remotes) == 0
 
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar')
@@ -40,16 +40,16 @@ async def test_create_conversation_add_external_participant():
     a = Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     await ctrl.act(a)
     assert len(ds.data[0]['participants']) == 2
-    assert len(propagator.conv_platforms) == 1
+    assert len(pusher.remotes) == 1
 
 
 async def test_publish_conversation():
     ds = SimpleDataStore()
-    propagator = SimplePropagator()
-    ctrl = Controller(ds, propagator, ref='ctrl1')
+    pusher = SimplePusher()
+    ctrl = Controller(ds, pusher, ref='ctrl1')
     other_ds = SimpleDataStore()
     remote_ctrl = Controller(other_ds, ref='ctrl2')
-    propagator.network.add_platform('remote.com', remote_ctrl)
+    pusher.network.add_node('remote.com', remote_ctrl)
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='the subject', body='the body')
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
