@@ -1,5 +1,4 @@
 import os
-import asyncio
 import base64
 from datetime import datetime
 from textwrap import wrap
@@ -8,16 +7,14 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 
-from em2 import Settings
-from em2.core.utils import to_unix_timestamp
+from em2.core.utils import to_unix_timestamp, BaseServiceCls
 from em2.exceptions import FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
 from .redis import RedisDNSMixin
 
 
-class BaseAuthenticator:
-    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
-        self._settings = settings or Settings()
-        self._loop = loop
+class BaseAuthenticator(BaseServiceCls):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._head_request_timeout = self._settings.COMMS_HEAD_REQUEST_TIMEOUT
         self._domain_timeout = self._settings.COMMS_DOMAIN_CACHE_TIMEOUT
         self._platform_key_timeout = self._settings.COMMS_PLATFORM_KEY_TIMEOUT

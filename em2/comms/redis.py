@@ -1,17 +1,14 @@
 import aiodns
 import aioredis
 
+from em2.core.utils import BaseServiceCls
 from em2.exceptions import Em2Exception
 
 
-class RedisDNSMixin:
+class RedisDNSMixin(BaseServiceCls):
     _resolver = None
     _redis_pool = None
     _dft_value = '1'
-
-    # settings and loop need to be set by __init__ of inheriting class
-    _settings = None
-    _loop = None
 
     async def init(self):
         if self._redis_pool is not None:

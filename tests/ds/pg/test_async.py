@@ -36,7 +36,8 @@ async def test_conversation_insert_raw(timestamp, loop, db, dsn):
 
 async def test_datastore_setup(loop, empty_db, dsn):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
-        ds = PostgresDataStore(engine)
+        ds = PostgresDataStore()
+        ds.engine = engine
         controller = Controller(ds)
         async with ds.connection() as conn:
             action = Action('sender@example.com', None, Verbs.ADD)
@@ -48,7 +49,8 @@ async def test_datastore_setup(loop, empty_db, dsn):
 
 async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
-        ds = PostgresDataStore(engine)
+        ds = PostgresDataStore()
+        ds.engine = engine
         controller = Controller(ds)
         line = 0
         with pytest.raises(ConversationNotFound):

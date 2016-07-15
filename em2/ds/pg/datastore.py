@@ -1,10 +1,11 @@
-from aiopg.sa import Engine
+from aiopg.sa.engine import _create_engine
 from sqlalchemy import select, column, join
 
 from em2.core import Components, DataStore, ConversationDataStore
-from em2.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound
+from em2.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound, Em2Exception
 
 from .models import sa_conversations, sa_participants, sa_messages, sa_events
+from .utils import get_dsn
 
 sa_component_lookup = {
     Components.CONVERSATIONS: sa_conversations,
@@ -14,10 +15,16 @@ sa_component_lookup = {
 
 
 class PostgresDataStore(DataStore):
-    def __init__(self, engine: Engine):
-        self.engine = engine
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.engine = None
         # TODO qualify the columns in case of conflict
         self._list_columns = [column('conv_id')] + PostgresConversationDataStore.sa_core_property_keys
+
+    async def create_engine(self, **kwargs):
+        if self.engine is not None:
+            raise Em2Exception('postgres engine already initialised')
+        self.engine = await _create_engine(get_dsn(self._settings), loop=self._loop, **kwargs)
 
     async def create_conversation(self, conn, **kwargs):
         # key word arguments to create_conversation exactly match the db.

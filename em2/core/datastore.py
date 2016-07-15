@@ -6,12 +6,13 @@ Database back-ends for em2 should define a child class for DataStore which imple
 import logging
 from copy import deepcopy
 
+from em2.core.utils import BaseServiceCls
 from .components import Components
 
 logger = logging.getLogger('em2')
 
 
-class DataStore:
+class DataStore(BaseServiceCls):
     async def create_conversation(self, conn, conv_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 

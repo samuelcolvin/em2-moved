@@ -70,6 +70,9 @@ class TestPostgresDataStore(PostgresDataStore):
     async def terminate(self):
         if self._conn_ctx is not None:
             await self._conn_ctx.terminate()
+        if self.engine is not None:
+            self.engine.close()
+            await self.engine.wait_closed()
 
 
 class TestCtx(ConnectionContextManager):

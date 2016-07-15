@@ -1,7 +1,10 @@
+import asyncio
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
 import pytz
+
+from em2.settings import Settings
 
 
 class EnumException(Exception):
@@ -72,3 +75,9 @@ def to_unix_timestamp(dt):
 
 def from_unix_timestamp(ts):
     return _EPOCH + timedelta(seconds=ts)
+
+
+class BaseServiceCls:
+    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
+        self._settings = settings or Settings()
+        self._loop = loop

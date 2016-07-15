@@ -1,6 +1,6 @@
 import pytest
-from aiopg.sa.engine import _create_engine
-from tests.ds.pg.plugin import TestPostgresDataStore
+
+from tests.ds.pg.plugin import TestPostgresDataStore, settings as pg_settings
 from tests.fixture_classes import SimpleDataStore
 
 pytest_plugins = 'tests.ds.pg.plugin'
@@ -19,16 +19,16 @@ def pytest_generate_tests(metafunc):
 @pytest.yield_fixture
 def get_ds(loop, db, dsn):
     pg_ds = False
-    ds = engine = None
+    ds = None
     print(dsn)
 
     async def datastore_creator(ds_cls):
-        nonlocal pg_ds, ds, engine
+        nonlocal pg_ds, ds
         assert ds_cls in datastore_options
         pg_ds = ds_cls == 'PostgresDataStore'
         if pg_ds:
-            engine = await _create_engine(dsn, loop=loop, minsize=1, maxsize=4, timeout=5)
-            ds = TestPostgresDataStore(engine)
+            ds = TestPostgresDataStore(pg_settings, loop)
+            await ds.create_engine(minsize=1, maxsize=4, timeout=5)
             return ds
         else:
             ds = SimpleDataStore()
@@ -40,8 +40,5 @@ def get_ds(loop, db, dsn):
         async def teardown():
             if ds is not None:
                 await ds.terminate()
-            if engine is not None:
-                engine.close()
-                await engine.wait_closed()
         loop.run_until_complete(teardown())
-    ds = engine = None
+    ds = None

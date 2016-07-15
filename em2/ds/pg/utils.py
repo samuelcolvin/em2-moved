@@ -1,13 +1,9 @@
-import asyncio
-
 import psycopg2
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
-from aiopg.sa.engine import _create_engine
 
 from em2 import Settings
 from .models import Base
-from .datastore import PostgresDataStore
 
 
 def pg_connect_kwargs(settings: Settings):
@@ -48,9 +44,3 @@ def prepare_database(settings: Settings, skip_existing=False):
     engine.dispose()
     if skip_existing:
         return False
-
-
-def create_datastore(settings: Settings, loop=None):
-    loop = loop or asyncio.get_event_loop()
-    engine = loop.run_until_complete(_create_engine(get_dsn(settings), loop=loop))
-    return PostgresDataStore(engine)
