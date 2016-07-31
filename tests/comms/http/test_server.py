@@ -2,7 +2,7 @@ import json
 from datetime import timedelta, datetime
 
 from em2.core import Action, Verbs, Components
-from em2.core.utils import to_unix_timestamp
+from em2.utils import to_unix_timestamp
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 AUTH_HEADER = {

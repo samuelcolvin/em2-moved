@@ -8,10 +8,10 @@ from aiohttp import web
 from cerberus import Validator
 import pytz
 
-from em2.core import Action
-from em2.core.utils import from_unix_timestamp
-from em2.exceptions import Em2Exception, DomainPlatformMismatch, PlatformForbidden, FailedAuthentication
 from em2.comms.logger import logger
+from em2.core import Action
+from em2.utils import from_unix_timestamp
+from em2.exceptions import Em2Exception, DomainPlatformMismatch, PlatformForbidden, FailedAuthentication
 from .utils import HTTPBadRequestStr, HTTPForbiddenStr, json_bytes, get_ip
 
 

@@ -80,4 +80,4 @@ def from_unix_timestamp(ts):
 class BaseServiceCls:
     def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
         self._settings = settings or Settings()
-        self._loop = loop
+        self.loop = loop

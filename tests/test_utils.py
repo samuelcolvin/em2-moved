@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import pytest
-from em2.core.utils import Enum, EnumException
+from em2.utils import Enum, EnumException
 
 
 def test_basic_enums():
@@ -17,7 +17,7 @@ def test_basic_enums():
     print(Foo)
 
 
-def test_inheritance():
+def test_enum_inheritance():
     class Foo(Enum):
         PEAR = 'pear'
         APPLE = 'apple'
@@ -28,7 +28,7 @@ def test_inheritance():
     assert FooBar.__values__ == ['pear', 'apple', 17]
 
 
-def test_multiple_inheritance():
+def test_enum_multiple_inheritance():
     class Foo(Enum):
         PEAR = 'pear'
         APPLE = 'apple'
@@ -42,7 +42,7 @@ def test_multiple_inheritance():
     assert Spam.__values__ == ['pear', 'apple', 17, 'fish', 321]
 
 
-def test_mixin_inheritance():
+def test_enum_mixin_inheritance():
     class Foo(Enum):
         PEAR = 'pear'
         APPLE = 'apple'
@@ -56,7 +56,7 @@ def test_mixin_inheritance():
     assert Spam.__values__ == ['pear', 'apple', 17, 'fish', 321]
 
 
-def test_repeat():
+def test_enum_repeat():
     with pytest.raises(EnumException) as excinfo:
         class Foo(Enum):
             PEAR = 'pear'

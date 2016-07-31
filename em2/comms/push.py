@@ -1,5 +1,4 @@
-from em2.core import Components
-from em2.core.utils import BaseServiceCls
+from em2.utils import BaseServiceCls
 from .redis import RedisDNSMixin
 
 
@@ -86,6 +85,7 @@ class AsyncRedisPusher(RedisDNSMixin, BasePusher):
 
     async def publish(self, action, event_id, data, timestamp):
         # TODO this should be async
+        from em2.core import Components
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
         domain_lookup = await self.save_nodes(action.conv, *addresses)
         node_urls = domain_lookup.values()

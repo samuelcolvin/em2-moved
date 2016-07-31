@@ -8,7 +8,7 @@ class HttpDNSPusher(AsyncRedisPusher):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._session = aiohttp.ClientSession(loop=self._loop)
+        self._session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_node(self, conv, domain, *addresses):
         cache_key = 'nd:{}:{}'.format(conv, domain)

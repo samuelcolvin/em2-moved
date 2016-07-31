@@ -24,7 +24,7 @@ class PostgresDataStore(DataStore):
     async def create_engine(self, **kwargs):
         if self.engine is not None:
             raise Em2Exception('postgres engine already initialised')
-        self.engine = await _create_engine(get_dsn(self._settings), loop=self._loop, **kwargs)
+        self.engine = await _create_engine(get_dsn(self._settings), loop=self.loop, **kwargs)
 
     async def create_conversation(self, conn, **kwargs):
         # key word arguments to create_conversation exactly match the db.

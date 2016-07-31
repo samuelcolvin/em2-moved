@@ -7,8 +7,8 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 
-from em2.core.utils import to_unix_timestamp, BaseServiceCls
 from em2.exceptions import FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
+from em2.utils import to_unix_timestamp, BaseServiceCls
 from .redis import RedisDNSMixin
 
 
@@ -86,9 +86,9 @@ class BaseAuthenticator(BaseServiceCls):
 
 
 class RedisDNSAuthenticator(RedisDNSMixin, BaseAuthenticator):
-    async def _platform_token_exists(self, platform_token):
+    async def _platform_token_exists(self, platform_token: str):
         async with self._redis_pool.get() as redis:
-            return await redis.exists(platform_token)
+            return await redis.exists(platform_token.encode())
 
     async def _store_key(self, key, expiresat):
         async with self._redis_pool.get() as redis:
@@ -117,18 +117,15 @@ class RedisDNSAuthenticator(RedisDNSMixin, BaseAuthenticator):
         raise FailedAuthentication('no "em2key" TXT dns record found')
 
     async def _check_domain_uses_platform(self, domain, platform_domain):
-        cache_key = 'pl:{}'.format(domain)
+        cache_key = 'pl:{}'.format(domain).encode()
         async with self._redis_pool.get() as redis:
             platform = await redis.get(cache_key)
-            if platform == platform_domain:
+            if platform and platform.decode() == platform_domain:
                 return True
             results = await self.resolver.query(domain, 'MX')
             results = [(r.priority, r.host) for r in results]
             results.sort()
             for _, platform in results:
                 if platform == platform_domain:
-                    await redis.setex(cache_key, self._domain_timeout, platform)
+                    await redis.setex(cache_key, self._domain_timeout, platform.encode())
                     return True
-
-    async def finish(self):
-        await self._redis_pool.clear()

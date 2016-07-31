@@ -6,7 +6,7 @@ Database back-ends for em2 should define a child class for DataStore which imple
 import logging
 from copy import deepcopy
 
-from em2.core.utils import BaseServiceCls
+from em2.utils import BaseServiceCls
 from .components import Components
 
 logger = logging.getLogger('em2')
