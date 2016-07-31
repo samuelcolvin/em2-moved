@@ -14,7 +14,7 @@ python:
 
 install:
   - pip install -e .[all]
-  - pip install -r tests/requirements.txt
+  - pip install -U -r tests/requirements.txt
 
 script:
   - flake8 em2/ tests/

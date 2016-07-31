@@ -9,11 +9,11 @@ em2
 pg_extra = [
     'SQLAlchemy>=1.0.12',
     'aiopg>=0.9.2',
-    'psycopg2>=2.6.1',
+    'psycopg2>=2.6.2',
 ]
 
 http_extras = [
-    'aiohttp>=0.21.5',
+    'aiohttp>=0.22.4',
     'cchardet>=1.0.0',
 ]
 
@@ -40,7 +40,7 @@ setup(
     packages=['em2'],
     zip_safe=True,
     install_requires=[
-        'pytz>=2015.7',
+        'pytz>=2016.4',
         'Cerberus>=0.9.2',
         'aiodns>=1.0.1',
         'pycrypto==2.6.1',
