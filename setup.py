@@ -1,5 +1,5 @@
+from importlib.machinery import SourceFileLoader
 from setuptools import setup
-from em2 import VERSION
 
 description = """
 em2
@@ -22,9 +22,12 @@ redis_extras = [
     'arq>=0.0.3',
 ]
 
+# avoid loading the package before requirements are installed:
+version = SourceFileLoader('version', 'em2/version.py').load_module()
+
 setup(
     name='em2',
-    version=str(VERSION),
+    version=str(version.VERSION),
     description='em2',
     long_description=description,
     classifiers=[
