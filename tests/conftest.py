@@ -1,7 +1,23 @@
+import contextlib
 import datetime
 import asyncio
 import pytest
 import pytz
+
+
+@contextlib.contextmanager
+def loop_context(existing_loop=None):
+    if existing_loop:
+        # loop already exists, pass it straight through
+        yield existing_loop
+    else:
+        _loop = asyncio.new_event_loop()
+
+        yield _loop
+
+        _loop.stop()
+        _loop.run_forever()
+        _loop.close()
 
 
 def pytest_pycollect_makeitem(collector, name, obj):
@@ -14,13 +30,12 @@ def pytest_pyfunc_call(pyfuncitem):
     Run coroutines in an event loop instead of a normal function call.
     """
     if asyncio.iscoroutinefunction(pyfuncitem.function):
-        _loop = pyfuncitem.funcargs.get('loop') or asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+        existing_loop = pyfuncitem.funcargs.get('loop', None)
+        with loop_context(existing_loop) as _loop:
+            testargs = {arg: pyfuncitem.funcargs[arg] for arg in pyfuncitem._fixtureinfo.argnames}
 
-        testargs = {arg: pyfuncitem.funcargs[arg] for arg in pyfuncitem._fixtureinfo.argnames}
-        _loop.run_until_complete(_loop.create_task(pyfuncitem.obj(**testargs)))
-
-        asyncio.set_event_loop(None)
+            task = _loop.create_task(pyfuncitem.obj(**testargs))
+            _loop.run_until_complete(task)
         return True
 
 
@@ -30,13 +45,8 @@ def pytest_addoption(parser):
 
 @pytest.yield_fixture
 def loop():
-    _loop = asyncio.new_event_loop()
-
-    yield _loop
-
-    _loop.stop()
-    _loop.run_forever()
-    _loop.close()
+    with loop_context() as _loop:
+        yield _loop
 
 
 def datetime_tz(day=1, month=1, year=2015):

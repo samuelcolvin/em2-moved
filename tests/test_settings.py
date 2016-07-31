@@ -1,6 +1,4 @@
 import pytest
-
-from em2.exceptions import ConfigException
 from em2 import Settings
 
 
@@ -15,5 +13,5 @@ def test_changed():
 
 
 def test_invalid():
-    with pytest.raises(ConfigException):
+    with pytest.raises(TypeError):
         Settings(FOOBAR=123)

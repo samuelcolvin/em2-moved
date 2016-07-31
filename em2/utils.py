@@ -78,6 +78,7 @@ def from_unix_timestamp(ts):
 
 
 class BaseServiceCls:
-    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None):
+    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None, **kwargs):
+        super().__init__(**kwargs)
         self._settings = settings or Settings()
         self.loop = loop

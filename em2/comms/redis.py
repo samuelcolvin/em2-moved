@@ -1,22 +1,14 @@
 import aiodns
-import aioredis
 
 from arq import Actor
 
-from em2.utils import BaseServiceCls
 
-
-class RedisDNSMixin(BaseServiceCls, Actor):
-    _resolver = None
+class RedisDNSMixin(Actor):
     _dft_value = b'1'
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._redis_pool = None
-
-    async def create_redis_pool(self):
-        address = self._settings.REDIS_HOST, self._settings.REDIS_PORT
-        return await aioredis.create_pool(address, loop=self.loop, db=self._settings.REDIS_DATABASE)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._resolver = None
 
     @property
     def resolver(self):

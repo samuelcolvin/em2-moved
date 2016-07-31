@@ -85,25 +85,26 @@ class BaseAuthenticator(BaseServiceCls):
         return base64.urlsafe_b64encode(os.urandom(self._key_length))[:self._key_length].decode('utf8')
 
 
-class RedisDNSAuthenticator(RedisDNSMixin, BaseAuthenticator):
+class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSMixin):
     async def _platform_token_exists(self, platform_token: str):
-        async with self._redis_pool.get() as redis:
+        async with await self.get_redis_conn() as redis:
             return await redis.exists(platform_token.encode())
 
-    async def _store_key(self, key, expiresat):
-        async with self._redis_pool.get() as redis:
+    async def _store_key(self, key: str, expiresat: int):
+        async with await self.get_redis_conn() as redis:
             pipe = redis.pipeline()
-            pipe.set(key, self._dft_value)
-            pipe.expireat(key, expiresat)
+            b_key = key.encode()
+            pipe.set(b_key, self._dft_value)
+            pipe.expireat(b_key, expiresat)
             await pipe.execute()
 
-    async def _get_public_key(self, platform):
+    async def _get_public_key(self, platform: str):
         dns_results = await self.resolver.query(platform, 'TXT')
         key_data = self._get_key(dns_results)
         # return the key in a format openssl / RSA.importKey can cope with
         return '-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n'.format('\n'.join(wrap(key_data, width=65)))
 
-    def _get_key(self, dns_results):
+    def _get_key(self, dns_results: str):
         results = (r.text for r in dns_results)
         for r in results:
             if r.lower().startswith('v=em2key'):
@@ -116,9 +117,9 @@ class RedisDNSAuthenticator(RedisDNSMixin, BaseAuthenticator):
                         return key
         raise FailedAuthentication('no "em2key" TXT dns record found')
 
-    async def _check_domain_uses_platform(self, domain, platform_domain):
-        cache_key = 'pl:{}'.format(domain).encode()
-        async with self._redis_pool.get() as redis:
+    async def _check_domain_uses_platform(self, domain: str, platform_domain: str):
+        cache_key = b'pl:%s' % domain.encode()
+        async with await self.get_redis_conn() as redis:
             platform = await redis.get(cache_key)
             if platform and platform.decode() == platform_domain:
                 return True

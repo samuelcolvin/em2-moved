@@ -5,9 +5,9 @@ from em2.comms.auth import BaseAuthenticator, RedisDNSAuthenticator
 
 KEY_DIR = (Path(__file__).parent / 'keys').absolute()
 
-# printf 'foobar.com:2461449600' > test2.txt
+# printf 'foobar.com:2461449600' > test.txt
 # openssl dgst -sha256 -sign tests/fixture_classes/keys/private.pem -out test.sig test.txt
-# python -c "import base64; print(base64.urlsafe_b64encode(open('test.sig', 'rb').read()).decode('utf8'))"
+# python -c "import base64; print(base64.urlsafe_b64encode(open('test.sig', 'rb').read()).decode())"
 PLATFORM = 'foobar.com'
 TIMESTAMP = 2461449600
 VALID_SIGNATURE = (
@@ -94,4 +94,6 @@ class MockDNSResolver:
 
 
 class RedisMockDNSAuthenticator(RedisDNSAuthenticator):
-    _resolver = MockDNSResolver()
+    @property
+    def resolver(self):
+        return MockDNSResolver()

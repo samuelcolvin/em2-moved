@@ -8,17 +8,16 @@ from tests.fixture_classes import RedisMockDNSAuthenticator, PLATFORM, TIMESTAMP
 
 @pytest.yield_fixture
 def redis_auth(loop):
-    settings = Settings(REDIS_DATABASE=2)
+    settings = Settings(R_DATABASE=2)
     auth = None
 
     async def flushdb():
-        async with auth._redis_pool.get() as redis:
+        async with await auth.get_redis_conn() as redis:
             await redis.flushdb()
 
     async def setup(auth_class=RedisDNSAuthenticator):
         nonlocal auth
-        auth = auth_class(settings, loop=loop)
-        await auth.get_redis_pool()
+        auth = auth_class(settings=settings, loop=loop)
         await flushdb()
         return auth
 

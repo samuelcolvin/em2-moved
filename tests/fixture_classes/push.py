@@ -1,7 +1,9 @@
 from copy import deepcopy
 
+from em2.comms.http.push import HttpDNSPusher
 from em2.core import Action, Verbs, Components
 from em2.comms import BasePusher
+from .authenicator import MockDNSResolver
 
 
 class Network:
@@ -50,3 +52,9 @@ class SimplePusher(BasePusher):
 
     async def get_node(self, conv, domain, *addresses):
         return self.LOCAL if domain == self._settings.LOCAL_DOMAIN else self.network.nodes[domain]
+
+
+class MockedHttpDNSPusher(HttpDNSPusher):
+    @property
+    def resolver(self):
+        return MockDNSResolver()

@@ -1,6 +1,8 @@
 from em2.utils import BaseServiceCls
 from .redis import RedisDNSMixin
 
+from arq import concurrent
+
 
 class BasePusher(BaseServiceCls):
     LOCAL = 'L'
@@ -62,29 +64,34 @@ class NullPusher(BasePusher):  # pragma: no cover
 
 
 class AsyncRedisPusher(RedisDNSMixin, BasePusher):
-    prefix = 'pc:'
+    prefix = b'pc:'
 
+    @concurrent
     async def add_participant(self, conv, participant_addr):
-        # TODO this should be async
-        d = self.get_domain(participant_addr)
-        async with self._redis_pool.get() as redis:
-            if not await redis.hexists(self.prefix + conv, d):
-                node = await self.get_node(conv, d, participant_addr)
-                await redis.hset(conv, d, node)
+        domain = self.get_domain(participant_addr)
+        hash_key = self.prefix + conv.encode()
+        b_domain = domain.encode()
+        async with await self.get_redis_conn() as redis:
+            if not await redis.hexists(hash_key, b_domain):
+                node = await self.get_node(conv, domain, participant_addr)
+                await redis.hset(hash_key, b_domain, node)
 
+    @concurrent
     async def save_nodes(self, conv, *addresses):
-        # TODO this should be async
-        async with self._redis_pool.get() as redis:
+        hash_key = self.prefix + conv.encode()
+        async with await self.get_redis_conn() as redis:
             domain_lookup = await self.get_nodes(conv, *addresses)
-            await redis.hmset(self.prefix + conv, *list(domain_lookup))
+            await redis.hmset_dict(hash_key, domain_lookup)
         return domain_lookup
 
+    @concurrent
     async def remove_domain(self, conv, domain):
-        async with self._redis_pool.get() as redis:
-            await redis.hdel(self.prefix + conv, domain)
+        hash_key = self.prefix + conv.encode()
+        async with await self.get_redis_conn() as redis:
+            await redis.hdel(hash_key, domain)
 
+    @concurrent
     async def publish(self, action, event_id, data, timestamp):
-        # TODO this should be async
         from em2.core import Components
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
         domain_lookup = await self.save_nodes(action.conv, *addresses)
@@ -92,9 +99,9 @@ class AsyncRedisPusher(RedisDNSMixin, BasePusher):
         remote_urls = [u for u in node_urls if u != self.LOCAL]
         await self.push_data(remote_urls, action, event_id, data, timestamp)
 
+    @concurrent
     async def push(self, action, event_id, data, timestamp):
-        # TODO this should be async
-        async with self._redis_pool.get() as redis:
+        async with await self.get_redis_conn() as redis:
             node_urls = await redis.hgetall(self.prefix + action.conv)
         remote_urls = [u for u in node_urls if u != self.LOCAL]
         await self.push_data(remote_urls, action, event_id, data, timestamp)
