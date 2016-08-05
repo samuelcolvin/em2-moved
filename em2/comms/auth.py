@@ -8,7 +8,7 @@ from Crypto.Signature import PKCS1_v1_5
 
 from em2.exceptions import FailedInboundAuthentication, PlatformForbidden, DomainPlatformMismatch
 from em2.utils import BaseServiceCls, now_unix_timestamp
-from .redis import RedisDNSMixin
+from .redis import RedisDNSMixin, RedisMethods
 
 
 class BaseAuthenticator(BaseServiceCls):
@@ -40,11 +40,11 @@ class BaseAuthenticator(BaseServiceCls):
             raise FailedInboundAuthentication('invalid signature')
         key_expiresat = now + self._domain_timeout
         platform_key = '{}:{}:{}'.format(platform, key_expiresat, self._generate_random())
-        await self._store_key(platform_key, key_expiresat)
+        await self.store_value(platform_key, key_expiresat)
         return platform_key
 
     async def valid_platform_token(self, platform_token):
-        if not await self._platform_token_exists(platform_token):
+        if not await self.key_exists(platform_token):
             raise PlatformForbidden('platform "{}" not found'.format(platform_token))
 
     async def check_domain_platform(self, domain, platform_token):
@@ -52,13 +52,13 @@ class BaseAuthenticator(BaseServiceCls):
         if not await self._check_domain_uses_platform(domain, platform_domain):
             raise DomainPlatformMismatch('"{}" does not use "{}"'.format(domain, platform_domain))
 
-    async def _platform_token_exists(self, platform_token):
+    async def key_exists(self, platform_token: str):
         raise NotImplementedError
 
     async def _get_public_key(self, platform):
         raise NotImplementedError
 
-    async def _store_key(self, key, expiresat):
+    async def store_value(self, key, expiresat):
         raise NotImplementedError
 
     async def _check_domain_uses_platform(self, domain, platform_domain):
@@ -73,7 +73,7 @@ class BaseAuthenticator(BaseServiceCls):
         # signature needs to be decoded from base64
         signature = base64.urlsafe_b64decode(signature)
 
-        h = SHA256.new(signed_message.encode('utf8'))
+        h = SHA256.new(signed_message.encode())
         cipher = PKCS1_v1_5.new(key)
         return cipher.verify(h, signature)
 
@@ -84,19 +84,7 @@ class BaseAuthenticator(BaseServiceCls):
         return base64.urlsafe_b64encode(os.urandom(self._key_length))[:self._key_length].decode('utf8')
 
 
-class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSMixin):
-    async def _platform_token_exists(self, platform_token: str):
-        async with await self.get_redis_conn() as redis:
-            return await redis.exists(platform_token.encode())
-
-    async def _store_key(self, key: str, expiresat: int):
-        async with await self.get_redis_conn() as redis:
-            pipe = redis.pipeline()
-            b_key = key.encode()
-            pipe.set(b_key, self._dft_value)
-            pipe.expireat(b_key, expiresat)
-            await pipe.execute()
-
+class RedisDNSAuthenticator(RedisMethods, BaseAuthenticator, RedisDNSMixin):
     async def _get_public_key(self, platform: str):
         dns_results = await self.resolver.query(platform, 'TXT')
         key_data = self._get_key(dns_results)

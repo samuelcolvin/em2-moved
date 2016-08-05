@@ -54,7 +54,7 @@ class SimplePusher(BasePusher):
         return self.LOCAL if domain == self._settings.LOCAL_DOMAIN else self.network.nodes[domain]
 
 
-class MockedHttpDNSPusher(HttpDNSPusher):
+class HttpMockedDNSPusher(HttpDNSPusher):
     @property
     def resolver(self):
         return MockDNSResolver()

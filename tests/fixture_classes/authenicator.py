@@ -21,8 +21,13 @@ VALID_SIGNATURE = (
 )
 
 
-def _get_public_key():
+def get_public_key():
     with (KEY_DIR / 'public.pem').open() as f:
+        return f.read()
+
+
+def get_private_key():
+    with (KEY_DIR / 'private.pem').open() as f:
         return f.read()
 
 
@@ -32,17 +37,17 @@ class SimpleAuthenticator(BaseAuthenticator):
         self._cache = {
             'already-authenticated.com:123:whatever': 2461449700
         }
-        self.public_key_value = _get_public_key()
+        self.public_key_value = get_public_key()
         self.valid_signature_override = None
 
-    async def _platform_token_exists(self, platform_key):
+    async def key_exists(self, platform_key):
         exp = self._cache.get(platform_key, 1)
         return exp > self._now_unix()
 
     async def _get_public_key(self, platform):
         return self.public_key_value
 
-    async def _store_key(self, key, expiresat):
+    async def store_value(self, key, expiresat):
         self._cache[key] = expiresat
 
     async def _check_domain_uses_platform(self, domain, platform_domain):
@@ -70,7 +75,7 @@ class MockDNSResolver:
         if qtype == 'TXT':
             r = [TXTQueryResult('v=spf1 include:spf.example.com ?all')]
             if host == 'foobar.com':
-                public_key = _get_public_key()
+                public_key = get_public_key()
                 public_key = public_key.replace('-----BEGIN PUBLIC KEY-----', '')
                 public_key = public_key.replace('-----END PUBLIC KEY-----', '').replace('\n', '')
                 rows = wrap(public_key, width=250)

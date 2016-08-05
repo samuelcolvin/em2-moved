@@ -1,11 +1,17 @@
-from em2.utils import BaseServiceCls
-from .redis import RedisDNSMixin
+import base64
 
 from arq import concurrent
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+
+from em2.utils import BaseServiceCls, now_unix_timestamp
+from .redis import RedisDNSMixin
 
 
 class BasePusher(BaseServiceCls):
     LOCAL = 'L'
+    auth_key_prefix = b'ak:'
 
     async def add_participant(self, conv, participant_addr):
         raise NotImplementedError()
@@ -36,6 +42,33 @@ class BasePusher(BaseServiceCls):
                 domains[d] = await self.get_node(conv, d, *addresses)
         return domains
 
+    async def authenticate(self, domain):
+        timestamp = self._now_unix()
+        msg = '{}:{}'.format(self._settings.LOCAL_DOMAIN, timestamp)
+        h = SHA256.new(msg.encode())
+
+        key = RSA.importKey(self._settings.PRIVATE_DOMAIN_KEY)
+        signer = PKCS1_v1_5.new(key)
+        signature = base64.urlsafe_b64encode(signer.sign(h)).decode()
+        data = {
+            'platform': self._settings.LOCAL_DOMAIN,
+            'timestamp': timestamp,
+            'signature': signature,
+        }
+        return await self._authenticate_direct(domain, data)
+
+    async def _store_key(self, key: str, expiresat: int):
+        raise NotImplementedError()
+
+    async def _get_key(self, key: str):
+        raise NotImplementedError()
+
+    async def _authenticate_direct(self, domain, data):
+        raise NotImplementedError()
+
+    def _now_unix(self):
+        return now_unix_timestamp()
+
     def __repr__(self):
         return '{}<{}>'.format(self.__class__.__name__, self._settings.LOCAL_DOMAIN)
 
@@ -64,12 +97,12 @@ class NullPusher(BasePusher):  # pragma: no cover
 
 
 class AsyncRedisPusher(RedisDNSMixin, BasePusher):
-    prefix = b'pc:'
+    plat_conv_prefix = b'pc:'
 
     @concurrent
     async def add_participant(self, conv, participant_addr):
         domain = self.get_domain(participant_addr)
-        hash_key = self.prefix + conv.encode()
+        hash_key = self.plat_conv_prefix + conv.encode()
         b_domain = domain.encode()
         async with await self.get_redis_conn() as redis:
             if not await redis.hexists(hash_key, b_domain):
@@ -78,7 +111,7 @@ class AsyncRedisPusher(RedisDNSMixin, BasePusher):
 
     @concurrent
     async def save_nodes(self, conv, *addresses):
-        hash_key = self.prefix + conv.encode()
+        hash_key = self.plat_conv_prefix + conv.encode()
         async with await self.get_redis_conn() as redis:
             domain_lookup = await self.get_nodes(conv, *addresses)
             await redis.hmset_dict(hash_key, domain_lookup)
@@ -86,7 +119,7 @@ class AsyncRedisPusher(RedisDNSMixin, BasePusher):
 
     @concurrent
     async def remove_domain(self, conv, domain):
-        hash_key = self.prefix + conv.encode()
+        hash_key = self.plat_conv_prefix + conv.encode()
         async with await self.get_redis_conn() as redis:
             await redis.hdel(hash_key, domain)
 
@@ -102,7 +135,7 @@ class AsyncRedisPusher(RedisDNSMixin, BasePusher):
     @concurrent
     async def push(self, action, event_id, data, timestamp):
         async with await self.get_redis_conn() as redis:
-            node_urls = await redis.hgetall(self.prefix + action.conv)
+            node_urls = await redis.hgetall(self.plat_conv_prefix + action.conv)
         remote_urls = [u for u in node_urls if u != self.LOCAL]
         await self.push_data(remote_urls, action, event_id, data, timestamp)
 

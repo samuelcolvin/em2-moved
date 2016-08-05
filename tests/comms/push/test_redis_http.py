@@ -2,17 +2,15 @@ import pytest
 
 from em2 import Settings
 
-from tests.fixture_classes.push import MockedHttpDNSPusher
+from tests.fixture_classes.push import HttpMockedDNSPusher
 from tests.fixture_classes.worker import RaiseWorker
-
-pytest_plugins = 'arq.testing'
 
 
 @pytest.yield_fixture
 def pusher(loop):
     settings = Settings(R_DATABASE=2)
 
-    async def setup(push_class=MockedHttpDNSPusher):
+    async def setup(push_class=HttpMockedDNSPusher):
         _pusher = push_class(settings=settings, loop=loop)
         async with await _pusher.get_redis_conn() as redis:
             await redis.flushdb()
@@ -29,7 +27,7 @@ async def test_save_nodes_existing(loop, pusher):
     async with await pusher.get_redis_conn() as redis:
         await redis.set(b'nd:123:example.com', b'platform.com')
     await pusher.save_nodes('123', 'foo@example.com')
-    worker = RaiseWorker(settings=pusher._settings, batch=True, loop=loop, shadows=[MockedHttpDNSPusher])
+    worker = RaiseWorker(settings=pusher._settings, batch=True, loop=loop, shadows=[HttpMockedDNSPusher])
     await worker.run()
     async with await pusher.get_redis_conn() as redis:
         domains = await redis.hkeys(b'pc:123')
