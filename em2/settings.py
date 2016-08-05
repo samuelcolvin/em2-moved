@@ -6,7 +6,7 @@ class Settings(ConnectionSettings):
     COMMS_DOMAIN_CACHE_TIMEOUT = 86400
     COMMS_PLATFORM_KEY_TIMEOUT = 86400
     COMMS_PLATFORM_KEY_LENGTH = 64
-    COMMS_AUTHENTICATION_TS_LENIENCY = [-10, 1]
+    COMMS_AUTHENTICATION_TS_LENIENCY = (-10, 1)
     COMMS_HTTP_TIMEOUT = 4
 
     PG_HOST = 'localhost'
@@ -16,3 +16,4 @@ class Settings(ConnectionSettings):
     PG_DATABASE = 'em2'
 
     LOCAL_DOMAIN = 'no-domain-set'
+    PRIVATE_DOMAIN_KEY = 'no-key-set'

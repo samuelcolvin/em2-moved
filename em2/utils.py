@@ -77,6 +77,10 @@ def from_unix_timestamp(ts):
     return _EPOCH + timedelta(seconds=ts)
 
 
+def now_unix_timestamp():
+    return to_unix_timestamp(datetime.utcnow())
+
+
 class BaseServiceCls:
     def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None, **kwargs):
         super().__init__(**kwargs)

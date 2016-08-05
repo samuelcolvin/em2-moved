@@ -1,6 +1,13 @@
 import json
-from em2.comms.push import AsyncRedisPusher
+
 import aiohttp
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+
+from em2.comms.push import AsyncRedisPusher
+from em2.exceptions import FailedOutboundAuthentication
+from em2.utils import now_unix_timestamp
 
 
 class HttpDNSPusher(AsyncRedisPusher):
@@ -38,9 +45,26 @@ class HttpDNSPusher(AsyncRedisPusher):
         # TODO SMTP fallback
         raise NotImplementedError()
 
+    async def authenticate(self, domain):
+        timestamp = now_unix_timestamp()
+        h = SHA256.new('{}:{}'.format(self._settings.LOCAL_DOMAIN, timestamp))
+
+        key = RSA.importKey(self._settings.PRIVATE_DOMAIN_KEY)
+        signer = PKCS1_v1_5.new(key)
+        data = {
+            'platform': self._settings.LOCAL_DOMAIN,
+            'timestamp': timestamp,
+            'signature': signer.sign(h)
+        }
+        url = 'em2.{}/authenticate'.format(domain)
+        r = await self.session.post(url, data=json.dumps(data))
+        if r.status != 201:
+            raise FailedOutboundAuthentication('{} response {} != 201'.format(url, r.status))
+        print(await r.text())
+
     async def try_node(self, conv, platform_domain, addresses):
         url = 'em2.{}/lookup/{}'.format(platform_domain, conv)
-        # TODO authentication, error checking
+        # TODO error checking
         r = await self.session.head(url, allow_redirects=False)
         r.close()
 

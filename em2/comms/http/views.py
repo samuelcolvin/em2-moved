@@ -11,7 +11,7 @@ import pytz
 from em2.comms.logger import logger
 from em2.core import Action
 from em2.utils import from_unix_timestamp
-from em2.exceptions import Em2Exception, DomainPlatformMismatch, PlatformForbidden, FailedAuthentication
+from em2.exceptions import Em2Exception, DomainPlatformMismatch, PlatformForbidden, FailedInboundAuthentication
 from .utils import HTTPBadRequestStr, HTTPForbiddenStr, json_bytes, get_ip
 
 
@@ -36,7 +36,7 @@ async def authenticate(request):
     auth = request.app['authenticator']
     try:
         key = await auth.authenticate_platform(obj['platform'], obj['timestamp'], obj['signature'])
-    except FailedAuthentication as e:
+    except FailedInboundAuthentication as e:
         raise HTTPBadRequestStr(e.args[0]) from e
     return web.Response(body=json_bytes({'key': key}), status=201, content_type='application/json')
 

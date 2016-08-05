@@ -1,14 +1,13 @@
 import os
 import base64
-from datetime import datetime
 from textwrap import wrap
 
-from Crypto.Signature import PKCS1_v1_5
-from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
 
-from em2.exceptions import FailedAuthentication, PlatformForbidden, DomainPlatformMismatch
-from em2.utils import to_unix_timestamp, BaseServiceCls
+from em2.exceptions import FailedInboundAuthentication, PlatformForbidden, DomainPlatformMismatch
+from em2.utils import BaseServiceCls, now_unix_timestamp
 from .redis import RedisDNSMixin
 
 
@@ -31,14 +30,14 @@ class BaseAuthenticator(BaseServiceCls):
         """
 
         now = self._now_unix()
-        lower_limit, upper_limit = now + self._past_ts_limit, now + self._future_ts_limit
-        if not lower_limit < timestamp < upper_limit:
-            raise FailedAuthentication('{} was not between {} and {}'.format(timestamp, lower_limit, upper_limit))
+        l_limit, u_limit = now + self._past_ts_limit, now + self._future_ts_limit
+        if not l_limit < timestamp < u_limit:
+            raise FailedInboundAuthentication('{} was not between {} and {}'.format(timestamp, l_limit, u_limit))
 
         public_key = await self._get_public_key(platform)
         signed_message = '{}:{}'.format(platform, timestamp)
         if not self._valid_signature(signed_message, signature, public_key):
-            raise FailedAuthentication('invalid signature')
+            raise FailedInboundAuthentication('invalid signature')
         key_expiresat = now + self._domain_timeout
         platform_key = '{}:{}:{}'.format(platform, key_expiresat, self._generate_random())
         await self._store_key(platform_key, key_expiresat)
@@ -69,7 +68,7 @@ class BaseAuthenticator(BaseServiceCls):
         try:
             key = RSA.importKey(public_key)
         except ValueError as e:
-            raise FailedAuthentication(*e.args) from e
+            raise FailedInboundAuthentication(*e.args) from e
 
         # signature needs to be decoded from base64
         signature = base64.urlsafe_b64decode(signature)
@@ -79,7 +78,7 @@ class BaseAuthenticator(BaseServiceCls):
         return cipher.verify(h, signature)
 
     def _now_unix(self):
-        return to_unix_timestamp(datetime.utcnow())
+        return now_unix_timestamp()
 
     def _generate_random(self):
         return base64.urlsafe_b64encode(os.urandom(self._key_length))[:self._key_length].decode('utf8')
@@ -115,7 +114,7 @@ class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSMixin):
                     if extra.endswith('='):
                         # key finished
                         return key
-        raise FailedAuthentication('no "em2key" TXT dns record found')
+        raise FailedInboundAuthentication('no "em2key" TXT dns record found')
 
     async def _check_domain_uses_platform(self, domain: str, platform_domain: str):
         cache_key = b'pl:%s' % domain.encode()

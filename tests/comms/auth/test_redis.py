@@ -2,7 +2,7 @@ import pytest
 
 from em2 import Settings
 from em2.comms import RedisDNSAuthenticator
-from em2.exceptions import FailedAuthentication
+from em2.exceptions import FailedInboundAuthentication
 from tests.fixture_classes import RedisMockDNSAuthenticator, PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 
@@ -54,7 +54,7 @@ async def test_key_verification_missing_dns(redis_auth):
     auth = await redis_auth(RedisMockDNSAuthenticator)
     auth._now_unix = lambda: 2461449600
 
-    with pytest.raises(FailedAuthentication) as excinfo:
+    with pytest.raises(FailedInboundAuthentication) as excinfo:
         await auth.authenticate_platform('notfoobar.com', 2461449600, VALID_SIGNATURE)
     assert excinfo.value.args[0] == 'no "em2key" TXT dns record found'
 
@@ -63,7 +63,7 @@ async def test_key_verification_bad_em2key(redis_auth):
     auth = await redis_auth(RedisMockDNSAuthenticator)
     auth._now_unix = lambda: 2461449600
 
-    with pytest.raises(FailedAuthentication) as excinfo:
+    with pytest.raises(FailedInboundAuthentication) as excinfo:
         await auth.authenticate_platform('badkey.com', 2461449600, VALID_SIGNATURE)
     assert excinfo.value.args[0] == 'no "em2key" TXT dns record found'
 
