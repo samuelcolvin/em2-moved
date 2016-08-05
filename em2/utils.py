@@ -83,6 +83,6 @@ def now_unix_timestamp():
 
 class BaseServiceCls:
     def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None, **kwargs):
-        super().__init__(**kwargs)
         self._settings = settings or Settings()
         self.loop = loop
+        super().__init__(**kwargs)

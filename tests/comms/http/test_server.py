@@ -9,6 +9,7 @@ AUTH_HEADER = {
     'Authorization': 'Token already-authenticated.com:123:whatever',
 }
 
+
 async def test_add_message(client):
     action = Action('test@already-authenticated.com', None, Verbs.ADD)
     conv_id = await client.em2_ctrl.act(action, subject='foo bar', body='hi, how are you?')
