@@ -13,3 +13,8 @@ async def test_authenticate(domain_pusher):
         expiry = ttl + now_unix_timestamp()
         expected_expiry = 2461536000 - Settings().COMMS_PUSH_TOKEN_EARLY_EXPIRY
         assert abs(expiry - expected_expiry) < 10
+
+
+# async def test_get_node_local(domain_pusher):
+#     pusher = await domain_pusher('example.com')
+#     r = await pusher.get_node('123', 'local.com')

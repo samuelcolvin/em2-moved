@@ -65,17 +65,17 @@ async def test_check_domain():
     auth = SimpleAuthenticator()
     auth.valid_signature_override = True
     ts = int(datetime.now().strftime('%s'))
-    platform_key = await auth.authenticate_platform('testing.foobar.com', ts, 'anything')
-    await auth.valid_platform_token(platform_key)
-    await auth.check_domain_platform('foobar.com', platform_key)
+    platform_token = await auth.authenticate_platform('testing.foobar.com', ts, 'anything')
+    domain = await auth.valid_platform_token(platform_token)
+    await auth.check_domain_platform('foobar.com', domain)
 
 
 async def test_check_domain_missing():
     auth = SimpleAuthenticator()
     auth.valid_signature_override = True
     ts = int(datetime.now().strftime('%s'))
-    platform_key = await auth.authenticate_platform('testing.foobar.com', ts, 'anything')
-    await auth.valid_platform_token(platform_key)
+    platform_token = await auth.authenticate_platform('testing.foobar.com', ts, 'anything')
+    token = await auth.valid_platform_token(platform_token)
     with pytest.raises(DomainPlatformMismatch) as excinfo:
-        await auth.check_domain_platform('bang.com', platform_key)
+        await auth.check_domain_platform('bang.com', token)
     assert excinfo.value.args[0] == '"bang.com" does not use "testing.foobar.com"'

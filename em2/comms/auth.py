@@ -46,11 +46,11 @@ class BaseAuthenticator(BaseServiceCls):
     async def valid_platform_token(self, token):
         if not await self.key_exists(token):
             raise PlatformForbidden('platform "{}" not found'.format(token))
+        return token.split(':', 1)[0]
 
-    async def check_domain_platform(self, domain, platform_token):
-        platform_domain = platform_token.split(':', 1)[0]
-        if not await self._check_domain_uses_platform(domain, platform_domain):
-            raise DomainPlatformMismatch('"{}" does not use "{}"'.format(domain, platform_domain))
+    async def check_domain_platform(self, domain, platform):
+        if not await self._check_domain_uses_platform(domain, platform):
+            raise DomainPlatformMismatch('"{}" does not use "{}"'.format(domain, platform))
 
     async def key_exists(self, key: str):
         raise NotImplementedError

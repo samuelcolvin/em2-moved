@@ -22,7 +22,7 @@ def create_app(controller, authenticator, loop=None):
     # TODO deal with domain routing
     app.router.add_route('POST', '/authenticate', authenticate)
 
-    url = '/{con:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}'
+    url = '/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}'
     app.router.add_route('POST', url, act)
 
     return app

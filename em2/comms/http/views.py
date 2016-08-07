@@ -60,14 +60,15 @@ async def _check_token(request):
 
     auth = request.app['authenticator']
     try:
-        await auth.valid_platform_token(platform_token)
+        platform = await auth.valid_platform_token(platform_token)
     except PlatformForbidden as e:
         raise HTTPForbiddenStr('Invalid Authorization token') from e
-    return auth, platform_token
+    else:
+        return auth, platform
 
 
 async def act(request):
-    auth, platform_token = await _check_token(request)
+    auth, platform = await _check_token(request)
 
     try:
         body_data = await request.json()
@@ -84,11 +85,11 @@ async def act(request):
     address = body_data.pop('address')
     address_domain = address[address.index('@') + 1:]
     try:
-        await auth.check_domain_platform(address_domain, platform_token)
+        await auth.check_domain_platform(address_domain, platform)
     except DomainPlatformMismatch as e:
         raise HTTPForbiddenStr(e.args[0]) from e
 
-    conversation = request.match_info['con']
+    conversation = request.match_info['conv']
     component = request.match_info['component']
     verb = request.match_info['verb']
 
