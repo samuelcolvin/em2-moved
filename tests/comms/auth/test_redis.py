@@ -31,7 +31,7 @@ def redis_auth(loop):
 async def test_key_set_get(redis_auth):
     auth = await redis_auth()
     expireat = auth._now_unix() + 100
-    await auth.store_value('testing', expireat)
+    await auth._store_platform_token('testing', expireat)
     assert await auth.key_exists('testing') is True
     async with auth._redis_pool.get() as redis:
         assert 99 <= await redis.ttl('testing') <= 100

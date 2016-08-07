@@ -51,6 +51,7 @@ class HttpDNSPusher(AsyncRedisPusher):
         return data['key']
 
     async def try_node(self, conv, platform_domain, addresses):
+        await self.authenticate(platform_domain)
         url = 'em2.{}/lookup/{}'.format(platform_domain, conv)
         # TODO error checking
         r = await self.session.head(url, allow_redirects=False)

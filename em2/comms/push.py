@@ -6,12 +6,15 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from em2.utils import BaseServiceCls, now_unix_timestamp
-from .redis import RedisDNSMixin
+from .redis import RedisDNSMixin, RedisMethods
 
 
 class BasePusher(BaseServiceCls):
     LOCAL = 'L'
-    auth_key_prefix = b'ak:'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._early_token_expiry = self._settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
 
     async def add_participant(self, conv, participant_addr):
         raise NotImplementedError()
@@ -42,7 +45,7 @@ class BasePusher(BaseServiceCls):
                 domains[d] = await self.get_node(conv, d, *addresses)
         return domains
 
-    async def authenticate(self, domain):
+    def get_auth_data(self):
         timestamp = self._now_unix()
         msg = '{}:{}'.format(self._settings.LOCAL_DOMAIN, timestamp)
         h = SHA256.new(msg.encode())
@@ -50,20 +53,13 @@ class BasePusher(BaseServiceCls):
         key = RSA.importKey(self._settings.PRIVATE_DOMAIN_KEY)
         signer = PKCS1_v1_5.new(key)
         signature = base64.urlsafe_b64encode(signer.sign(h)).decode()
-        data = {
+        return {
             'platform': self._settings.LOCAL_DOMAIN,
             'timestamp': timestamp,
             'signature': signature,
         }
-        return await self._authenticate_direct(domain, data)
 
-    async def _store_key(self, key: str, expiresat: int):
-        raise NotImplementedError()
-
-    async def _get_key(self, key: str):
-        raise NotImplementedError()
-
-    async def _authenticate_direct(self, domain, data):
+    async def authenticate(self, domain):
         raise NotImplementedError()
 
     def _now_unix(self):
@@ -96,8 +92,9 @@ class NullPusher(BasePusher):  # pragma: no cover
         pass
 
 
-class AsyncRedisPusher(RedisDNSMixin, BasePusher):
+class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
     plat_conv_prefix = b'pc:'
+    auth_token_prefix = b'ak:'
 
     @concurrent
     async def add_participant(self, conv, participant_addr):
@@ -141,3 +138,19 @@ class AsyncRedisPusher(RedisDNSMixin, BasePusher):
 
     async def push_data(self, urls, *args):
         raise NotImplementedError
+
+    async def authenticate(self, domain):
+        token_key = self.auth_token_prefix + domain.encode()
+        async with await self.get_redis_conn() as redis:
+            token = await redis.get(token_key)
+            if token:
+                return token
+            data = self.get_auth_data()
+            token = await self._authenticate_direct(domain, data)
+            _, expires_at, _ = token.split(':', 2)
+            expire_token_at = int(expires_at) - self._early_token_expiry
+            await self.set_exat(redis, token_key, token, expire_token_at)
+        return token
+
+    async def _authenticate_direct(self, domain, data):
+        raise NotImplementedError()

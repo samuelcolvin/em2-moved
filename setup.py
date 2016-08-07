@@ -8,7 +8,7 @@ em2
 
 pg_extra = [
     'SQLAlchemy>=1.0.12',
-    'aiopg>=0.9.2',
+    'aiopg>=0.10.0',
     'psycopg2>=2.6.2',
 ]
 
@@ -18,7 +18,7 @@ http_extras = [
 ]
 
 redis_extras = [
-    'aioredis>=0.2.6',
+    'aioredis>=0.2.8',
     'arq>=0.0.4',
 ]
 

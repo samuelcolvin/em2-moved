@@ -47,8 +47,8 @@ class SimpleAuthenticator(BaseAuthenticator):
     async def _get_public_key(self, platform):
         return self.public_key_value
 
-    async def store_value(self, key, expiresat):
-        self._cache[key] = expiresat
+    async def _store_platform_token(self, key, expires_at):
+        self._cache[key] = expires_at
 
     async def _check_domain_uses_platform(self, domain, platform_domain):
         return platform_domain.endswith(domain)
