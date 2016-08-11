@@ -19,7 +19,7 @@ class Verbs(Enum):
 
 
 class _Interaction:
-    repr_attrs = []
+    _attr_names = []
     cds = conn = participant_id = address = None
 
     async def set_participant(self):
@@ -33,17 +33,21 @@ class _Interaction:
     def is_remote(self):
         raise NotImplementedError
 
+    @property
+    def attrs(self):
+        return {a: getattr(self, a) for a in self._attr_names}
+
     def __repr__(self):
         cls_name = self.__class__.__name__
-        return '<{}({})>'.format(cls_name, ', '.join('{}={}'.format(a, getattr(self, a)) for a in self.repr_attrs))
+        return '<{}({})>'.format(cls_name, ', '.join('{}={}'.format(a, getattr(self, a)) for a in self._attr_names))
 
 
 class Action(_Interaction):
     """
     Define something someone does.
     """
-    repr_attrs = ['address', 'participant_id', 'perm', 'conv', 'verb', 'component', 'item', 'timestamp',
-                  'event_id', 'parent_event_id']
+    _attr_names = ['address', 'participant_id', 'perm', 'conv', 'verb', 'component', 'item', 'timestamp',
+                   'event_id', 'parent_event_id']
 
     def __init__(self, address, conversation, verb, component=Components.CONVERSATIONS,
                  *, item=None, timestamp=None, event_id=None, parent_event_id=None):
@@ -96,7 +100,7 @@ class Retrieval(_Interaction):
     """
     Define a request from someone to get data.
     """
-    repr_attrs = ['address', 'participant_id', 'conv', 'verb', 'component', 'is_remote']
+    _attr_names = ['address', 'participant_id', 'conv', 'verb', 'component', 'is_remote']
 
     def __init__(self, address, conversation=None, verb=RVerbs.GET, component=Components.CONVERSATIONS,
                  is_remote=False):

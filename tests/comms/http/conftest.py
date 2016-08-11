@@ -41,27 +41,41 @@ class CustomTestClient(TestClient):
         return self._session.request(method, self._root + sub_path, *args, **kwargs)
 
 
+class DoubleMockPusher(HttpMockedDNSPusher):
+    """
+    HttpDNSPusher with both dns and http mocked
+    """
+    def __init__(self, *, settings=None, **kwargs):
+        settings = Settings(R_DATABASE=2, LOCAL_DOMAIN='em2.local.com', PRIVATE_DOMAIN_KEY=get_private_key())
+        self.test_client = None
+        super().__init__(settings=settings, **kwargs)
+
+    async def create_session(self):
+        self.app = _create_app(self.loop)
+        self.test_client = CustomTestClient(self.app, 'platform.remote.com')
+        await self.test_client.start_server()
+
+    @property
+    def session(self):
+        if not self.test_client:
+            raise RuntimeError('session must be initialised with create_session before accessing session')
+        return self.test_client
+
+    def _now_unix(self):
+        return 2461449600
+
+
 @pytest.yield_fixture
-def domain_pusher(loop):
-    pusher = client = None
-    settings = Settings(R_DATABASE=2, LOCAL_DOMAIN='em2.local.com', PRIVATE_DOMAIN_KEY=get_private_key())
-
-    async def _create_domain_client_app(domain='example.com'):
-        nonlocal client, pusher
-        app = _create_app(loop)
-        client = CustomTestClient(app, domain)
-        await client.start_server()
-
-        pusher = HttpMockedDNSPusher(settings=settings, loop=loop)
-        pusher._now_unix = lambda: 2461449600
-        async with await pusher.get_redis_conn() as redis:
+def pusher(loop):
+    async def _create_pusher():
+        p = DoubleMockPusher(loop=loop)
+        await p.create_session()
+        async with await p.get_redis_conn() as redis:
             await redis.flushdb()
-        pusher._session = client
-        return pusher
+        return p
+    _pusher = loop.run_until_complete(_create_pusher())
 
-    yield _create_domain_client_app
+    yield _pusher
 
-    if client:
-        client.close()
-        pusher._session = None
-        loop.run_until_complete(pusher.close())
+    _pusher.test_client.close()
+    loop.run_until_complete(_pusher.close())

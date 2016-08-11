@@ -1,10 +1,9 @@
 import pytest
 
+from arq.testing import RaiseWorker
 from em2 import Settings
 
 from tests.fixture_classes.push import HttpMockedDNSPusher
-from tests.fixture_classes.worker import RaiseWorker
-
 # TODO perhaps move this to http or delete if it's not going to get more tests
 
 

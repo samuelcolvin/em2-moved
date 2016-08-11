@@ -73,36 +73,44 @@ class MXQueryResult:
 class MockDNSResolver:
     async def query(self, host, qtype):
         if qtype == 'TXT':
-            r = [TXTQueryResult('v=spf1 include:spf.example.com ?all')]
-            if host == 'foobar.com':
-                public_key = get_public_key()
-                public_key = public_key.replace('-----BEGIN PUBLIC KEY-----', '')
-                public_key = public_key.replace('-----END PUBLIC KEY-----', '').replace('\n', '')
-                rows = wrap(public_key, width=250)
-                rows[0] = 'v=em2key p=' + rows[0]
-                r += [TXTQueryResult(t) for t in rows]
-            elif host == 'badkey.com':
-                r += [
-                    TXTQueryResult('v=em2key p=123'),
-                    TXTQueryResult('456'),
-                    TXTQueryResult('789'),
-                ]
-            r.append(TXTQueryResult('v=foobar'))
-            return r
+            return self.get_txt(host)
         elif qtype == 'MX':
-            if host == 'local.com':
-                return [
-                    MXQueryResult(5, 'em2.local.com'),
-                    MXQueryResult(10, 'mx.local.com'),
-                ]
+            return self.get_mx(host)
+        else:
+            return self.get_other(host, qtype)
+
+    def get_txt(self, host):
+        r = [TXTQueryResult('v=spf1 include:spf.example.com ?all')]
+        if host == 'foobar.com':
+            public_key = get_public_key()
+            public_key = public_key.replace('-----BEGIN PUBLIC KEY-----', '')
+            public_key = public_key.replace('-----END PUBLIC KEY-----', '').replace('\n', '')
+            rows = wrap(public_key, width=250)
+            rows[0] = 'v=em2key p=' + rows[0]
+            r += [TXTQueryResult(t) for t in rows]
+        elif host == 'badkey.com':
+            r += [
+                TXTQueryResult('v=em2key p=123'),
+                TXTQueryResult('456'),
+                TXTQueryResult('789'),
+            ]
+        r.append(TXTQueryResult('v=foobar'))
+        return r
+
+    def get_mx(self, host):
+        if host == 'local.com':
             return [
-                MXQueryResult(4, 'em2.four.' + host),
-                MXQueryResult(5, 'five.' + host),
-                MXQueryResult(9, 'em2.nine.' + host),
-                MXQueryResult(10, 'ten.' + host),
+                MXQueryResult(5, 'em2.local.com'),
+                MXQueryResult(10, 'mx.local.com'),
             ]
         else:
-            raise NotImplementedError
+            return [
+                MXQueryResult(10, 'mx.platform.' + host),
+                MXQueryResult(5, 'em2.platform.' + host),
+            ]
+
+    def get_other(self, host, qtype):
+        raise NotImplemented()
 
 
 class RedisMockDNSAuthenticator(RedisDNSAuthenticator):

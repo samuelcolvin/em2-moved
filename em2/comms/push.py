@@ -1,6 +1,7 @@
 import base64
 
 from arq import concurrent
+from arq.jobs import DatetimeJob
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
@@ -93,6 +94,7 @@ class NullPusher(BasePusher):  # pragma: no cover
 
 
 class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
+    job_class = DatetimeJob
     plat_conv_prefix = b'pc:'
     auth_token_prefix = b'ak:'
 
@@ -120,14 +122,17 @@ class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
         async with await self.get_redis_conn() as redis:
             await redis.hdel(hash_key, domain)
 
-    @concurrent
     async def publish(self, action, event_id, data, timestamp):
+        await self._publish_concurrent(action.attrs, event_id, data, timestamp)
+
+    @concurrent
+    async def _publish_concurrent(self, action_attrs, event_id, data, timestamp):
         from em2.core import Components
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
-        domain_lookup = await self.save_nodes(action.conv, *addresses)
+        domain_lookup = await self.save_nodes_direct(action_attrs['conv'], *addresses)
         node_urls = domain_lookup.values()
         remote_urls = [u for u in node_urls if u != self.LOCAL]
-        await self.push_data(remote_urls, action, event_id, data, timestamp)
+        await self.push_data(remote_urls, action_attrs, event_id, data, timestamp)
 
     @concurrent
     async def push(self, action, event_id, data, timestamp):
