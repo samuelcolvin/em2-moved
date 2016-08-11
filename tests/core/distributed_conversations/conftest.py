@@ -1,9 +1,8 @@
 import pytest
 
 from em2 import Settings
-from em2.core import Controller, Components, perms, Action, Verbs
-
-from tests.fixture_classes import SimpleDataStore, SimplePusher, Network
+from em2.core import Action, Components, Controller, Verbs, perms
+from tests.fixture_classes import Network, SimpleDataStore, SimplePusher
 
 
 def create_controller(name, network=None):

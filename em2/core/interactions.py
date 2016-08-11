@@ -1,6 +1,7 @@
 import logging
 
 from em2.utils import Enum, to_unix_timestamp
+
 from .components import Components, hash_id
 
 logger = logging.getLogger('em2')

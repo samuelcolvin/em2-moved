@@ -3,8 +3,7 @@ from datetime import datetime
 import pytest
 
 from em2.core import Retrieval, RVerbs
-from em2.exceptions import ConversationNotFound, ComponentNotFound
-
+from em2.exceptions import ComponentNotFound, ConversationNotFound
 
 async def test_list_single_conversation(conversation):
     ds, ctrl, conv_id = await conversation()

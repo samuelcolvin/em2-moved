@@ -1,8 +1,9 @@
 from copy import deepcopy
 
-from em2.comms.http.push import HttpDNSPusher
-from em2.core import Action, Verbs, Components
 from em2.comms import BasePusher
+from em2.comms.http.push import HttpDNSPusher
+from em2.core import Action, Components, Verbs
+
 from .authenicator import MockDNSResolver
 
 

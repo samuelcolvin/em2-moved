@@ -1,13 +1,14 @@
-import os
 import base64
+import os
 from textwrap import wrap
 
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-from em2.exceptions import FailedInboundAuthentication, PlatformForbidden, DomainPlatformMismatch
+from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
 from em2.utils import BaseServiceCls, now_unix_timestamp
+
 from .redis import RedisDNSMixin, RedisMethods
 
 

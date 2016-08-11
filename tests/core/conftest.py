@@ -1,6 +1,6 @@
 import pytest
 
-from em2.core import Controller, Action, Verbs
+from em2.core import Action, Controller, Verbs
 from tests.fixture_classes import SimpleDataStore
 
 

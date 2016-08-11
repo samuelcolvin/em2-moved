@@ -1,4 +1,5 @@
 import pytest
+
 from em2 import Settings
 
 

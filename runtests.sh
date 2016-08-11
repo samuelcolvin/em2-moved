@@ -9,6 +9,9 @@ if [ $pytest == 0 ] ; then
     coverage html
 fi
 echo "pytest exit code: ${pytest}"
+./tests/isort_test.sh
+isort=$?
+echo "isort exit code:  ${isort}"
 flake8 em2/ tests/
 flake=$?
 echo "flake8 exit code: ${flake}"

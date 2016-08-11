@@ -4,7 +4,7 @@ import datetime
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from em2.core import RVerbs, Retrieval, Controller, Verbs, Action
+from em2.core import Action, Controller, Retrieval, RVerbs, Verbs
 from em2.ds.pg.datastore import PostgresDataStore
 from em2.ds.pg.models import Conversation
 from em2.ds.pg.utils import prepare_database

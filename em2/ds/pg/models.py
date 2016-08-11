@@ -1,9 +1,9 @@
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, func, Text, ForeignKey, Boolean, Sequence, UniqueConstraint, sql
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, Sequence, String, Text, UniqueConstraint, func, sql
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.declarative import declarative_base, declared_attr
 
-from em2.core import Verbs, Participants, Components, Conversations
+from em2.core import Components, Conversations, Participants, Verbs
+
 from .model_extras import TIMESTAMPTZ, SAEnum
 
 Base = declarative_base()

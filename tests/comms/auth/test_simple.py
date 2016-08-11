@@ -2,9 +2,8 @@ from datetime import datetime
 
 import pytest
 
-from em2.exceptions import PlatformForbidden, FailedInboundAuthentication, DomainPlatformMismatch
-from tests.fixture_classes import SimpleAuthenticator, PLATFORM, TIMESTAMP, VALID_SIGNATURE
-
+from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
+from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE, SimpleAuthenticator
 
 async def test_key_doesnt_exists():
     auth = SimpleAuthenticator()

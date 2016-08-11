@@ -1,15 +1,16 @@
-import logging
 import datetime
 import inspect
+import logging
 
 import pytz
 
 from em2.comms import BasePusher, NullPusher
-from em2.exceptions import ComponentNotFound, VerbNotFound, BadDataException, BadHash
-from .datastore import DataStore
+from em2.exceptions import BadDataException, BadHash, ComponentNotFound, VerbNotFound
+
 from .components import Components, Messages, Participants
 from .conversations import Conversations
-from .interactions import Action, Verbs, Retrieval, RVerbs
+from .datastore import DataStore
+from .interactions import Action, Retrieval, RVerbs, Verbs
 
 logger = logging.getLogger('em2')
 

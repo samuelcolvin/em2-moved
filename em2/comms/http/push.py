@@ -1,8 +1,9 @@
 import json
 
 import aiohttp
+
 from em2.comms.push import AsyncRedisPusher
-from em2.exceptions import FailedOutboundAuthentication, Em2ConnectionError
+from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication
 
 JSON_HEADER = {'content-type': 'application/json'}
 

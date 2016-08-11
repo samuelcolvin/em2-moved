@@ -3,7 +3,7 @@ import pytest
 from em2 import Settings
 from em2.comms import RedisDNSAuthenticator
 from em2.exceptions import FailedInboundAuthentication
-from tests.fixture_classes import RedisMockDNSAuthenticator, PLATFORM, TIMESTAMP, VALID_SIGNATURE
+from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE, RedisMockDNSAuthenticator
 
 
 @pytest.yield_fixture

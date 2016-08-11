@@ -3,8 +3,8 @@ from copy import deepcopy
 
 import pytest
 
-from em2.core import Action, Verbs, Components
-from em2.exceptions import BadDataException, BadHash, MisshapedDataException, ComponentNotFound
+from em2.core import Action, Components, Verbs
+from em2.exceptions import BadDataException, BadHash, ComponentNotFound, MisshapedDataException
 
 correct_data = {
     'creator': 'testing@example.com',

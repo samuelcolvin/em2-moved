@@ -4,9 +4,9 @@ import pytest
 from aiohttp.test_utils import TestClient
 
 from em2 import Settings
-from em2.core import Controller
 from em2.comms.http import create_app
-from tests.fixture_classes import SimpleDataStore, SimpleAuthenticator
+from em2.core import Controller
+from tests.fixture_classes import SimpleAuthenticator, SimpleDataStore
 from tests.fixture_classes.authenicator import get_private_key
 from tests.fixture_classes.push import HttpMockedDNSPusher
 

@@ -4,16 +4,16 @@ Views dedicated to propagation of data between platforms.
 import json
 from json import JSONDecodeError
 
+import pytz
 from aiohttp import web
 from cerberus import Validator
-import pytz
 
 from em2.comms.logger import logger
 from em2.core import Action
+from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
 from em2.utils import from_unix_timestamp
-from em2.exceptions import Em2Exception, DomainPlatformMismatch, PlatformForbidden, FailedInboundAuthentication
-from .utils import HTTPBadRequestStr, HTTPForbiddenStr, json_bytes, get_ip
 
+from .utils import HTTPBadRequestStr, HTTPForbiddenStr, get_ip, json_bytes
 
 AUTHENTICATION_SCHEMA = {
     'platform': {'type': 'string', 'required': True},

@@ -1,4 +1,6 @@
-from sqlalchemy import DateTime, Enum as _SAEnum
+from sqlalchemy import Enum as _SAEnum
+from sqlalchemy import DateTime
+
 from em2.utils import Enum as _EM2Enum
 
 TIMESTAMPTZ = DateTime(timezone=True)

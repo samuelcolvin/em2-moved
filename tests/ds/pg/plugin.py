@@ -1,12 +1,12 @@
-import pytest
 import psycopg2
+import pytest
 from sqlalchemy import create_engine as sa_create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from em2 import Settings
-from em2.ds.pg.datastore import PostgresDataStore, ConnectionContextManager
+from em2.ds.pg.datastore import ConnectionContextManager, PostgresDataStore
 from em2.ds.pg.models import Base
-from em2.ds.pg.utils import pg_connect_kwargs, get_dsn
+from em2.ds.pg.utils import get_dsn, pg_connect_kwargs
 
 settings = Settings(PG_DATABASE='em2_test')
 

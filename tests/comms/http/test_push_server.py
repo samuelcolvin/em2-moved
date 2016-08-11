@@ -1,11 +1,10 @@
-from arq.testing import RaiseWorker
 import pytest
 
+from arq.testing import RaiseWorker
 from em2 import Settings
-from em2.core import Action, Controller, Verbs, Components, perms
+from em2.core import Action, Components, Controller, Verbs, perms
 from em2.utils import now_unix_timestamp
 from tests.fixture_classes import SimpleDataStore
-
 
 async def test_authenticate(pusher):
     token = await pusher.authenticate('platform.remote.com')

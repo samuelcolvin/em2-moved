@@ -1,5 +1,7 @@
 from collections import OrderedDict
+
 import pytest
+
 from em2.utils import Enum, EnumException
 
 

@@ -1,11 +1,10 @@
 import pytest
 from aiopg.sa import create_engine
 
-from em2.core import Controller, Action, Verbs
-from em2.exceptions import ConversationNotFound
+from em2.core import Action, Controller, Verbs
 from em2.ds.pg.datastore import PostgresDataStore
 from em2.ds.pg.models import sa_conversations
-
+from em2.exceptions import ConversationNotFound
 
 async def test_conversation_insert_raw(timestamp, loop, db, dsn):
     async with create_engine(dsn, loop=loop) as engine:

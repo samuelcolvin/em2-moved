@@ -1,11 +1,10 @@
-import hashlib
 import datetime
+import hashlib
 
 import pytest
 
-from em2.core import Components, perms, Action, Verbs
-from em2.exceptions import InsufficientPermissions, ComponentLocked, ComponentNotLocked
-
+from em2.core import Action, Components, Verbs, perms
+from em2.exceptions import ComponentLocked, ComponentNotLocked, InsufficientPermissions
 
 async def test_create_conversation_with_message(conversation):
     ds, ctrl, conv_id = await conversation()

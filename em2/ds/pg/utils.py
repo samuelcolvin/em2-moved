@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 
 from em2 import Settings
+
 from .models import Base
 
 

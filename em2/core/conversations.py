@@ -1,10 +1,11 @@
-import logging
 import json
+import logging
 
 from cerberus import Validator
 
 from em2.exceptions import BadHash, MisshapedDataException
-from .components import Components, hash_id, ConversationsStatus
+
+from .components import Components, ConversationsStatus, hash_id
 from .interactions import Action, Verbs
 
 logger = logging.getLogger('em2')

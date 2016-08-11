@@ -3,9 +3,8 @@ import hashlib
 from copy import deepcopy
 
 from em2 import Settings
-from em2.core import Controller, Components, perms, Action, Verbs
+from em2.core import Action, Components, Controller, Verbs, perms
 from tests.fixture_classes import SimpleDataStore, SimplePusher
-
 
 async def test_create_basic_conversation(controller):
     action = Action('sender@example.com', None, Verbs.ADD)

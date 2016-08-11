@@ -1,5 +1,5 @@
-import pytest
 import psycopg2
+import pytest
 
 from em2 import Settings
 from em2.ds.pg.utils import pg_connect_kwargs

@@ -7,6 +7,7 @@ import logging
 from copy import deepcopy
 
 from em2.utils import BaseServiceCls
+
 from .components import Components
 
 logger = logging.getLogger('em2')

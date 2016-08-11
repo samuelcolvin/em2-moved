@@ -1,7 +1,7 @@
 import json
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
-from em2.core import Action, Verbs, Components
+from em2.core import Action, Components, Verbs
 from em2.utils import to_unix_timestamp
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 

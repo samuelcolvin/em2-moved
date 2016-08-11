@@ -1,10 +1,10 @@
 from aiopg.sa.engine import _create_engine
-from sqlalchemy import select, column, join
+from sqlalchemy import column, join, select
 
-from em2.core import Components, DataStore, ConversationDataStore
-from em2.exceptions import ConversationNotFound, ComponentNotFound, EventNotFound, Em2Exception
+from em2.core import Components, ConversationDataStore, DataStore
+from em2.exceptions import ComponentNotFound, ConversationNotFound, Em2Exception, EventNotFound
 
-from .models import sa_conversations, sa_participants, sa_messages, sa_events
+from .models import sa_conversations, sa_events, sa_messages, sa_participants
 from .utils import get_dsn
 
 sa_component_lookup = {

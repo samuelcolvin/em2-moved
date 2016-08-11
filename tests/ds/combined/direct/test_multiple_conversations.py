@@ -4,7 +4,6 @@ from em2.core import Components, perms
 
 from .test_conversations import create_conv
 
-
 async def test_list_conversations(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:

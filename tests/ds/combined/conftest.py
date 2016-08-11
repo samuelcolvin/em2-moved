@@ -1,6 +1,7 @@
 import pytest
 
-from tests.ds.pg.plugin import TestPostgresDataStore, settings as pg_settings
+from tests.ds.pg.plugin import settings as pg_settings
+from tests.ds.pg.plugin import TestPostgresDataStore
 from tests.fixture_classes import SimpleDataStore
 
 pytest_plugins = 'tests.ds.pg.plugin'

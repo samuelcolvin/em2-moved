@@ -1,10 +1,9 @@
 import pytest
 
-from em2.core import Action, Verbs, Components, perms
+from em2.core import Action, Components, Verbs, perms
 from em2.exceptions import ConversationNotFound, EventNotFound
 
 from .test_conversations import create_conv
-
 
 async def test_save_event(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
