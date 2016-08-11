@@ -90,9 +90,16 @@ class MockDNSResolver:
             r.append(TXTQueryResult('v=foobar'))
             return r
         elif qtype == 'MX':
+            if host == 'local.com':
+                return [
+                    MXQueryResult(5, 'em2.local.com'),
+                    MXQueryResult(10, 'mx.local.com'),
+                ]
             return [
-                MXQueryResult(5, 'five.example.com'),
-                MXQueryResult(10, 'ten.example.com'),
+                MXQueryResult(4, 'em2.four.' + host),
+                MXQueryResult(5, 'five.' + host),
+                MXQueryResult(9, 'em2.nine.' + host),
+                MXQueryResult(10, 'ten.' + host),
             ]
         else:
             raise NotImplementedError

@@ -107,15 +107,15 @@ class RedisDNSAuthenticator(RedisMethods, BaseAuthenticator, RedisDNSMixin):
     async def _check_domain_uses_platform(self, domain: str, platform_domain: str):
         cache_key = b'pl:%s' % domain.encode()
         async with await self.get_redis_conn() as redis:
-            platform = await redis.get(cache_key)
-            if platform and platform.decode() == platform_domain:
+            cache_p = await redis.get(cache_key)
+            if cache_p and cache_p.decode() == platform_domain:
                 return True
             results = await self.resolver.query(domain, 'MX')
             results = [(r.priority, r.host) for r in results]
             results.sort()
-            for _, platform in results:
-                if platform == platform_domain:
-                    await redis.setex(cache_key, self._domain_timeout, platform.encode())
+            for _, host in results:
+                if host == platform_domain:
+                    await redis.setex(cache_key, self._domain_timeout, host.encode())
                     return True
 
     async def _store_platform_token(self, token: str, expires_at: int):

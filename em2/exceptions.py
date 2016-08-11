@@ -78,3 +78,7 @@ class DomainPlatformMismatch(Em2AuthException):
 
 class FailedOutboundAuthentication(Em2AuthException):
     pass
+
+
+class Em2ConnectionError(Em2Exception):
+    pass

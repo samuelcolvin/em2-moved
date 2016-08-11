@@ -44,7 +44,7 @@ class CustomTestClient(TestClient):
 @pytest.yield_fixture
 def domain_pusher(loop):
     pusher = client = None
-    settings = Settings(R_DATABASE=2, LOCAL_DOMAIN='local.com', PRIVATE_DOMAIN_KEY=get_private_key())
+    settings = Settings(R_DATABASE=2, LOCAL_DOMAIN='em2.local.com', PRIVATE_DOMAIN_KEY=get_private_key())
 
     async def _create_domain_client_app(domain='example.com'):
         nonlocal client, pusher

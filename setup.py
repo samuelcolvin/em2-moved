@@ -19,7 +19,7 @@ http_extras = [
 
 redis_extras = [
     'aioredis>=0.2.8',
-    'arq>=0.0.4',
+    'arq>=0.0.5',
 ]
 
 # avoid loading the package before requirements are installed:
