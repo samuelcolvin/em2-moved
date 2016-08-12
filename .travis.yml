@@ -6,22 +6,23 @@ addons:
   postgresql: "9.4"
 
 services:
-  - postgresql
-  - redis-server
+- postgresql
+- redis-server
 
 python:
-  - "3.5"
+- "3.5"
 
 install:
   # while arq is changing a lot, install it straight from commit
-  - pip install git+git://github.com/samuelcolvin/arq.git@ef8ea131a25bf2daf5a2f14b7cdb126280970d65
-  - pip install -U -e .[all]
-  - pip install -U -r tests/requirements.txt
+- pip install git+git://github.com/samuelcolvin/arq.git@ef8ea131a25bf2daf5a2f14b7cdb126280970d65
+- pip install -U -e .[all]
+- pip install -U -r tests/requirements.txt
 
 script:
-  - flake8 em2/ tests/
-  - ./tests/isort_test.sh
-  - py.test --cov=em2
+- flake8 em2/ tests/
+- ./tests/isort_test.sh
+- py.test --cov=em2
 
 after_success:
-  - codecov
+- coverage combine
+- codecov
