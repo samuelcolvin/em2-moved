@@ -11,7 +11,7 @@ from cerberus import Validator
 from em2.comms.logger import logger
 from em2.core import Action
 from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
-from em2.utils import from_unix_timestamp
+from em2.utils import from_unix_ms
 
 from .utils import HTTPBadRequestStr, HTTPForbiddenStr, get_ip, json_bytes
 
@@ -46,7 +46,6 @@ ACT_SCHEMA = {
     'timestamp': {'type': 'integer', 'required': True, 'min': 0},
     'event_id': {'type': 'string', 'required': True, 'empty': False},
     'timezone': {'type': 'string', 'required': False},
-    'item': {'type': 'string', 'required': False},
     'parent_event_id': {'type': 'string', 'required': False},
     'kwargs': {'type': 'dict', 'required': False},
 }
@@ -93,7 +92,7 @@ async def act(request):
     component = request.match_info['component']
     verb = request.match_info['verb']
 
-    timestamp = from_unix_timestamp(body_data.pop('timestamp')).replace(tzinfo=pytz.utc)
+    timestamp = from_unix_ms(body_data.pop('timestamp')).replace(tzinfo=pytz.utc)
     try:
         timezone = pytz.timezone(body_data.pop('timezone', 'utc'))
     except pytz.UnknownTimeZoneError as e:
@@ -101,7 +100,7 @@ async def act(request):
 
     timestamp = timestamp.astimezone(timezone)
     kwargs = body_data.pop('kwargs', {})
-    action = Action(address, conversation, verb, component, timestamp=timestamp, **body_data)
+    action = Action(address, conversation, verb, component, timestamp=timestamp, **body_data)  # FIXME body_data ?
     controller = request.app['controller']
     try:
         response = await controller.act(action, **kwargs)

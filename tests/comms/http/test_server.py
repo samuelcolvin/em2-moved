@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 
 from em2.core import Action, Components, Verbs
-from em2.utils import to_unix_timestamp
+from em2.utils import to_unix_ms
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 AUTH_HEADER = {
@@ -19,7 +19,7 @@ async def test_add_message(client):
     action2 = Action('test@already-authenticated.com', conv_id, Verbs.ADD, Components.MESSAGES, timestamp=ts)
     data = {
         'address': 'test@already-authenticated.com',
-        'timestamp': to_unix_timestamp(ts),
+        'timestamp': to_unix_ms(ts),
         'event_id': action2.calc_event_id(),
         'kwargs': {
             'parent_id': msg1_id,
@@ -74,7 +74,7 @@ async def test_missing_conversation(client):
     action2 = Action('test@already-authenticated.com', '123', Verbs.ADD, Components.MESSAGES, timestamp=ts)
     data = {
         'address': 'test@already-authenticated.com',
-        'timestamp': to_unix_timestamp(ts),
+        'timestamp': to_unix_ms(ts),
         'event_id': action2.calc_event_id(),
         'kwargs': {
             'parent_id': '123',

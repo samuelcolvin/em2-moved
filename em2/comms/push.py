@@ -1,12 +1,12 @@
 import base64
+from datetime import datetime
 
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-from arq import concurrent
-from arq.jobs import DatetimeJob
-from em2.utils import BaseServiceCls, now_unix_timestamp
+from arq import concurrent, Job
+from em2.utils import BaseServiceCls, now_unix_secs, to_unix_ms
 
 from .redis import RedisDNSMixin, RedisMethods
 
@@ -30,7 +30,7 @@ class BasePusher(BaseServiceCls):
     async def push(self, action, event_id, data, timestamp):
         raise NotImplementedError()
 
-    async def publish(self, action, event_id, data, timestamp):
+    async def publish(self, action, event_id, data):
         raise NotImplementedError()
 
     def get_domain(self, address):
@@ -65,7 +65,7 @@ class BasePusher(BaseServiceCls):
         raise NotImplementedError()
 
     def _now_unix(self):
-        return now_unix_timestamp()
+        return now_unix_secs()
 
     def __repr__(self):
         return '{}<{}>'.format(self.__class__.__name__, self._settings.LOCAL_DOMAIN)
@@ -87,15 +87,26 @@ class NullPusher(BasePusher):  # pragma: no cover
     async def push(self, action, event_id, data, timestamp):
         pass
 
-    async def publish(self, action, event_id, data, timestamp):
+    async def publish(self, action, event_id, data):
         pass
 
     async def get_node(self, conv, domain, *addresses):
         pass
 
 
+class UnixtimeJob(Job):
+    """
+    Converts all datetimes to simple unix timestamps suitable for further encoding.
+    """
+    @staticmethod
+    def msgpack_encoder(obj):
+        if isinstance(obj, datetime):
+            return int(to_unix_ms(obj))
+        return obj
+
+
 class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
-    job_class = DatetimeJob
+    job_class = UnixtimeJob
     plat_conv_prefix = b'pc:'
     auth_token_prefix = b'ak:'
 
@@ -123,34 +134,35 @@ class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
         async with await self.get_redis_conn() as redis:
             await redis.hdel(hash_key, domain)
 
-    async def publish(self, action, event_id, data, timestamp):
-        await self._publish_concurrent(action.attrs, event_id, data, timestamp)
+    async def publish(self, action, event_id, data):
+        await self._publish_concurrent(action.attrs, event_id, data)
 
     @concurrent
-    async def _publish_concurrent(self, action_attrs, event_id, data, timestamp):
+    async def _publish_concurrent(self, action_attrs, event_id, data):
         from em2.core import Components
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
         domain_lookup = await self.save_nodes_direct(action_attrs['conv'], *addresses)
         node_urls = domain_lookup.values()
         remote_urls = [u for u in node_urls if u != self.LOCAL]
-        await self.push_data(remote_urls, action_attrs, event_id, data, timestamp)
+        await self._push_data(remote_urls, action_attrs, event_id, data=data)
 
     @concurrent
-    async def push(self, action, event_id, data, timestamp):
+    async def push(self, action, event_id, data):
+        raise NotImplementedError()
         async with await self.get_redis_conn() as redis:
             node_urls = await redis.hgetall(self.plat_conv_prefix + action.conv)
         remote_urls = [u for u in node_urls if u != self.LOCAL]
-        await self.push_data(remote_urls, action, event_id, data, timestamp)
+        await self._push_data(remote_urls, action, event_id, data)
 
-    async def push_data(self, urls, *args):
+    async def _push_data(self, urls, action_attrs, event_id, **kwargs):
         raise NotImplementedError
 
-    async def authenticate(self, domain):
+    async def authenticate(self, domain: str) -> str:
         token_key = self.auth_token_prefix + domain.encode()
         async with await self.get_redis_conn() as redis:
             token = await redis.get(token_key)
             if token:
-                return token
+                return token.decode()
             data = self.get_auth_data()
             token = await self._authenticate_direct(domain, data)
             _, expires_at, _ = token.split(':', 2)

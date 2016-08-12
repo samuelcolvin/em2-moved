@@ -16,7 +16,6 @@ class Conversations:
     event = None
     schema = {
         'creator': {'type': 'string', 'required': True},
-        'timestamp': {'type': 'datetime', 'required': True},
         'ref': {'type': 'string', 'required': True},
         'status': {'type': 'string', 'required': True},
         'subject': {'type': 'string', 'required': True},
@@ -98,7 +97,7 @@ class Conversations:
             raise MisshapedDataException(json.dumps(v.errors, sort_keys=True))
 
         creator = data['creator']
-        timestamp = data['timestamp']
+        timestamp = action.timestamp
         check_conv_id = self._conv_id_hash(creator, timestamp, data['ref'])
         if check_conv_id != action.conv:
             raise BadHash('provided hash {} does not match computed hash {}'.format(action.conv, check_conv_id))
@@ -141,6 +140,7 @@ class Conversations:
         new_action.cds, new_action.participant_id, new_action.perm = action.cds, action.participant_id, action.perm
 
         data = await action.cds.export()
+        data.pop('timestamp')  # timestamp of the publication is defined in the action
         await self.controller.publish(new_action, **data)
         return new_conv_id
 

@@ -7,7 +7,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
-from em2.utils import BaseServiceCls, now_unix_timestamp
+from em2.utils import BaseServiceCls, now_unix_secs
 
 from .redis import RedisDNSMixin, RedisMethods
 
@@ -25,7 +25,7 @@ class BaseAuthenticator(BaseServiceCls):
         """
         Check a request is "from" a domain by asserting that the signature of the supplied string is valid.
         :param platform: domain of platform being authenticated
-        :param timestamp: unix timestamp, must be close to now
+        :param timestamp: unix timestamp in seconds, must be close to now
         :param signature: signature of platform_timestamp
         :return: new API token for the platform which is valid for COMMS_PLATFORM_TOKEN_TIMEOUT
         """
@@ -79,7 +79,7 @@ class BaseAuthenticator(BaseServiceCls):
         return cipher.verify(h, signature)
 
     def _now_unix(self):
-        return now_unix_timestamp()
+        return now_unix_secs()
 
     def _generate_random(self):
         return base64.urlsafe_b64encode(os.urandom(self._token_length))[:self._token_length].decode()

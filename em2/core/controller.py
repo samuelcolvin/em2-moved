@@ -151,7 +151,7 @@ class Controller:
         logger.debug('publishing %d, author: "%s"', action.conv, action.address)
         event_id = action.calc_event_id()
         await action.cds.save_event(event_id, action)
-        await self.pusher.publish(action, event_id, data, action.timestamp)
+        await self.pusher.publish(action, event_id, data)
 
     def __repr__(self):
         return '<Controller({})>'.format(self.ref)

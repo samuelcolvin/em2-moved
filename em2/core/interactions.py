@@ -1,6 +1,6 @@
 import logging
 
-from em2.utils import Enum, to_unix_timestamp
+from em2.utils import Enum, to_unix_ms
 
 from .components import Components, hash_id
 
@@ -82,7 +82,7 @@ class Action(_Interaction):
         return not (self.component == Components.CONVERSATIONS and self.verb == Verbs.ADD)
 
     def calc_event_id(self):
-        ts = self.timestamp and to_unix_timestamp(self.timestamp)
+        ts = self.timestamp and to_unix_ms(self.timestamp)
         return hash_id(ts, self.address, self.conv, self.verb, self.component, self.item)
 
     async def get_conv_status(self):

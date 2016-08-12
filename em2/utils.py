@@ -68,17 +68,26 @@ _EPOCH = datetime(1970, 1, 1)
 _EPOCH_TZ = datetime(1970, 1, 1, tzinfo=pytz.utc)
 
 
-def to_unix_timestamp(dt):
-    epoch = _EPOCH if dt.tzinfo is None else _EPOCH_TZ
-    return int((dt - epoch).total_seconds())
+def to_unix_ms(dt):
+    utcoffset = dt.utcoffset()
+    if utcoffset is not None:
+        utcoffset = utcoffset.total_seconds()
+        secs = (dt - _EPOCH_TZ).total_seconds() + utcoffset
+    else:
+        secs = (dt - _EPOCH).total_seconds()
+    return int(secs * 1000)
 
 
-def from_unix_timestamp(ts):
-    return _EPOCH + timedelta(seconds=ts)
+def from_unix_ms(ms):
+    return _EPOCH + timedelta(seconds=ms / 1000)
 
 
-def now_unix_timestamp():
-    return to_unix_timestamp(datetime.utcnow())
+def now_unix_secs():
+    return int((datetime.utcnow() - _EPOCH).total_seconds())
+
+
+def now_unix_ms():
+    return to_unix_ms(datetime.utcnow())
 
 
 class BaseServiceCls:

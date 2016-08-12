@@ -33,8 +33,8 @@ class SimplePusher(BasePusher):
     async def remove_domain(self, conv, domain):
         self.remotes[conv].pop(domain)
 
-    async def publish(self, action, event_id, data, timestamp):
-        new_action = Action(action.address, action.conv, Verbs.ADD, timestamp=timestamp, event_id=event_id)
+    async def publish(self, action, event_id, data):
+        new_action = Action(action.address, action.conv, Verbs.ADD, timestamp=action.timestamp, event_id=event_id)
         prop_data = deepcopy(data)
 
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
