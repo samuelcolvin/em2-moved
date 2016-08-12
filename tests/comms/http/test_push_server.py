@@ -6,12 +6,12 @@ from tests.fixture_classes import SimpleDataStore
 
 
 async def test_authenticate(pusher):
-    token = await pusher.authenticate('platform.remote.com')
+    token = await pusher.authenticate('em2.platform.remote.com')
     assert token.startswith('em2.local.com:2461536000:')
     async with pusher._redis_pool.get() as redis:
-        v = await redis.get(b'ak:platform.remote.com')
+        v = await redis.get(b'ak:em2.platform.remote.com')
         assert token == v.decode()
-        ttl = await redis.ttl(b'ak:platform.remote.com')
+        ttl = await redis.ttl(b'ak:em2.platform.remote.com')
         expiry = ttl + now_unix_secs()
         expected_expiry = 2461536000 - Settings().COMMS_PUSH_TOKEN_EARLY_EXPIRY
         assert abs(expiry - expected_expiry) < 10

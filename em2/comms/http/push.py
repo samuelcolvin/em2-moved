@@ -9,7 +9,7 @@ from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, Pus
 JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 
 
-class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
+class HttpDNSPusher(AsyncRedisPusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = None
@@ -51,14 +51,14 @@ class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
     async def post(self, domain, path, data):
         token = await self.authenticate(domain)
         headers = dict(Authorization=token, **JSON_HEADER)
-        url = domain + path
+        url = 'https://{}/{}'.format(domain, path)
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
                 raise PushError('{}: {}'.format(r.status, await r.read()))
 
     async def _push_data(self, domains, action_attrs, event_id, **kwargs):
         action_attrs['item'] = action_attrs['item'] or ''
-        path = '/{conv}/{component}/{verb}/{item}'.format(**action_attrs)
+        path = '{conv}/{component}/{verb}/{item}'.format(**action_attrs)
         post_data = {
             'address': action_attrs['address'],
             'timestamp': action_attrs['timestamp'],
@@ -71,9 +71,7 @@ class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
         await asyncio.gather(*cos, loop=self.loop)
 
     async def _authenticate_direct(self, domain, data):
-        url = domain + '/authenticate'
-        if not url.startswith('em2.'):
-            url = 'em2.' + url
+        url = 'https://{}/authenticate'.format(domain)
         # TODO more error checks
         try:
             async with self.session.post(url, data=encoding.encode(data), headers=JSON_HEADER) as r:

@@ -31,11 +31,11 @@ def client(loop, test_client):
 class CustomTestClient(TestClient):
     def __init__(self, app, domain, protocol='http'):
         self.domain = domain
-        self.regex = re.compile('^em2\.{}(/.*)$'.format(self.domain))
+        self.regex = re.compile(r'https://em2\.{}(/.*)'.format(self.domain))
         super().__init__(app, protocol)
 
     def request(self, method, path, *args, **kwargs):
-        m = self.regex.search(path)
+        m = self.regex.match(path)
         assert m, (path, self.regex)
         sub_path = m.groups()[0]
         return self._session.request(method, self._root + sub_path, *args, **kwargs)
@@ -50,15 +50,15 @@ class DoubleMockPusher(HttpMockedDNSPusher):
         self.test_client = None
         super().__init__(settings=settings, **kwargs)
 
-    async def create_session(self):
+    async def create_test_client(self, remote_domain='platform.remote.com'):
         self.app = _create_app(self.loop)
-        self.test_client = CustomTestClient(self.app, 'platform.remote.com')
+        self.test_client = CustomTestClient(self.app, remote_domain)
         await self.test_client.start_server()
 
     @property
     def session(self):
         if not self.test_client:
-            raise RuntimeError('session must be initialised with create_session before accessing session')
+            raise RuntimeError('test_client must be initialised with create_test_client before accessing session')
         return self.test_client
 
     def _now_unix(self):
@@ -69,7 +69,7 @@ class DoubleMockPusher(HttpMockedDNSPusher):
 def pusher(loop):
     async def _create_pusher():
         p = DoubleMockPusher(loop=loop)
-        await p.create_session()
+        await p.create_test_client()
         async with await p.get_redis_conn() as redis:
             await redis.flushdb()
         return p
