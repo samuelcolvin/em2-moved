@@ -1,12 +1,12 @@
 import asyncio
-import json
 
 import aiohttp
+from em2.comms import encoding
 
 from em2.comms.push import AsyncRedisPusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication
 
-JSON_HEADER = {'content-type': 'application/json'}
+JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 
 
 class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
@@ -67,7 +67,7 @@ class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
         }
         from pprint import pprint
         pprint(post_data)
-        post_data = json.dumps(post_data)
+        post_data = encoding.encode(post_data)
         cos = [self.post(domain, path, post_data) for domain in domains]
         await asyncio.gather(*cos, loop=self.loop)
 
@@ -77,16 +77,16 @@ class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
             url = 'em2.' + url
         # TODO more error checks
         try:
-            async with self.session.post(url, data=json.dumps(data), headers=JSON_HEADER) as r:
-                t = await r.text()
+            async with self.session.post(url, data=encoding.encode(data), headers=JSON_HEADER) as r:
+                body = await r.read()
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",
             # the exception is fairly useless at giving specifics
             raise ConnectionError('conn count connect to "{}"'.format(url)) from e
         else:
             if r.status != 201:
-                raise FailedOutboundAuthentication('{} response {} != 201, response: {}'.format(url, r.status, t))
-        data = json.loads(t)
+                raise FailedOutboundAuthentication('{} response {} != 201, response: {}'.format(url, r.status, body))
+        data = encoding.decode(body)
         return data['key']
 
     async def close(self):

@@ -1,5 +1,3 @@
-import json
-
 from aiohttp import web
 
 
@@ -15,16 +13,6 @@ class HTTPBadRequestStr(_StringException, web.HTTPBadRequest):
 
 class HTTPForbiddenStr(_StringException, web.HTTPForbidden):
     pass
-
-
-def json_bytes(data, pretty=False):
-    if data is None:
-        return b'\n'
-    if pretty:
-        s = json.dumps(data, indent=2) + '\n'
-    else:
-        s = json.dumps(data)
-    return s.encode()
 
 
 def get_ip(request):

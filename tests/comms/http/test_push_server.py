@@ -42,5 +42,5 @@ async def test_publish_conv(pusher):
         async def shadow_factory(self):
             return [pusher]
 
-    # worker = ReusePusherWorker(settings=pusher._settings, batch=True, loop=pusher.loop, shadows=[1])
-    # await worker.run()
+    worker = ReusePusherWorker(settings=pusher._settings, batch=True, loop=pusher.loop, shadows=[1])
+    await worker.run()
