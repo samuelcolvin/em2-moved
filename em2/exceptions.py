@@ -80,5 +80,9 @@ class FailedOutboundAuthentication(Em2AuthException):
     pass
 
 
+class PushError(Em2Exception):
+    pass
+
+
 class Em2ConnectionError(Em2Exception):
     pass

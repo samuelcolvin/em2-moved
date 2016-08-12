@@ -1,12 +1,12 @@
 import base64
-from datetime import datetime
 
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-from arq import concurrent, Job
-from em2.utils import BaseServiceCls, now_unix_secs, to_unix_ms
+from arq import concurrent
+from arq.jobs import DatetimeJob
+from em2.utils import BaseServiceCls, now_unix_secs
 
 from .redis import RedisDNSMixin, RedisMethods
 
@@ -94,19 +94,8 @@ class NullPusher(BasePusher):  # pragma: no cover
         pass
 
 
-class UnixtimeJob(Job):
-    """
-    Converts all datetimes to simple unix timestamps suitable for further encoding.
-    """
-    @staticmethod
-    def msgpack_encoder(obj):
-        if isinstance(obj, datetime):
-            return int(to_unix_ms(obj))
-        return obj
-
-
 class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
-    job_class = UnixtimeJob
+    job_class = DatetimeJob
     plat_conv_prefix = b'pc:'
     auth_token_prefix = b'ak:'
 

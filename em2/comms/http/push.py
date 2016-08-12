@@ -4,7 +4,7 @@ import aiohttp
 from em2.comms import encoding
 
 from em2.comms.push import AsyncRedisPusher
-from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication
+from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
 
 JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 
@@ -53,8 +53,8 @@ class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
         headers = dict(Authorization=token, **JSON_HEADER)
         url = domain + path
         async with self.session.post(url, data=data, headers=headers) as r:
-            print(url, r.status)
-            print(await r.read())
+            if r.status != 201:
+                raise PushError('{}: {}'.format(r.status, await r.read()))
 
     async def _push_data(self, domains, action_attrs, event_id, **kwargs):
         action_attrs['item'] = action_attrs['item'] or ''
@@ -65,10 +65,9 @@ class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
             'event_id': event_id,
             'kwargs': kwargs,
         }
-        from pprint import pprint
-        pprint(post_data)
         post_data = encoding.encode(post_data)
         cos = [self.post(domain, path, post_data) for domain in domains]
+        # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 
     async def _authenticate_direct(self, domain, data):

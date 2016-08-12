@@ -14,7 +14,7 @@ python:
 
 install:
   # while arq is changing a lot, install it straight from commit
-  - pip install git+git://github.com/samuelcolvin/arq.git@24e847d9f51aa52f7dc63fac4c7717e3e741b203
+  - pip install git+git://github.com/samuelcolvin/arq.git@dfbef6ee5dd40dca5d3c70babef8d20314a95a95
   - pip install -U -e .[all]
   - pip install -U -r tests/requirements.txt
 

@@ -11,10 +11,10 @@ from em2.comms import encoding
 from em2.comms.logger import logger
 from em2.core import Action
 from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
-from em2.utils import from_unix_ms
 
 from .utils import HTTPBadRequestStr, HTTPForbiddenStr, get_ip
 
+# Note timestamp is in int here while it's a datetime as it's an int when used in the signature
 AUTHENTICATION_SCHEMA = {
     'platform': {'type': 'string', 'required': True},
     'timestamp': {'type': 'integer', 'required': True, 'min': 0},
@@ -45,7 +45,7 @@ async def authenticate(request):
 
 ACT_SCHEMA = {
     'address': {'type': 'string', 'required': True, 'empty': False},
-    'timestamp': {'type': 'integer', 'required': True, 'min': 0},
+    'timestamp': {'type': 'datetime', 'required': True},
     'event_id': {'type': 'string', 'required': True, 'empty': False},
     'timezone': {'type': 'string', 'required': False},
     'parent_event_id': {'type': 'string', 'required': False},
@@ -95,13 +95,13 @@ async def act(request):
     component = request.match_info['component']
     verb = request.match_info['verb']
 
-    timestamp = from_unix_ms(obj.pop('timestamp')).replace(tzinfo=pytz.utc)
+    timestamp = obj.pop('timestamp')
     try:
         timezone = pytz.timezone(obj.pop('timezone', 'utc'))
     except pytz.UnknownTimeZoneError as e:
         raise HTTPBadRequestStr(e.args[0]) from e
 
-    timestamp = timestamp.astimezone(timezone)
+    timestamp = timezone.localize(timestamp)
     kwargs = obj.pop('kwargs', {})
     action = Action(address, conversation, verb, component, timestamp=timestamp, **obj)  # FIXME obj ?
     controller = request.app['controller']

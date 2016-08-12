@@ -23,7 +23,7 @@ correct_data = {
     'status': 'active',
     'subject': 'the subject',
 }
-conv_id = '0d35129317a6a6455609436c9aad1d11f2b0cb734d53b7222459d2452b25854f'
+conv_id = 'dddfbda858c83c167e3366de5b473d62189c32dfc9a5049f15b79fd91ef1eb81'
 timestamp = datetime.datetime(2016, 1, 2)
 
 async def test_publish_simple_conversation(controller):

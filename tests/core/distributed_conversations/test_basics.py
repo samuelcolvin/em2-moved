@@ -1,9 +1,11 @@
 import datetime
 import hashlib
+import time
 from copy import deepcopy
 
 from em2 import Settings
 from em2.core import Action, Components, Controller, Verbs, perms
+from em2.utils import to_unix_ms
 from tests.fixture_classes import SimpleDataStore, SimplePusher
 
 async def test_create_basic_conversation(controller):
@@ -18,7 +20,7 @@ async def test_create_basic_conversation(controller):
     assert conv['status'] == 'draft'
     assert conv['subject'] == 'foo bar'
     assert isinstance(conv['timestamp'], datetime.datetime)
-    hash_data = bytes('sender@example.com_{}_foo bar'.format(conv['timestamp'].isoformat()), 'utf8')
+    hash_data = 'sender@example.com_{}_foo bar'.format(to_unix_ms(conv['timestamp'])).encode()
     hash_result = hashlib.sha256(hash_data).hexdigest()
     assert conv['conv_id'] == hash_result
 
@@ -76,6 +78,7 @@ async def test_publish_conversation2(two_controllers):
     ctrl1, ctrl2, conv_id = await two_controllers()
 
     assert len(ctrl2.ds.data) == 0
+    time.sleep(0.001)  # to make sure the conv_id changes as time ms have change
     a = Action('user@ctrl1.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     new_conv_id = await ctrl1.act(a)
     assert len(ctrl2.ds.data) == 1

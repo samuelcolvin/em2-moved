@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 from em2.comms import encoding
 from em2.core import Action, Components, Verbs
-from em2.utils import to_unix_ms
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 AUTH_HEADER = {
@@ -19,7 +18,7 @@ async def test_add_message(client):
     action2 = Action('test@already-authenticated.com', conv_id, Verbs.ADD, Components.MESSAGES, timestamp=ts)
     data = {
         'address': 'test@already-authenticated.com',
-        'timestamp': to_unix_ms(ts),
+        'timestamp': ts,
         'event_id': action2.calc_event_id(),
         'kwargs': {
             'parent_id': msg1_id,
@@ -47,7 +46,7 @@ async def test_bad_token(client):
 async def test_domain_miss_match(client):
     data = {
         'address': 'test@example.com',
-        'timestamp': 123,
+        'timestamp': datetime.now(),
         'event_id': '123',
         'kwargs': {
             'parent_id': '123',
@@ -62,7 +61,7 @@ async def test_domain_miss_match(client):
 async def test_missing_field(client):
     data = {
         'address': 'test@already-authenticated.com',
-        'timestamp': 123,
+        'timestamp': datetime.now(),
     }
     r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=AUTH_HEADER)
     assert r.status == 400
@@ -74,7 +73,7 @@ async def test_missing_conversation(client):
     action2 = Action('test@already-authenticated.com', '123', Verbs.ADD, Components.MESSAGES, timestamp=ts)
     data = {
         'address': 'test@already-authenticated.com',
-        'timestamp': to_unix_ms(ts),
+        'timestamp': ts,
         'event_id': action2.calc_event_id(),
         'kwargs': {
             'parent_id': '123',

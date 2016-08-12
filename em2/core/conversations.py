@@ -4,6 +4,7 @@ import logging
 from cerberus import Validator
 
 from em2.exceptions import BadHash, MisshapedDataException
+from em2.utils import to_unix_ms
 
 from .components import Components, ConversationsStatus, hash_id
 from .interactions import Action, Verbs
@@ -161,7 +162,8 @@ class Conversations:
         return await retrieval.cds.export()
 
     def _conv_id_hash(self, creator, timestamp, ref):
-        return hash_id(creator, timestamp.isoformat(), ref, sha256=True)
+        ts = timestamp and to_unix_ms(timestamp)
+        return hash_id(creator, ts, ref, sha256=True)
 
     def __repr__(self):
         return '<Conversations 0x{:x} on "{}">'.format(id(self), self.controller.ref)

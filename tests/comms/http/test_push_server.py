@@ -1,3 +1,5 @@
+import time
+
 from arq.testing import RaiseWorker
 from em2 import Settings
 from em2.core import Action, Components, Controller, Verbs, perms
@@ -33,14 +35,20 @@ async def test_publish_conv(pusher):
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar', body='great body')
 
+    time.sleep(0.01)
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
     a = Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
-    await ctrl.act(a)
+    new_conv_id = await ctrl.act(a)
+    assert new_conv_id != conv_id
 
     class ReusePusherWorker(RaiseWorker):
         async def shadow_factory(self):
             return [pusher]
 
-    worker = ReusePusherWorker(settings=pusher._settings, batch=True, loop=pusher.loop, shadows=[1])
+    assert pusher.test_client.app['controller'].ds.data == {}
+    worker = ReusePusherWorker(settings=pusher._settings, batch=True, loop=pusher.loop)
     await worker.run()
+    data = pusher.test_client.app['controller'].ds.data
+    assert len(data) == 1
+    assert data[0]['conv_id'] == new_conv_id
