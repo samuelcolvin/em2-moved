@@ -31,7 +31,7 @@ class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
             results.sort()
             for _, host in results:
                 node = None
-                if host == self._settings.LOCAL_DOMAIN:
+                if host == self.settings.LOCAL_DOMAIN:
                     node = self.LOCAL
                 elif host.startswith('em2.'):
                     try:
@@ -43,7 +43,7 @@ class HttpDNSPusher(AsyncRedisPusher):  # TODO: https
                         # TODO query host to find associated node
                         node = host
                 if node:
-                    await redis.setex(cache_key, self._settings.COMMS_DOMAIN_CACHE_TIMEOUT, host.encode())
+                    await redis.setex(cache_key, self.settings.COMMS_DOMAIN_CACHE_TIMEOUT, host.encode())
                     return node
         # TODO SMTP fallback
         raise NotImplementedError()

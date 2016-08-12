@@ -17,7 +17,7 @@ class BasePusher(BaseServiceCls):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._early_token_expiry = self._settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
+        self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
 
     async def add_participant(self, conv, participant_addr):
         raise NotImplementedError()
@@ -50,14 +50,14 @@ class BasePusher(BaseServiceCls):
 
     def get_auth_data(self):
         timestamp = self._now_unix()
-        msg = '{}:{}'.format(self._settings.LOCAL_DOMAIN, timestamp)
+        msg = '{}:{}'.format(self.settings.LOCAL_DOMAIN, timestamp)
         h = SHA256.new(msg.encode())
 
-        key = RSA.importKey(self._settings.PRIVATE_DOMAIN_KEY)
+        key = RSA.importKey(self.settings.PRIVATE_DOMAIN_KEY)
         signer = PKCS1_v1_5.new(key)
         signature = base64.urlsafe_b64encode(signer.sign(h)).decode()
         return {
-            'platform': self._settings.LOCAL_DOMAIN,
+            'platform': self.settings.LOCAL_DOMAIN,
             'timestamp': timestamp,
             'signature': signature,
         }
@@ -69,7 +69,7 @@ class BasePusher(BaseServiceCls):
         return now_unix_secs()
 
     def __repr__(self):
-        return '{}<{}>'.format(self.__class__.__name__, self._settings.LOCAL_DOMAIN)
+        return '{}<{}>'.format(self.__class__.__name__, self.settings.LOCAL_DOMAIN)
 
 
 class NullPusher(BasePusher):  # pragma: no cover

@@ -39,7 +39,7 @@ async def test_publish_conv(pusher):
     conv_id = await ctrl.act(a)  # conv id could have changed depending on milliseconds
 
     assert pusher.test_client.app['controller'].ds.data == {}
-    worker = RaiseWorker(settings=pusher._settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
+    worker = RaiseWorker(settings=pusher.settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
     await worker.run()
     data = pusher.test_client.app['controller'].ds.data
     assert len(data) == 1
@@ -57,12 +57,12 @@ async def test_publish_update_conv(pusher):
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.MESSAGES)
 
     assert pusher.test_client.app['controller'].ds.data == {}
-    worker = RaiseWorker(settings=pusher._settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
+    worker = RaiseWorker(settings=pusher.settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
     await worker.run(reuse=True)
     assert pusher.test_client.app['controller'].ds.data[0]['conv_id'] == conv_id
 
     # conversation is now published, add another message
 
     msg1_id = list(ctrl.ds.data[0]['messages'])[0]
-    await ctrl.act(a, parent_id=msg1_id, body='this is a reply')
+    await ctrl.act(a, parent_id=msg1_id, body='this is another message')
     await worker.run()

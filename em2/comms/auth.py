@@ -15,11 +15,11 @@ from .redis import RedisDNSMixin, RedisMethods
 class BaseAuthenticator(BaseServiceCls):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._head_request_timeout = self._settings.COMMS_HEAD_REQUEST_TIMEOUT
-        self._domain_timeout = self._settings.COMMS_DOMAIN_CACHE_TIMEOUT
-        self._platform_token_timeout = self._settings.COMMS_PLATFORM_TOKEN_TIMEOUT
-        self._past_ts_limit, self._future_ts_limit = self._settings.COMMS_AUTHENTICATION_TS_LENIENCY
-        self._token_length = self._settings.COMMS_PLATFORM_TOKEN_LENGTH
+        self._head_request_timeout = self.settings.COMMS_HEAD_REQUEST_TIMEOUT
+        self._domain_timeout = self.settings.COMMS_DOMAIN_CACHE_TIMEOUT
+        self._platform_token_timeout = self.settings.COMMS_PLATFORM_TOKEN_TIMEOUT
+        self._past_ts_limit, self._future_ts_limit = self.settings.COMMS_AUTHENTICATION_TS_LENIENCY
+        self._token_length = self.settings.COMMS_PLATFORM_TOKEN_LENGTH
 
     async def authenticate_platform(self, platform: str, timestamp: int, signature: str):
         """
