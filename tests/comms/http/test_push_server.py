@@ -1,5 +1,3 @@
-import time
-
 from arq.testing import RaiseWorker
 from em2 import Settings
 from em2.core import Action, Components, Controller, Verbs, perms
@@ -35,20 +33,36 @@ async def test_publish_conv(pusher):
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar', body='great body')
 
-    time.sleep(0.01)
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
     a = Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
-    new_conv_id = await ctrl.act(a)
-    assert new_conv_id != conv_id
-
-    class ReusePusherWorker(RaiseWorker):
-        async def shadow_factory(self):
-            return [pusher]
+    conv_id = await ctrl.act(a)  # conv id could have changed depending on milliseconds
 
     assert pusher.test_client.app['controller'].ds.data == {}
-    worker = ReusePusherWorker(settings=pusher._settings, batch=True, loop=pusher.loop)
+    worker = RaiseWorker(settings=pusher._settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
     await worker.run()
     data = pusher.test_client.app['controller'].ds.data
     assert len(data) == 1
-    assert data[0]['conv_id'] == new_conv_id
+    assert data[0]['conv_id'] == conv_id
+
+
+async def test_publish_update_conv(pusher):
+    ds = SimpleDataStore()
+    ctrl = Controller(ds, pusher=pusher)
+    conv_id = await ctrl.act(Action('sender@local.com', None, Verbs.ADD), subject='foo bar', body='great body')
+
+    a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
+    await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
+    conv_id = await ctrl.act(Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS))
+    a = Action('sender@local.com', conv_id, Verbs.ADD, Components.MESSAGES)
+
+    assert pusher.test_client.app['controller'].ds.data == {}
+    worker = RaiseWorker(settings=pusher._settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
+    await worker.run(reuse=True)
+    assert pusher.test_client.app['controller'].ds.data[0]['conv_id'] == conv_id
+
+    # conversation is now published, add another message
+
+    msg1_id = list(ctrl.ds.data[0]['messages'])[0]
+    await ctrl.act(a, parent_id=msg1_id, body='this is a reply')
+    await worker.run()

@@ -43,9 +43,9 @@ class SimplePusher(BasePusher):
             if ctrl != self.LOCAL:
                 await ctrl.act(new_action, data=prop_data)
 
-    async def push(self, action, event_id, data, timestamp):
+    async def push(self, action, event_id, data):
         new_action = Action(action.address, action.conv, action.verb, action.component,
-                            item=action.item, timestamp=timestamp, event_id=event_id)
+                            item=action.item, timestamp=action.timestamp, event_id=event_id)
         prop_data = deepcopy(data)
         for ctrl in set(self.remotes[action.conv].values()):
             if ctrl != self.LOCAL:

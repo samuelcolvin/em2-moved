@@ -145,7 +145,7 @@ class Controller:
             return
         push_data = self._subdict(data, 'pb')
         # FIXME what happens when pushing fails, perhaps save status on update
-        await self.pusher.push(action, event_id, push_data, action.timestamp)
+        await self.pusher.push(action, event_id, push_data)
 
     async def publish(self, action, **data):
         logger.debug('publishing %d, author: "%s"', action.conv, action.address)

@@ -47,7 +47,6 @@ ACT_SCHEMA = {
     'address': {'type': 'string', 'required': True, 'empty': False},
     'timestamp': {'type': 'datetime', 'required': True},
     'event_id': {'type': 'string', 'required': True, 'empty': False},
-    'timezone': {'type': 'string', 'required': False},
     'parent_event_id': {'type': 'string', 'required': False},
     'kwargs': {'type': 'dict', 'required': False},
 }
@@ -72,8 +71,14 @@ async def act(request):
     auth, platform = await _check_token(request)
 
     body_data = await request.read()
+
     try:
-        obj = encoding.decode(body_data)
+        timezone = pytz.timezone(request.headers.get('timezone', 'utc'))
+    except pytz.UnknownTimeZoneError as e:
+        raise HTTPBadRequestStr(e.args[0]) from e
+
+    try:
+        obj = encoding.decode(body_data, tz=timezone)
     except ValueError as e:
         raise HTTPBadRequestStr('Error Decoding msgpack: {}'.format(e)) from e
 
@@ -94,16 +99,13 @@ async def act(request):
     conversation = request.match_info['conv']
     component = request.match_info['component']
     verb = request.match_info['verb']
+    item = request.match_info['item'] or None
 
     timestamp = obj.pop('timestamp')
-    try:
-        timezone = pytz.timezone(obj.pop('timezone', 'utc'))
-    except pytz.UnknownTimeZoneError as e:
-        raise HTTPBadRequestStr(e.args[0]) from e
 
-    timestamp = timezone.localize(timestamp)
     kwargs = obj.pop('kwargs', {})
-    action = Action(address, conversation, verb, component, timestamp=timestamp, **obj)  # FIXME obj ?
+    action = Action(address, conversation, verb, component, item=item, timestamp=timestamp,
+                    event_id=obj['event_id'], parent_event_id=obj.get('parent_event_id'))
     controller = request.app['controller']
     try:
         response = await controller.act(action, **kwargs)

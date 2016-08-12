@@ -83,6 +83,7 @@ class Action(_Interaction):
 
     def calc_event_id(self):
         ts = self.timestamp and to_unix_ms(self.timestamp)
+        print('calc_event_id:', [ts, self.address, self.conv, self.verb, self.component, self.item])
         return hash_id(ts, self.address, self.conv, self.verb, self.component, self.item)
 
     async def get_conv_status(self):

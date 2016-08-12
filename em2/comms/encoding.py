@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from em2.utils import to_unix_ms, from_unix_ms
 import msgpack
@@ -15,15 +15,21 @@ def _encoder(obj):
     return obj
 
 
-def _object_hook(obj):
-    if _DT in obj and len(obj) == 1:
-        return from_unix_ms(obj[_DT])
-    return obj
+class ObjectHook:
+    def __init__(self, tz):
+        self._tz = tz
+
+    def __call__(self, obj):
+        if _DT in obj and len(obj) == 1:
+            dt = from_unix_ms(obj[_DT])
+            # TODO fix to support ptz dst timezones which don't work with replace()
+            return dt.replace(tzinfo=self._tz)
+        return obj
 
 
 def encode(data):
     return msgpack.packb(data, default=_encoder, use_bin_type=True)
 
 
-def decode(data):
-    return msgpack.unpackb(data, object_hook=_object_hook, encoding='utf8')
+def decode(data, tz=timezone.utc):
+    return msgpack.unpackb(data, object_hook=ObjectHook(tz), encoding='utf8')

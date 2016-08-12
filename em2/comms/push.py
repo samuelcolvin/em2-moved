@@ -13,6 +13,7 @@ from .redis import RedisDNSMixin, RedisMethods
 
 class BasePusher(BaseServiceCls):
     LOCAL = 'L'
+    B_LOCAL = LOCAL.encode()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -27,7 +28,7 @@ class BasePusher(BaseServiceCls):
     async def remove_domain(self, conv, domain):
         raise NotImplementedError()
 
-    async def push(self, action, event_id, data, timestamp):
+    async def push(self, action, event_id, data):
         raise NotImplementedError()
 
     async def publish(self, action, event_id, data):
@@ -135,13 +136,16 @@ class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
         remote_urls = [u for u in node_urls if u != self.LOCAL]
         await self._push_data(remote_urls, action_attrs, event_id, data=data)
 
-    @concurrent
     async def push(self, action, event_id, data):
-        raise NotImplementedError()
+        await self._push_concurrent(action.attrs, event_id, data)
+
+    @concurrent
+    async def _push_concurrent(self, action_attrs, event_id, data):
         async with await self.get_redis_conn() as redis:
-            node_urls = await redis.hgetall(self.plat_conv_prefix + action.conv)
-        remote_urls = [u for u in node_urls if u != self.LOCAL]
-        await self._push_data(remote_urls, action, event_id, data)
+            node_urls = await redis.hgetall(self.plat_conv_prefix + action_attrs['conv'].encode())
+        remote_urls = [u.decode() for u in node_urls.values() if u != self.B_LOCAL]
+        print('data:', data)
+        await self._push_data(remote_urls, action_attrs, event_id, **data)
 
     async def _push_data(self, urls, action_attrs, event_id, **kwargs):
         raise NotImplementedError
