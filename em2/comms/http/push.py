@@ -48,7 +48,7 @@ class HttpDNSPusher(AsyncRedisPusher):
         # TODO SMTP fallback
         raise NotImplementedError()
 
-    async def post(self, domain, path, data):
+    async def _post(self, domain, path, data):
         token = await self.authenticate(domain)
         headers = dict(Authorization=token, **JSON_HEADER)
         url = 'https://{}/{}'.format(domain, path)
@@ -66,7 +66,7 @@ class HttpDNSPusher(AsyncRedisPusher):
             'kwargs': kwargs,
         }
         post_data = encoding.encode(post_data)
-        cos = [self.post(domain, path, post_data) for domain in domains]
+        cos = [self._post(domain, path, post_data) for domain in domains]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 
@@ -79,7 +79,7 @@ class HttpDNSPusher(AsyncRedisPusher):
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",
             # the exception is fairly useless at giving specifics
-            raise ConnectionError('conn count connect to "{}"'.format(url)) from e
+            raise ConnectionError('cannot connect to "{}"'.format(url)) from e
         else:
             if r.status != 201:
                 raise FailedOutboundAuthentication('{} response {} != 201, response: {}'.format(url, r.status, body))

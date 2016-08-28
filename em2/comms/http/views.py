@@ -14,7 +14,7 @@ from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAu
 
 from .utils import HTTPBadRequestStr, HTTPForbiddenStr, get_ip
 
-# Note timestamp is in int here while it's a datetime as it's an int when used in the signature
+# Note timestamp is an int here while it's a datetime elsewhere as it's an int when used in the signature
 AUTHENTICATION_SCHEMA = {
     'platform': {'type': 'string', 'required': True},
     'timestamp': {'type': 'integer', 'required': True, 'min': 0},

@@ -31,7 +31,7 @@ def client(loop, test_client):
 class CustomTestClient(TestClient):
     def __init__(self, app, domain, protocol='http'):
         self.domain = domain
-        self.regex = re.compile(r'https://em2\.{}(/.*)'.format(self.domain))
+        self.regex = re.compile(r'^https://em2\.{}(/.*)'.format(self.domain))
         super().__init__(app, protocol)
 
     def request(self, method, path, *args, **kwargs):

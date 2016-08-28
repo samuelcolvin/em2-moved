@@ -19,7 +19,14 @@ class BasePusher(BaseServiceCls):
         super().__init__(*args, **kwargs)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
 
-    async def add_participant(self, conv, participant_addr):
+    async def participant_added(self, conv, participant_addr):
+        """
+        Modify internal reference to platforms when a new participant is added to the conversation. Participant's
+        platform may or may not be already included in the conversation.
+
+        :param conv: id of conversation
+        :param participant_addr: address of participant added
+        """
         raise NotImplementedError()
 
     async def save_nodes(self, conv, *addresses):
@@ -35,6 +42,9 @@ class BasePusher(BaseServiceCls):
         raise NotImplementedError()
 
     def get_domain(self, address):
+        """
+        Parse an address and return its domain.
+        """
         return address[address.index('@') + 1:]
 
     async def get_node(self, conv, domain, *addresses):
@@ -76,7 +86,7 @@ class NullPusher(BasePusher):  # pragma: no cover
     """
     Pusher with no functionality to connect to other platforms. Used for testing or trial purposes only.
     """
-    async def add_participant(self, conv, participant_addr):
+    async def participant_added(self, conv, participant_addr):
         pass
 
     async def save_nodes(self, conv, *addresses):
@@ -85,7 +95,7 @@ class NullPusher(BasePusher):  # pragma: no cover
     async def remove_domain(self, conv, domain):
         pass
 
-    async def push(self, action, event_id, data, timestamp):
+    async def push(self, action, event_id, data):
         pass
 
     async def publish(self, action, event_id, data):
@@ -101,7 +111,7 @@ class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
     auth_token_prefix = b'ak:'
 
     @concurrent
-    async def add_participant(self, conv, participant_addr):
+    async def participant_added(self, conv, participant_addr):
         domain = self.get_domain(participant_addr)
         hash_key = self.plat_conv_prefix + conv.encode()
         b_domain = domain.encode()

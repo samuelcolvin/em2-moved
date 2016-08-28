@@ -22,7 +22,7 @@ class SimplePusher(BasePusher):
         self.remotes = {}
         self.network = Network()
 
-    async def add_participant(self, conv, participant_addr):
+    async def participant_added(self, conv, participant_addr):
         d = self.get_domain(participant_addr)
         if d not in self.remotes[conv]:
             self.remotes[conv][d] = await self.get_node(conv, d, participant_addr)
