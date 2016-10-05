@@ -4,8 +4,6 @@ import pytest
 from em2 import Settings
 from em2.ds.pg.utils import pg_connect_kwargs
 
-pytest_plugins = 'tests.ds.pg.plugin'
-
 
 @pytest.yield_fixture
 def pg_conn():

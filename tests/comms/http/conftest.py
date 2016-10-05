@@ -10,8 +10,6 @@ from tests.fixture_classes import SimpleAuthenticator, SimpleDataStore
 from tests.fixture_classes.authenicator import get_private_key
 from tests.fixture_classes.push import HttpMockedDNSPusher
 
-pytest_plugins = 'aiohttp.pytest_plugin'
-
 
 def _create_app(loop):
     ds = SimpleDataStore()
@@ -29,16 +27,16 @@ def client(loop, test_client):
 
 
 class CustomTestClient(TestClient):
-    def __init__(self, app, domain, protocol='http'):
+    def __init__(self, app, domain):
         self.domain = domain
         self.regex = re.compile(r'^https://em2\.{}(/.*)'.format(self.domain))
-        super().__init__(app, protocol)
+        super().__init__(app)
 
     def request(self, method, path, *args, **kwargs):
         m = self.regex.match(path)
         assert m, (path, self.regex)
         sub_path = m.groups()[0]
-        return self._session.request(method, self._root + sub_path, *args, **kwargs)
+        return self._session.request(method, self._server._root + sub_path, *args, **kwargs)
 
 
 class DoubleMockPusher(HttpMockedDNSPusher):

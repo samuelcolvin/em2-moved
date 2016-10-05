@@ -25,4 +25,4 @@ script:
 
 after_success:
 - coverage combine
-- codecov
+- bash <(curl -s https://codecov.io/bash)

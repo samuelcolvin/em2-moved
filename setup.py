@@ -13,7 +13,7 @@ pg_extra = [
 ]
 
 http_extras = [
-    'aiohttp>=0.22.4',
+    'aiohttp>=1.0.3',
     'cchardet>=1.0.0',
 ]
 
@@ -44,7 +44,7 @@ setup(
     zip_safe=True,
     install_requires=[
         'aiodns>=1.0.1',
-        'Cerberus>=0.9.2',
+        'Cerberus==0.9.2',  # TODO work with newer versions
         'msgpack-python>=0.4.8',
         'pycrypto==2.6.1',
         'pytz>=2016.4',
