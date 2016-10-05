@@ -47,7 +47,15 @@ class BasePusher(BaseServiceCls):
         """
         return address[address.index('@') + 1:]
 
-    async def get_node(self, conv, domain, *addresses):
+    async def get_node(self, conv, domain, address):
+        """
+        Find the node for a given participant in a conversation.
+
+        :param conv: conversation id
+        :param domain: domain to
+        :param address:
+        :return:
+        """
         raise NotImplementedError()
 
     async def get_nodes(self, conv, *addresses):
@@ -55,7 +63,7 @@ class BasePusher(BaseServiceCls):
         for address in addresses:
             d = self.get_domain(address)
             if d not in domains:
-                domains[d] = await self.get_node(conv, d, *addresses)
+                domains[d] = await self.get_node(conv, d, address)
         return domains
 
     def get_auth_data(self):
