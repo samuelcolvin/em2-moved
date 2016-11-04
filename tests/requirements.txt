@@ -1,8 +1,11 @@
 pytest-aiohttp
 coverage
 flake8
+pyflakes
 isort
 pep8
 pytest
+pytest-aiohttp
 pytest-cov
+pytest-isort
 pytest-sugar

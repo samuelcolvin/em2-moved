@@ -92,3 +92,18 @@ class TestCtx(ConnectionContextManager):
         self.tr = None
         self._engine.release(self.conn)
         self.conn = None
+
+
+@pytest.yield_fixture
+def pg_conn():
+    settings = Settings(PG_DATABASE='test_prepare_database')
+    conn = psycopg2.connect(**pg_connect_kwargs(settings))
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute('DROP DATABASE IF EXISTS {}'.format(settings.PG_DATABASE))
+
+    yield settings, cur
+
+    cur.execute('DROP DATABASE IF EXISTS {}'.format(settings.PG_DATABASE))
+    cur.close()
+    conn.close()

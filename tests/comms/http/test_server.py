@@ -65,7 +65,7 @@ async def test_missing_field(client):
     }
     r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=AUTH_HEADER)
     assert r.status == 400
-    assert await r.text() == '{"event_id": "required field"}\n'
+    assert await r.text() == '{"event_id": ["required field"]}\n'
 
 
 async def test_missing_conversation(client):
@@ -127,7 +127,7 @@ async def test_authenticate_wrong_fields(client):
     }
     r = await client.post('/authenticate', data=encoding.encode(data))
     assert r.status == 400
-    assert await r.text() == '{"signature": "required field"}\n'
+    assert await r.text() == '{"signature": ["required field"]}\n'
 
 
 async def test_authenticate_failed(client):

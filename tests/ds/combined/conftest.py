@@ -1,10 +1,8 @@
 import pytest
 
-from tests.ds.pg.plugin import settings as pg_settings
-from tests.ds.pg.plugin import TestPostgresDataStore
+from tests.ds.conftest import settings as pg_settings
+from tests.ds.conftest import TestPostgresDataStore
 from tests.fixture_classes import SimpleDataStore
-
-pytest_plugins = 'tests.ds.pg.plugin'
 
 datastore_options = [
     'SimpleDataStore',

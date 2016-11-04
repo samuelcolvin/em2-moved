@@ -1,8 +1,8 @@
 import asyncio
 
 import aiohttp
-from em2.comms import encoding
 
+from em2.comms import encoding
 from em2.comms.push import AsyncRedisPusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
 

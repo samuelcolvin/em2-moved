@@ -29,14 +29,14 @@ def client(loop, test_client):
 class CustomTestClient(TestClient):
     def __init__(self, app, domain):
         self.domain = domain
-        self.regex = re.compile(r'^https://em2\.{}(/.*)'.format(self.domain))
+        self.regex = re.compile(r'https://em2\.{}(/.*)'.format(self.domain))
         super().__init__(app)
 
-    def request(self, method, path, *args, **kwargs):
+    def make_url(self, path):
         m = self.regex.match(path)
         assert m, (path, self.regex)
         sub_path = m.groups()[0]
-        return self._session.request(method, self._server._root + sub_path, *args, **kwargs)
+        return self._server.make_url(sub_path)
 
 
 class DoubleMockPusher(HttpMockedDNSPusher):
@@ -75,5 +75,8 @@ def pusher(loop):
 
     yield _pusher
 
-    _pusher.test_client.close()
-    loop.run_until_complete(_pusher.close())
+    async def close():
+        await _pusher.test_client.close()
+        await _pusher.close()
+
+    loop.run_until_complete(close())

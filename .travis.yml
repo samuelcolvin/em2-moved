@@ -21,7 +21,8 @@ install:
 script:
 - flake8 em2/ tests/
 - ./tests/isort_test.sh
-- py.test --cov=em2
+- pytest em2 --isort -p no:sugar -q --cache-clear
+- py.test --cov=em2 --isort
 
 after_success:
 - coverage combine

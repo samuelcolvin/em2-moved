@@ -1,11 +1,11 @@
 import base64
 
+from arq import concurrent
+from arq.jobs import DatetimeJob
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-from arq import concurrent
-from arq.jobs import DatetimeJob
 from em2.utils import BaseServiceCls, now_unix_secs
 
 from .redis import RedisDNSMixin, RedisMethods

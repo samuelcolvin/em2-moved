@@ -77,8 +77,8 @@ bad_data = [
     (
         'missing_values',
         {'creator': 'testing@example.com'},
-        '{"participants": "required field", "ref": "required field", "status": "required field", '
-        '"subject": "required field"}',
+        '{"participants": ["required field"], "ref": ["required field"], "status": ["required field"], '
+        '"subject": ["required field"]}',
     ),
     (
         'None',
@@ -93,12 +93,12 @@ bad_data = [
     (
         'extra_key',
         modified_data(foo='bar'),
-        '{"foo": "unknown field"}',
+        '{"foo": ["unknown field"]}',
     ),
     (
         'wrong_type',
         modified_data(creator=None),
-        '{"creator": ["null value not allowed", "must be of string type"]}',
+        '{"creator": ["null value not allowed"]}',
     ),
     (
         'bad_timestamp',
@@ -111,12 +111,12 @@ bad_data = [
                 'timestamp': 123,
             }
         ]),
-        '{"messages": {"0": {"timestamp": "must be of datetime type"}}}',
+        '{"messages": [{"0": [{"timestamp": ["must be of datetime type"]}]}]}',
     ),
     (
         'list_extra_item',
         modified_data(participants=[('testing@example.com', 'full'), ('receiver@remote.com', 'write', 3)]),
-        '{"participants": {"1": "max length is 2"}}',
+        '{"participants": [{"1": ["max length is 2"]}]}',
     ),
     (
         'bad_first_parent',
@@ -129,7 +129,7 @@ bad_data = [
                 'timestamp': 123,
             }
         ]),
-        '{"messages": {"0": {"timestamp": "must be of datetime type"}}}',
+        '{"messages": [{"0": [{"timestamp": ["must be of datetime type"]}]}]}',
     ),
 ]
 
@@ -140,7 +140,7 @@ async def test_publish_misshaped_data(controller, data, exc):
     a.event_id = a.calc_event_id()
     with pytest.raises(BadDataException) as excinfo:
         await controller.act(a, data=data)
-    assert excinfo.value.args[0] == exc
+    assert exc == excinfo.value.args[0]
     assert len(controller.ds.data) == 0
 
 

@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 
-from em2.utils import to_unix_ms, from_unix_ms
 import msgpack
+
+from em2.utils import from_unix_ms, to_unix_ms
 
 # unicode clock is small to encode and should be fairly unlikely to clash with another dict key
 _DT = '⌚'

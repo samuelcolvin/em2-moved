@@ -7,19 +7,19 @@ em2
 """
 
 pg_extra = [
-    'SQLAlchemy>=1.0.12',
-    'aiopg>=0.10.0',
+    'SQLAlchemy>=1.1.3',
+    'aiopg>=0.12.0',
     'psycopg2>=2.6.2',
 ]
 
 http_extras = [
-    'aiohttp>=1.0.3',
-    'cchardet>=1.0.0',
+    'aiohttp>=1.1.1',
+    'cchardet>=1.1.1',
 ]
 
 redis_extras = [
-    'aioredis>=0.2.8',
-    'arq>=0.0.5',
+    'aioredis>=0.2.9',
+    'arq>=0.0.6',
 ]
 
 # avoid loading the package before requirements are installed:
@@ -43,11 +43,11 @@ setup(
     packages=['em2'],
     zip_safe=True,
     install_requires=[
-        'aiodns>=1.0.1',
-        'Cerberus==0.9.2',  # TODO work with newer versions
+        'aiodns>=1.1.1',
+        'Cerberus>=1.0.1',
         'msgpack-python>=0.4.8',
         'pycrypto==2.6.1',
-        'pytz>=2016.4',
+        'pytz>=2016.7',
     ],
     extras_require={
         'postgres': pg_extra,
