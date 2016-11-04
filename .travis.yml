@@ -10,11 +10,11 @@ services:
 - redis-server
 
 python:
-- "3.5"
+- '3.5'
+- '3.6-dev'
+- 'nightly'
 
 install:
-  # while arq is changing a lot, install it straight from commit
-- pip install git+git://github.com/samuelcolvin/arq.git@ef8ea131a25bf2daf5a2f14b7cdb126280970d65
 - pip install -U -e .[all]
 - pip install -U -r tests/requirements.txt
 
