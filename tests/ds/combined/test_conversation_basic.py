@@ -2,6 +2,7 @@ import datetime
 
 from em2.core import Action, Components, Controller, ConversationDataStore, DataStore, Verbs, perms
 
+
 async def test_datastore_type(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
     assert isinstance(ds, DataStore)

@@ -66,7 +66,7 @@ def test_prepare_database(pg_conn):
         retrieval = Retrieval('testing@example.com', verb=RVerbs.LIST)
         return len(loop.run_until_complete(_ctrl.retrieve(retrieval)))
 
-    assert prepare_database(settings, skip_existing=True) is False
+    assert prepare_database(settings, delete_existing=False) is True
 
     cur.execute('SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=%s)', (settings.PG_DATABASE,))
     assert cur.fetchone()[0] is True
@@ -78,7 +78,7 @@ def test_prepare_database(pg_conn):
     assert count_convs(ctrl) == 1
     loop.run_until_complete(ds.finish())
 
-    assert prepare_database(settings, skip_existing=True) is True
+    assert prepare_database(settings, delete_existing=False) is False
 
     # check conversation still exists as we haven't recreated the database
     ds = PostgresDataStore(settings, loop)
@@ -86,7 +86,7 @@ def test_prepare_database(pg_conn):
     assert count_convs(Controller(ds)) == 1
     loop.run_until_complete(ds.finish())
 
-    assert prepare_database(settings, skip_existing=False) is None
+    assert prepare_database(settings, delete_existing=True) is True
 
     # check conversation doesn't exists as we have recreated the database
     ds = PostgresDataStore(settings, loop)

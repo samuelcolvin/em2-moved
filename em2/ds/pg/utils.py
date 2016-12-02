@@ -26,22 +26,36 @@ def get_dsn(settings: Settings):
     return str(URL(**kwargs))
 
 
-def prepare_database(settings: Settings, skip_existing=False):
+def prepare_database(settings: Settings, *, delete_existing: bool) -> bool:
+    """
+    (Re)create a fresh database and run migrations.
+
+    :param settings: settings to use
+    :param delete_existing: whether or not to drop an existing database if it exists
+    :return: whether or not a database has been (re)created
+    """
     conn = psycopg2.connect(**pg_connect_kwargs(settings))
     conn.autocommit = True
     cur = conn.cursor()
-    if skip_existing:
-        args = settings.PG_DATABASE,
-        cur.execute('SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=%s)', args)
-        if cur.fetchone()[0]:
-            return True
-    cur.execute('DROP DATABASE IF EXISTS {}'.format(settings.PG_DATABASE))
-    cur.execute('CREATE DATABASE {}'.format(settings.PG_DATABASE))
+    cur.execute('SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=%s)', (settings.PG_DATABASE,))
+    already_exists = bool(cur.fetchone()[0])
+    if already_exists:
+        if not delete_existing:
+            print('database "{s.PG_DATABASE}" already exists, skipping'.format(s=settings))
+            return False
+        else:
+            print('dropping database "{s.PG_DATABASE}" as it already exists...'.format(s=settings))
+            cur.execute('DROP DATABASE {s.PG_DATABASE}'.format(s=settings))
+    else:
+        print('database "{s.PG_DATABASE}" does not yet exist'.format(s=settings))
+
+    print('creating database "{s.PG_DATABASE}"...'.format(s=settings))
+    cur.execute('CREATE DATABASE {s.PG_DATABASE}'.format(s=settings))
     cur.close()
     conn.close()
 
     engine = create_engine(get_dsn(settings))
+    print('creating tables from model definition...')
     Base.metadata.create_all(engine)
     engine.dispose()
-    if skip_existing:
-        return False
+    return True

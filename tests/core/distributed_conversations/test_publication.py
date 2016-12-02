@@ -26,6 +26,7 @@ correct_data = {
 conv_id = 'dddfbda858c83c167e3366de5b473d62189c32dfc9a5049f15b79fd91ef1eb81'
 timestamp = datetime.datetime(2016, 1, 2)
 
+
 async def test_publish_simple_conversation(controller):
     a = Action('testing@example.com', conv_id, Verbs.ADD, Components.CONVERSATIONS, timestamp=timestamp)
     a.event_id = a.calc_event_id()
@@ -72,6 +73,7 @@ def modified_data(**kwargs):
     d2 = deepcopy(correct_data)
     d2.update(kwargs)
     return d2
+
 
 bad_data = [
     (

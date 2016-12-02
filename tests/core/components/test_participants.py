@@ -5,6 +5,7 @@ import pytest
 from em2.core import Action, Components, Verbs, perms
 from em2.exceptions import InsufficientPermissions
 
+
 async def test_extra_participant(conversation):
     ds, ctrl, conv_id = await conversation()
     assert len(ds.data) == 1

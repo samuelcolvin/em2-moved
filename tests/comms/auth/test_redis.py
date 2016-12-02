@@ -82,6 +82,7 @@ async def test_check_domain_platform_mx_match(redis_auth):
     async with auth._redis_pool.get() as redis:
         await redis.get('pl:whatever.com') == 'em2.platform.whatever.com'
 
+
 async def test_mx_lookup(redis_auth):
     auth = await redis_auth()
     r = auth.resolver

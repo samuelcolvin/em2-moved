@@ -233,5 +233,6 @@ class Participants(_Component):
             permissions=permissions,
         )
 
+
 # shortcut
 perms = Participants.Permissions

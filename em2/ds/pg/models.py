@@ -31,6 +31,7 @@ class Conversation(Base):
         UniqueConstraint('conv_id', name='_conv_id'),
     )
 
+
 sa_conversations = Conversation.__table__
 
 
@@ -53,6 +54,7 @@ class Event(Base):
     verb = Column(VerbEnum.sa_enum(), nullable=False)
     data = Column(JSONB)  # TODO (maybe) possibly we only want "value" so this could be replaced by a text field
 
+
 sa_events = Event.__table__
 
 
@@ -72,6 +74,7 @@ class Participant(Base):
     __table_args__ = (
         UniqueConstraint('conversation', 'address', name='_participant_email'),
     )
+
 
 sa_participants = Participant.__table__
 
@@ -96,6 +99,7 @@ class Message(MsgCmt, Base):
     conversation = Column(Integer, ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False)
     parent = Column(String(40), ForeignKey('messages.id', ondelete='CASCADE'))
     locked = Column(Boolean, server_default=sql.expression.false())
+
 
 sa_messages = Message.__table__
 

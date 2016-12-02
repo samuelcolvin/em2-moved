@@ -8,6 +8,7 @@ from em2.core import Action, Components, Controller, Verbs, perms
 from em2.utils import to_unix_ms
 from tests.fixture_classes import SimpleDataStore, SimplePusher
 
+
 async def test_create_basic_conversation(controller):
     action = Action('sender@example.com', None, Verbs.ADD)
     await controller.act(action, subject='foo bar')

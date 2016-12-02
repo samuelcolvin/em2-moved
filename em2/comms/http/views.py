@@ -21,6 +21,7 @@ AUTHENTICATION_SCHEMA = {
     'signature': {'type': 'string', 'required': True},
 }
 
+
 async def authenticate(request):
     logger.info('authentication request from %s', get_ip(request))
 

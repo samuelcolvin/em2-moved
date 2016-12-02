@@ -19,6 +19,7 @@ install:
 - pip install -U -r tests/requirements.txt
 
 script:
+- python setup.py check -rms
 - flake8 em2/ tests/
 - pytest em2 --isort -p no:sugar -q --cache-clear
 - py.test --cov=em2 --isort

@@ -6,6 +6,7 @@ import pytest
 from em2.core import Action, Components, Verbs, perms
 from em2.exceptions import ComponentLocked, ComponentNotLocked, InsufficientPermissions
 
+
 async def test_create_conversation_with_message(conversation):
     ds, ctrl, conv_id = await conversation()
     assert len(ds.data) == 1
@@ -141,6 +142,7 @@ async def test_wrong_unlock(conversation):
     with pytest.raises(ComponentNotLocked) as excinfo:
         await ctrl.act(a)
     assert 'ComponentNotLocked: messages with id = {} not locked'.format(msg1_id) in str(excinfo)
+
 
 async def test_add_message_missing_perms(conversation):
     ds, ctrl, conv_id = await conversation()

@@ -5,6 +5,7 @@ from em2.exceptions import ComponentNotFound
 
 from .test_conversations import create_conv
 
+
 async def test_add_component_message(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:

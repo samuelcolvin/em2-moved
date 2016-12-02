@@ -8,6 +8,7 @@ from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE, SimpleAu
 
 TS = 2461449600
 
+
 async def test_key_doesnt_exists():
     auth = SimpleAuthenticator()
     with pytest.raises(PlatformForbidden):
@@ -28,6 +29,7 @@ async def test_key_does_exists():
     assert len(rand) == 64
 
     await auth.valid_platform_token(platform_key)
+
 
 async def test_key_verification():
     auth = SimpleAuthenticator()
