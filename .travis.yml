@@ -3,7 +3,7 @@ language: python
 cache: pip
 
 addons:
-  postgresql: "9.4"
+  postgresql: '9.4'
 
 services:
 - postgresql
@@ -21,8 +21,8 @@ install:
 script:
 - python setup.py check -rms
 - flake8 em2/ tests/
-- pytest em2 --isort -p no:sugar -q --cache-clear
-- py.test --cov=em2 --isort
+- pytest em2 -p no:sugar -q --cache-clear
+- pytest --cov=em2
 
 after_success:
 - coverage combine
