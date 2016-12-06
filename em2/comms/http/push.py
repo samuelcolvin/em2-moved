@@ -31,9 +31,7 @@ class HttpDNSPusher(AsyncRedisPusher):
             if node:
                 logger.info('node found in cashe for %s', domain)
                 return node
-            results = await self.resolver.query(domain, 'MX')
-            results = [(r.priority, r.host) for r in results]
-            results.sort()
+            results = await self.mx_query(domain)
             for _, host in results:
                 node = None
                 if host == self.settings.LOCAL_DOMAIN:

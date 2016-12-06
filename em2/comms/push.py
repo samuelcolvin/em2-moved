@@ -165,6 +165,7 @@ class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
         async with await self.get_redis_conn() as redis:
             node_urls = await redis.hgetall(self.plat_conv_prefix + action_attrs['conv'].encode())
         remote_urls = [u.decode() for u in node_urls.values() if u != self.B_LOCAL]
+        logger.info('pushing %.6s to %d urls', action_attrs['conv'], len(remote_urls))
         await self._push_data(remote_urls, action_attrs, event_id, **data)
 
     async def _push_data(self, urls, action_attrs, event_id, **kwargs):
