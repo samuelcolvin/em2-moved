@@ -6,7 +6,6 @@ from em2.core import Components, Conversations, perms
 from em2.exceptions import ComponentNotFound
 from tests.conftest import datetime_tz
 
-
 async def test_create_conversation(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:

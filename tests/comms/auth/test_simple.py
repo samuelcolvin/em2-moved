@@ -5,7 +5,6 @@ import pytest
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE, SimpleAuthenticator
 
-
 TS = 2461449600
 
 

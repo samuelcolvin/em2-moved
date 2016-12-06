@@ -1,7 +1,6 @@
 from em2.core import Action, Components, Controller, Retrieval, RVerbs, Verbs
 from tests.fixture_classes import SimpleDataStore
 
-
 async def test_basic_conversation():
     ds = SimpleDataStore()
     controller = Controller(ds)

@@ -1,5 +1,6 @@
 import logging
 
+from em2.exceptions import ComponentNotFound, VerbNotFound
 from em2.utils import Enum, to_unix_ms
 
 from .components import Components, hash_id
@@ -55,7 +56,7 @@ class Action(_Interaction):
         """
         :param address: address of person performing action
         :param conversation: id of the conversation being acted upon
-        :param verb: what is being done, see Verb
+        :param verb: what is being done, see Verbs
         :param component: what it's being done to, see Components
         :param item: id of the item being acted upon
         :param timestamp: remote only, datetime action originally occurred
@@ -65,8 +66,15 @@ class Action(_Interaction):
         self.perm = None
         self.address = address
         self.conv = conversation
-        self.verb = verb
-        self.component = component
+        try:
+            self.verb = Verbs(verb)
+        except ValueError as e:
+            raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(verb, Verbs.members_display)) from e
+        try:
+            self.component = Components(component)
+        except ValueError as e:
+            raise ComponentNotFound('{} is not a valid component, '
+                                    'components: {}'.format(component, Components.members_display)) from e
         self.item = item
         self.timestamp = timestamp
         self.event_id = event_id

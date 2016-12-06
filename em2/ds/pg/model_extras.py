@@ -1,12 +1,10 @@
 from sqlalchemy import Enum as _SAEnum
 from sqlalchemy import DateTime
 
-from em2.utils import Enum as _EM2Enum
+from em2.utils import Enum
 
 TIMESTAMPTZ = DateTime(timezone=True)
 
 
-class SAEnum(_EM2Enum):
-    @classmethod
-    def sa_enum(cls):
-        return _SAEnum(*cls.__values__, name=cls.__name__.lower())
+def sa_enum(enum: Enum):
+    return _SAEnum(*enum.members_set, name=enum.__name__.lower())

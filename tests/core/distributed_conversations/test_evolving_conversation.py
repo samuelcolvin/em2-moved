@@ -4,7 +4,6 @@ from em2.core import Action, Components, Verbs, perms
 from em2.exceptions import BadDataException
 from tests.conftest import datetime_tz
 
-
 async def test_publish_reply(two_controllers):
     ctrl1, ctrl2, conv_id = await two_controllers()
 

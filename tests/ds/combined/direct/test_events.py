@@ -5,7 +5,6 @@ from em2.exceptions import ConversationNotFound, EventNotFound
 
 from .test_conversations import create_conv
 
-
 async def test_save_event(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
     async with ds.connection() as conn:

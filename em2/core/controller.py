@@ -36,8 +36,6 @@ class Controller:
         :param kwargs: extra key word arguments to pass to the method with action
         :return: result of method associated with verb
         """
-        if Verbs.get_attr(action.verb) is None:
-            raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(action.verb, Verbs.__values__))
 
         if action.is_remote:
             if action.event_id != action.calc_event_id():
@@ -82,9 +80,6 @@ class Controller:
     def _get_function(self, inter, enum):
         component_cls = self._get_component(inter.component)
 
-        if enum.get_attr(inter.verb) is None:
-            raise VerbNotFound('{} is not a valid verb, verbs: {}'.format(inter.verb, enum.__values__))
-
         for func_name in self._function_names(inter.verb, inter.is_remote):
             func = getattr(component_cls, func_name, None)
             if func:
@@ -93,12 +88,9 @@ class Controller:
 
     def _get_component(self, component_name):
         if component_name == Components.CONVERSATIONS:
-            component_cls = self.conversations
+            return self.conversations
         else:
-            component_cls = self.components.get(component_name)
-            if component_cls is None:
-                raise ComponentNotFound('{} is not a valid component'.format(component_name))
-        return component_cls
+            return self.components[component_name]
 
     @staticmethod
     def _function_names(verb, is_remote):
