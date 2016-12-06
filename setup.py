@@ -8,12 +8,12 @@ em2
 
 pg_extra = [
     'SQLAlchemy>=1.1.3',
-    'aiopg>=0.12.0',
+    'aiopg>=0.13.0',
     'psycopg2>=2.6.2',
 ]
 
 http_extras = [
-    'aiohttp>=1.1.1',
+    'aiohttp>=1.1.6',
     'cchardet>=1.1.1',
 ]
 
@@ -47,7 +47,7 @@ setup(
         'Cerberus>=1.0.1',
         'msgpack-python>=0.4.8',
         'pycrypto==2.6.1',
-        'pytz>=2016.7',
+        'pytz>=2016.10',
     ],
     extras_require={
         'postgres': pg_extra,
