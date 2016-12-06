@@ -1,7 +1,7 @@
 import base64
+import logging
 
 from arq import concurrent
-from arq.jobs import DatetimeJob
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
@@ -10,6 +10,8 @@ from em2.utils import BaseServiceCls, now_unix_secs
 
 from .redis import RedisDNSMixin, RedisMethods
 
+logger = logging.getLogger('em2.push')
+
 
 class BasePusher(BaseServiceCls):
     LOCAL = 'L'
@@ -17,6 +19,7 @@ class BasePusher(BaseServiceCls):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
 
     async def participant_added(self, conv, participant_addr):
@@ -114,7 +117,6 @@ class NullPusher(BasePusher):  # pragma: no cover
 
 
 class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
-    job_class = DatetimeJob
     plat_conv_prefix = b'pc:'
     auth_token_prefix = b'ak:'
 
@@ -149,9 +151,10 @@ class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
     async def _publish_concurrent(self, action_attrs, event_id, data):
         from em2.core import Components
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
-        domain_lookup = await self.save_nodes_direct(action_attrs['conv'], *addresses)
+        domain_lookup = await self.save_nodes__direct(action_attrs['conv'], *addresses)
         node_urls = domain_lookup.values()
         remote_urls = [u for u in node_urls if u != self.LOCAL]
+        logger.info('publishing %.6s to %d urls', action_attrs['conv'], len(remote_urls))
         await self._push_data(remote_urls, action_attrs, event_id, data=data)
 
     async def push(self, action, event_id, data):
@@ -168,6 +171,7 @@ class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
         raise NotImplementedError
 
     async def authenticate(self, domain: str) -> str:
+        logger.info('authenticating with %s', domain)
         token_key = self.auth_token_prefix + domain.encode()
         async with await self.get_redis_conn() as redis:
             token = await redis.get(token_key)

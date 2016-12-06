@@ -1,8 +1,11 @@
 import aiodns
 from arq import Actor
+from arq.jobs import DatetimeJob
 
 
 class RedisDNSMixin(Actor):
+    job_class = DatetimeJob
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._resolver = None

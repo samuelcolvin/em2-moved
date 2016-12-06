@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import aiohttp
 
@@ -7,6 +8,8 @@ from em2.comms.push import AsyncRedisPusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
 
 JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
+
+logger = logging.getLogger('em2.push.http')
 
 
 class HttpDNSPusher(AsyncRedisPusher):
@@ -17,6 +20,7 @@ class HttpDNSPusher(AsyncRedisPusher):
     @property
     def session(self):
         if not self._session:
+            logger.info('creating http session')
             self._session = aiohttp.ClientSession(loop=self.loop)
         return self._session
 
@@ -25,6 +29,7 @@ class HttpDNSPusher(AsyncRedisPusher):
         async with await self.get_redis_conn() as redis:
             node = await redis.get(cache_key)
             if node:
+                logger.info('node found in cashe for %s', domain)
                 return node
             results = await self.resolver.query(domain, 'MX')
             results = [(r.priority, r.host) for r in results]
@@ -43,12 +48,15 @@ class HttpDNSPusher(AsyncRedisPusher):
                         # TODO query host to find associated node
                         node = host
                 if node:
+                    logger.info('em2 node found for %s', domain)
                     await redis.setex(cache_key, self.settings.COMMS_DOMAIN_CACHE_TIMEOUT, host.encode())
                     return node
         # TODO SMTP fallback
+        logger.info('no em2 node found for %s, falling back', domain)
         raise NotImplementedError()
 
     async def _post(self, domain, path, data):
+        logger.info('posting to %s > %s', domain, path)
         token = await self.authenticate(domain)
         headers = dict(Authorization=token, **JSON_HEADER)
         url = 'https://{}/{}'.format(domain, path)
@@ -88,5 +96,6 @@ class HttpDNSPusher(AsyncRedisPusher):
 
     async def close(self):
         if self._session:
+            logger.warning('closing http sessoin')
             await self._session.close()
         await super().close()

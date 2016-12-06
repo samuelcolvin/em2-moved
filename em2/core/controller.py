@@ -47,8 +47,7 @@ class Controller:
 
         func = self._get_function(a)
         self._check_arguments(func, 'action', kwargs)
-        logger.info('%s action on %.6s, author: "%s", action: %s.%s %s',
-                    a.loc_rem, a.conv or '-', a.address, a.component, a.verb, a.item or '')
+        logger.info('%s action by "%s" %.6s > %s > %s', a.loc_rem, a.address, a.conv or '-', a.component, a.verb)
 
         async with self.ds.connection() as conn:
             if a.known_conversation:
@@ -69,8 +68,7 @@ class Controller:
         func = self._get_function(r)
 
         self._check_arguments(func, 'retrieval', kwargs)
-        logger.info('%s retrieval on %.6s..., author: "%s", action: %s.%s',
-                    r.loc_rem, r.conv, r.address, r.component, r.verb)
+        logger.info('%s retrieval by "%s" %.6s > %s > %s', r.loc_rem, r.address, r.conv, r.component, r.verb)
 
         async with self.ds.connection() as conn:
             if r.known_conversation:
@@ -129,8 +127,6 @@ class Controller:
         :param a: Action instance
         :param data: extra information to either be saved (s_*), pushed (p_*) or both (b_*)
         """
-        logger.info('event on %.6s..., author: "%s", action: "%s", component: %s %s',
-                    a.conv, a.address, a.verb, a.component, a.item)
         save_data = self._subdict(data, 'sb')
         event_id = a.calc_event_id()
         await a.cds.save_event(event_id, a, **save_data)

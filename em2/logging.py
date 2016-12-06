@@ -5,10 +5,10 @@ import logging.config
 def prepare_log_config(log_level: str) -> dict:
     return {
         'version': 1,
-        'disable_existing_loggers': True,
+        'disable_existing_loggers': False,
         'formatters': {
             'default': {
-                'format': '%(name)10s %(asctime)s: %(message)s',
+                'format': '%(name)10s %(asctime)s| %(message)s',
                 'datefmt': '%H:%M:%S',
             },
         },
