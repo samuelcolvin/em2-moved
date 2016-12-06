@@ -3,14 +3,11 @@ Abstract base for data storage in em2.
 
 Database back-ends for em2 should define a child class for DataStore which implements all "NotImplemented" methods.
 """
-import logging
 from copy import deepcopy
 
 from em2.utils import BaseServiceCls
 
 from .components import Components
-
-logger = logging.getLogger('em2')
 
 
 class DataStore(BaseServiceCls):

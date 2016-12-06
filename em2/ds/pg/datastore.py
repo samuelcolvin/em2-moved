@@ -1,3 +1,4 @@
+import logging
 from aiopg.sa.engine import _create_engine
 from sqlalchemy import column, join, select
 
@@ -6,6 +7,9 @@ from em2.exceptions import ComponentNotFound, ConversationNotFound, Em2Exception
 
 from .models import sa_conversations, sa_events, sa_messages, sa_participants
 from .utils import get_dsn
+
+logger = logging.getLogger('em2.ds.pg')
+
 
 sa_component_lookup = {
     Components.CONVERSATIONS: sa_conversations,
@@ -24,9 +28,11 @@ class PostgresDataStore(DataStore):
     async def create_engine(self, **kwargs):
         if self.engine is not None:
             raise Em2Exception('postgres engine already initialised')
+        logger.info('creating postgres data store connection pool')
         self.engine = await _create_engine(get_dsn(self.settings), loop=self.loop, **kwargs)
 
     async def create_conversation(self, conn, **kwargs):
+        logger.info('creating conversation %s', kwargs['conv_id'])
         # key word arguments to create_conversation exactly match the db.
         return await conn.execute(sa_conversations.insert().values(**kwargs))
 
@@ -51,7 +57,7 @@ class PostgresDataStore(DataStore):
         return ConnectionContextManager(self.engine)
 
     async def finish(self):
-        print('closing postgres data store connection pool')  # TODO logging
+        logger.warning('closing postgres data store connection pool')
         self.engine.close()
         await self.engine.wait_closed()
         self.engine = None

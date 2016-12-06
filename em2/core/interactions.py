@@ -36,6 +36,10 @@ class _Interaction:
         raise NotImplementedError
 
     @property
+    def loc_rem(self):
+        return 'remote' if self.is_remote else 'local'
+
+    @property
     def attrs(self):
         return {a: getattr(self, a) for a in self._attr_names}
 

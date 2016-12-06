@@ -10,9 +10,9 @@ from em2.exceptions import BadDataException, BadHash, VerbNotFound
 from .components import Components, Messages, Participants
 from .conversations import Conversations
 from .datastore import DataStore
-from .interactions import Action, Retrieval, RVerbs, Verbs
+from .interactions import Action, Retrieval
 
-logger = logging.getLogger('em2')
+logger = logging.getLogger('em2.core')
 
 
 class Controller:
@@ -29,55 +29,59 @@ class Controller:
         components = [Messages, Participants]
         self.components = {c.name: c(self) for c in components}
 
-    async def act(self, action: Action, **kwargs):
+    async def act(self, a: Action, **kwargs):
         """
         Routes actions to the appropriate component and executes the right verb.
-        :param action: action instance
+        :param a: action instance
         :param kwargs: extra key word arguments to pass to the method with action
         :return: result of method associated with verb
         """
 
-        if action.is_remote:
-            if action.event_id != action.calc_event_id():
-                raise BadHash('event_id "{}" incorrect'.format(action.event_id))
-            if not isinstance(action.timestamp, datetime.datetime):
+        if a.is_remote:
+            if a.event_id != a.calc_event_id():
+                raise BadHash('event_id "{}" incorrect'.format(a.event_id))
+            if not isinstance(a.timestamp, datetime.datetime):
                 raise BadDataException('remote actions should always have a timestamp')
         else:
-            action.timestamp = self.now_tz()
+            a.timestamp = self.now_tz()
 
-        func = self._get_function(action, Verbs)
+        func = self._get_function(a)
         self._check_arguments(func, 'action', kwargs)
+        logger.info('%s action on %.6s, author: "%s", action: %s.%s %s',
+                    a.loc_rem, a.conv or '-', a.address, a.component, a.verb, a.item or '')
 
         async with self.ds.connection() as conn:
-            if action.known_conversation:
-                action.cds = self.ds.new_conv_ds(action.conv, conn)
-                await action.set_participant()
-                return await func(action, **kwargs)
+            if a.known_conversation:
+                a.cds = self.ds.new_conv_ds(a.conv, conn)
+                await a.set_participant()
+                return await func(a, **kwargs)
             else:
-                action.conn = conn
-                return await func(action, **kwargs)
+                a.conn = conn
+                return await func(a, **kwargs)
 
-    async def retrieve(self, retrieval: Retrieval, **kwargs):
+    async def retrieve(self, r: Retrieval, **kwargs):
         """
         Routes retrieval to the appropriate component and executes the right verb.
-        :param retrieval: retrieval instance
+        :param r: retrieval instance
         :param kwargs: extra key word arguments to pass to the method with retrieval
         :return: result of method associated with verb
         """
-        func = self._get_function(retrieval, RVerbs)
+        func = self._get_function(r)
 
         self._check_arguments(func, 'retrieval', kwargs)
+        logger.info('%s retrieval on %.6s..., author: "%s", action: %s.%s',
+                    r.loc_rem, r.conv, r.address, r.component, r.verb)
 
         async with self.ds.connection() as conn:
-            if retrieval.known_conversation:
-                retrieval.cds = self.ds.new_conv_ds(retrieval.conv, conn)
-                await retrieval.set_participant()
-                return await func(retrieval, **kwargs)
+            if r.known_conversation:
+                r.cds = self.ds.new_conv_ds(r.conv, conn)
+                await r.set_participant()
+                return await func(r, **kwargs)
             else:
-                retrieval.conn = conn
-                return await func(retrieval, **kwargs)
+                r.conn = conn
+                return await func(r, **kwargs)
 
-    def _get_function(self, inter, enum):
+    def _get_function(self, inter):
         component_cls = self._get_component(inter.component)
 
         for func_name in self._function_names(inter.verb, inter.is_remote):
@@ -118,26 +122,26 @@ class Controller:
     def _subdict(self, data, first_chars):
         return {k[2:]: v for k, v in data.items() if k[0] in first_chars}
 
-    async def event(self, action, **data):
+    async def event(self, a: Action, **data):
         """
         Record and push updates of conversations and conversation components.
 
-        :param action: Action instance
+        :param a: Action instance
         :param data: extra information to either be saved (s_*), pushed (p_*) or both (b_*)
         """
-        logger.debug('event on %d: author: "%s", action: "%s", component: %s %s',
-                     action.conv, action.address, action.verb, action.component, action.item)
+        logger.info('event on %.6s..., author: "%s", action: "%s", component: %s %s',
+                    a.conv, a.address, a.verb, a.component, a.item)
         save_data = self._subdict(data, 'sb')
-        event_id = action.calc_event_id()
-        await action.cds.save_event(event_id, action, **save_data)
-        if (await action.get_conv_status()) == Conversations.Status.DRAFT:
+        event_id = a.calc_event_id()
+        await a.cds.save_event(event_id, a, **save_data)
+        if (await a.get_conv_status()) == Conversations.Status.DRAFT:
             return
-        if action.is_remote:
+        if a.is_remote:
             # TODO some way to push events to clients here
             return
         push_data = self._subdict(data, 'pb')
         # FIXME what happens when pushing fails, perhaps save status on update
-        await self.pusher.push(action, event_id, push_data)
+        await self.pusher.push(a, event_id, push_data)
 
     async def publish(self, action, **data):
         logger.debug('publishing %d, author: "%s"', action.conv, action.address)

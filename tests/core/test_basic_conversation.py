@@ -1,3 +1,4 @@
+from em2 import setup_logging
 from em2.core import Action, Components, Controller, Retrieval, RVerbs, Verbs
 from tests.fixture_classes import SimpleDataStore
 
@@ -39,3 +40,17 @@ async def test_reprs():
     msgs = controller.components[Components.MESSAGES]
     assert str(msgs).startswith('<Messages on controller ')
     print(msgs)
+
+
+async def test_logging(capsys):
+    setup_logging(log_level='DEBUG')
+    ds = SimpleDataStore()
+    controller = Controller(ds)
+
+    action = Action('sender@example.com', None, Verbs.ADD)
+    await controller.act(action, subject='foo bar')
+    out, err = capsys.readouterr()
+    assert out == ''
+    assert 'local action on -, author: "sender@example.com"' in err
+    assert 'created draft conversation' in err
+    assert 'first participant added to' in err

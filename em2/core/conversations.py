@@ -9,7 +9,7 @@ from em2.utils import to_unix_ms
 from .components import Components, ConversationsStatus, hash_id
 from .interactions import Action, Verbs
 
-logger = logging.getLogger('em2')
+logger = logging.getLogger('em2.conv')
 
 
 class Conversations:
@@ -72,7 +72,7 @@ class Conversations:
             subject=subject,
             status=self.Status.DRAFT,
         )
-        logger.info('created draft conversation %s..., creator: "%s"', conv_id[:6], creator)
+        logger.info('created draft conversation %.6s, creator: "%s"', conv_id, creator)
 
         cds = self.controller.ds.new_conv_ds(conv_id, action.conn)
         creator_id = await self._participants.add_first(cds, creator)

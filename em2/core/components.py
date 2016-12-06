@@ -5,7 +5,7 @@ from em2.exceptions import (BadDataException, ComponentLocked, ComponentNotFound
                             DataConsistencyException, InsufficientPermissions, MisshapedDataException)
 from em2.utils import Enum
 
-logger = logging.getLogger('em2')
+logger = logging.getLogger('em2.comp')
 
 
 class ConversationsStatus(Enum):
@@ -190,7 +190,7 @@ class Participants(_Component):
 
     async def add_first(self, cds, address):
         new_participant_id = await self._add(cds, address, perms.FULL)
-        logger.info('first participant added to %s: address: "%s"', cds.conv, address)
+        logger.info('first participant added to %.6s, address: "%s"', cds.conv, address)
         return new_participant_id
 
     async def add(self, action, address, permissions):
@@ -202,7 +202,7 @@ class Participants(_Component):
 
         action.item = await self._add(action.cds, address, permissions)
 
-        logger.info('added participant to %s: address: "%s", permissions: "%s"', action.conv, address, permissions)
+        logger.info('added participant to %.6s, address: "%s", permissions: "%s"', action.conv, address, permissions)
         if (await action.get_conv_status()) != ConversationsStatus.DRAFT:
             await self.controller.pusher.participant_added(action.conv, address)
         await self._event(action, b_address=address, b_permissions=permissions)
