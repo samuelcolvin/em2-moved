@@ -5,6 +5,7 @@ from em2.core import Action, Components, Controller, Verbs, perms
 from em2.utils import now_unix_secs
 from tests.fixture_classes import SimpleDataStore
 
+
 async def test_authenticate(pusher):
     token = await pusher.authenticate('em2.platform.remote.com')
     assert token.startswith('em2.local.com:2461536000:')

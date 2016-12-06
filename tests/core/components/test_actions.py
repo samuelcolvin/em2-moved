@@ -3,6 +3,7 @@ import pytest
 from em2.core import Action, Components, Verbs, perms
 from em2.exceptions import BadDataException, ComponentNotFound, VerbNotFound
 
+
 async def test_correct_action(conversation):
     ds, ctrl, conv_id = await conversation()
     conv = ds.data[0]
@@ -20,7 +21,6 @@ async def test_correct_action(conversation):
 
 async def test_wrong_component(conversation):
     ds, ctrl, conv_id = await conversation()
-    conv = ds.data[0]
     with pytest.raises(ComponentNotFound):
         Action('test@example.com', conv_id, Verbs.ADD, 'foobar')
 

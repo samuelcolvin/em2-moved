@@ -5,7 +5,7 @@ import logging
 import pytz
 
 from em2.comms import BasePusher, NullPusher
-from em2.exceptions import BadDataException, BadHash, ComponentNotFound, VerbNotFound
+from em2.exceptions import BadDataException, BadHash, VerbNotFound
 
 from .components import Components, Messages, Participants
 from .conversations import Conversations

@@ -6,6 +6,7 @@ import pytest
 from em2.core import Action, Components, Verbs, perms
 from em2.exceptions import ComponentLocked, ComponentNotLocked, InsufficientPermissions
 
+
 async def test_create_conversation_with_message(conversation):
     ds, ctrl, conv_id = await conversation()
     assert len(ds.data) == 1

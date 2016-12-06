@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timedelta
 from enum import Enum as _PyEnum
 from enum import EnumMeta as _PyEnumMeta
+from enum import unique
 
 import pytz
 
@@ -16,6 +17,7 @@ class EnumMeta(_PyEnumMeta):
         return enum_class
 
 
+@unique
 class Enum(str, _PyEnum, metaclass=EnumMeta):
     pass
 
