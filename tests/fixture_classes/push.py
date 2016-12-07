@@ -22,12 +22,12 @@ class SimplePusher(BasePusher):
         self.remotes = {}
         self.network = Network()
 
-    async def participant_added(self, conv, participant_addr):
+    async def add_participant(self, conv, participant_addr):
         d = self.get_domain(participant_addr)
         if d not in self.remotes[conv]:
             self.remotes[conv][d] = await self.get_node(conv, d, participant_addr)
 
-    async def save_nodes(self, conv, *addresses):
+    async def add_many_participants(self, conv, *addresses):
         self.remotes[conv] = await self.get_nodes(conv, *addresses)
 
     async def remove_domain(self, conv, domain):
@@ -38,7 +38,7 @@ class SimplePusher(BasePusher):
         prop_data = deepcopy(data)
 
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
-        await self.save_nodes(action.conv, *addresses)
+        await self.add_many_participants(action.conv, *addresses)
         for ctrl in set(self.remotes[action.conv].values()):
             if ctrl != self.LOCAL:
                 await ctrl.act(new_action, data=prop_data)

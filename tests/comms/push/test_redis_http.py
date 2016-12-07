@@ -28,7 +28,7 @@ def pusher(loop):
 async def test_save_nodes_existing(loop, pusher):
     async with await pusher.get_redis_conn() as redis:
         await redis.set(b'nd:123:example.com', b'platform.com')
-    await pusher.save_nodes('123', 'foo@example.com')
+    await pusher.add_many_participants('123', 'foo@example.com')
     worker = RaiseWorker(settings=pusher.settings, burst=True, loop=loop, shadows=[HttpMockedDNSPusher])
     await worker.run()
     async with await pusher.get_redis_conn() as redis:

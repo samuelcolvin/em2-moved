@@ -204,7 +204,7 @@ class Participants(_Component):
 
         logger.info('added participant to %.6s, address: "%s", permissions: "%s"', action.conv, address, permissions)
         if (await action.get_conv_status()) != ConversationsStatus.DRAFT:
-            await self.controller.pusher.participant_added(action.conv, address)
+            await self.controller.pusher.add_participant(action.conv, address)
         await self._event(action, b_address=address, b_permissions=permissions)
         return action.item
 

@@ -76,11 +76,12 @@ class HttpDNSPusher(livePusher):
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 
-    async def _authenticate_direct(self, domain, data):
+    async def _authenticate_direct(self, domain):
         url = 'https://{}/authenticate'.format(domain)
         # TODO more error checks
+        auth_data = self.get_auth_data()
         try:
-            async with self.session.post(url, data=encoding.encode(data), headers=JSON_HEADER) as r:
+            async with self.session.post(url, data=encoding.encode(auth_data), headers=JSON_HEADER) as r:
                 body = await r.read()
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",
