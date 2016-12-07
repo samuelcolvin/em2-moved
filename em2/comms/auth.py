@@ -9,7 +9,7 @@ from Crypto.Signature import PKCS1_v1_5
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
 from em2.utils import BaseServiceCls, now_unix_secs
 
-from .redis import RedisDNSMixin, RedisMethods
+from .redis import RedisDNSActor
 
 
 class BaseAuthenticator(BaseServiceCls):
@@ -44,6 +44,9 @@ class BaseAuthenticator(BaseServiceCls):
         await self._store_platform_token(platform_token, token_expires_at)
         return platform_token
 
+    # the "key_exists" method should be defined on any inheriting class,
+    # it's not defined here to avoid overwriting other parent classes, eg. below
+
     async def valid_platform_token(self, token):
         if not await self.key_exists(token):
             raise PlatformForbidden('platform "{}" not found'.format(token))
@@ -52,9 +55,6 @@ class BaseAuthenticator(BaseServiceCls):
     async def check_domain_platform(self, domain, platform):
         if not await self._check_domain_uses_platform(domain, platform):
             raise DomainPlatformMismatch('"{}" does not use "{}"'.format(domain, platform))
-
-    async def key_exists(self, key: str):
-        raise NotImplementedError
 
     async def _get_public_key(self, platform: str):
         raise NotImplementedError
@@ -85,14 +85,14 @@ class BaseAuthenticator(BaseServiceCls):
         return base64.urlsafe_b64encode(os.urandom(self._token_length))[:self._token_length].decode()
 
 
-class RedisDNSAuthenticator(RedisMethods, BaseAuthenticator, RedisDNSMixin):
+class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSActor):
     async def _get_public_key(self, platform: str):
-        dns_results = await self.resolver.query(platform, 'TXT')
+        dns_results = await self.dns_query(platform, 'TXT')
         key_data = self._get_public_key_from_dns(dns_results)
         # return the key in a format openssl / RSA.importKey can cope with
         return '-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n'.format('\n'.join(wrap(key_data, width=65)))
 
-    def _get_public_key_from_dns(self, dns_results: str):
+    def _get_public_key_from_dns(self, dns_results: tuple):
         results = (r.text for r in dns_results)
         for r in results:
             if r.lower().startswith('v=em2key'):

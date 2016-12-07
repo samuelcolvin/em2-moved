@@ -8,8 +8,9 @@ from arq.jobs import DatetimeJob
 dns_logger = logging.getLogger('em2.dns')
 
 
-class RedisDNSMixin(Actor):
+class RedisDNSActor(Actor):
     job_class = DatetimeJob
+    _dft_value = b'1'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -22,20 +23,17 @@ class RedisDNSMixin(Actor):
         return self._resolver
 
     async def mx_query(self, host):
+        results = await self.dns_query(host, 'MX')
+        results = [(r.priority, r.host) for r in results]
+        results.sort()
+        return results
+
+    async def dns_query(self, host, qtype):
         try:
-            results = await self.resolver.query(host, 'MX')
+            return await self.resolver.query(host, qtype)
         except (DNSError, ValueError) as e:
-            dns_logger.warning('MX query error on %s, %s: %s', host, e.__class__.__name, e)
+            dns_logger.warning('%s query error on %s, %s: %s', qtype, host, e.__class__.__name, e)
             return []
-        else:
-            print(results)
-            results = [(r.priority, r.host) for r in results]
-            results.sort()
-            return results
-
-
-class RedisMethods(RedisDNSMixin):
-    _dft_value = b'1'
 
     async def set_exat(self, redis, key: bytes, value: str, expires_at: int):
         pipe = redis.pipeline()

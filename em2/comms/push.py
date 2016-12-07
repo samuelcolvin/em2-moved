@@ -8,7 +8,7 @@ from Crypto.Signature import PKCS1_v1_5
 
 from em2.utils import BaseServiceCls, now_unix_secs
 
-from .redis import RedisDNSMixin, RedisMethods
+from .redis import RedisDNSActor
 
 logger = logging.getLogger('em2.push')
 
@@ -116,7 +116,7 @@ class NullPusher(BasePusher):  # pragma: no cover
         pass
 
 
-class AsyncRedisPusher(RedisMethods, BasePusher, RedisDNSMixin):
+class livePusher(BasePusher, RedisDNSActor):
     plat_conv_prefix = b'pc:'
     auth_token_prefix = b'ak:'
 
