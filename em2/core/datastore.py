@@ -14,7 +14,7 @@ class DataStore(BaseServiceCls):
     async def create_conversation(self, conn, conv_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 
-    async def prepare(self, **kwargs):
+    async def prepare(self):
         pass
 
     async def list_conversations(self, conn, address, limit=None, offset=None):
@@ -166,3 +166,92 @@ class ConversationDataStore:
         :return: number of participants in the conversation with this domain
         """
         raise NotImplementedError()
+
+
+class NullDataStore(DataStore):
+
+    async def create_conversation(self, conn, **kwargs):
+        return 0
+
+    async def list_conversations(self, conn, address, limit=None, offset=None):
+        return []
+
+    @property
+    def conv_data_store(self):
+        return NullConversationDataStore
+
+    def connection(self):
+        return VoidContextManager()
+
+
+class VoidContextManager:
+    async def __aenter__(self):
+        pass
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class NullConversationDataStore(ConversationDataStore):
+    async def get_core_properties(self):
+        return {}
+
+    async def save_event(self, event_id, action, **data):
+        pass
+
+    async def set_published_id(self, new_timestamp, new_id):
+        pass
+
+    # Status
+
+    async def set_status(self, status):
+        pass
+
+    # Ref
+
+    async def set_ref(self, ref):
+        pass
+
+    # Subject
+
+    async def set_subject(self, subject):
+        pass
+
+    # Component generic methods
+
+    async def add_component(self, component, **kwargs):
+        return 0
+
+    async def edit_component(self, component, item_id, **kwargs):
+        pass
+
+    async def delete_component(self, component, item_id):
+        pass
+
+    async def lock_component(self, component, item_id):
+        pass
+
+    async def unlock_component(self, component, item_id):
+        pass
+
+    async def check_component_locked(self, component, item_id):
+        return False
+
+    async def get_all_component_items(self, component):
+        return []
+
+    async def get_item_last_event(self, component, item_id):
+        return None, None
+
+    # Messages
+
+    async def get_message_meta(self, message_id):
+        return {}
+
+    # Participants
+
+    async def get_participant(self, participant_address):
+        return None, None
+
+    async def domain_count(self, domain):
+        return 0

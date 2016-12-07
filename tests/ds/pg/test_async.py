@@ -36,36 +36,34 @@ async def test_conversation_insert_raw(timestamp, loop, db, dsn):
 
 async def test_datastore_setup(loop, empty_db, dsn):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
-        ds = PostgresDataStore()
-        ds.engine = engine
-        controller = Controller(ds)
-        async with ds.connection() as conn:
+        ctrl = Controller(datastore_cls=PostgresDataStore)
+        ctrl.ds.engine = engine
+        async with ctrl.ds.connection() as conn:
             action = Action('sender@example.com', None, Verbs.ADD)
-            conv_id = await controller.act(action, subject='the subject')
-            cds = ds.new_conv_ds(conv_id, conn)
+            conv_id = await ctrl.act(action, subject='the subject')
+            cds = ctrl.ds.new_conv_ds(conv_id, conn)
             props = await cds.get_core_properties()
             assert props['subject'] == 'the subject'
 
 
 async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
-        ds = PostgresDataStore()
-        ds.engine = engine
-        controller = Controller(ds)
+        ctrl = Controller(datastore_cls=PostgresDataStore)
+        ctrl.ds.engine = engine
         line = 0
         with pytest.raises(ConversationNotFound):
-            async with controller.ds.connection() as conn:
+            async with ctrl.ds.connection() as conn:
                 conversation = dict(conv_id='x', creator='x', subject='x', ref='x', timestamp=timestamp, status='draft')
                 await conn.execute(sa_conversations.insert().values(**conversation))
                 con_count = await conn.scalar(sa_conversations.count())
                 assert con_count == 1
-                cds = ds.new_conv_ds('123', conn)
+                cds = ctrl.ds.new_conv_ds('123', conn)
                 line = 1
                 await cds.get_core_properties()
                 line = 2
 
         assert line == 1  # check the above snippet gets to the right place
         # connection above should rollback on ConversationNotFound so there should now be no conversations
-        async with controller.ds.connection() as conn:
+        async with ctrl.ds.connection() as conn:
             con_count = await conn.scalar(sa_conversations.count())
             assert con_count == 0

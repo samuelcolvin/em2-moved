@@ -1,6 +1,7 @@
 import datetime
 import inspect
 import logging
+from typing import Type
 
 import pytz
 
@@ -10,7 +11,7 @@ from em2.settings import Settings
 
 from .components import Components, Messages, Participants
 from .conversations import Conversations
-from .datastore import DataStore
+from .datastore import DataStore, NullDataStore
 from .interactions import Action, Retrieval
 
 logger = logging.getLogger('em2.core')
@@ -21,20 +22,22 @@ class Controller:
     Top level class for accessing conversations and conversation components.
     """
     def __init__(self,
-                 datastore: DataStore,
-                 pusher: BasePusher=None,
                  settings: Settings=None,
                  *,
-                 ref=None):
+                 datastore_cls: Type[DataStore]=NullDataStore,
+                 pusher_cls: Type[BasePusher]=NullPusher,
+                 loop=None):
         self.settings = settings or Settings()
-        pusher = pusher or NullPusher(settings=settings)
-        self.ds = datastore
-        self.pusher = pusher
+        self.ds = datastore_cls(settings=settings, loop=loop)
+        self.pusher = pusher_cls(settings=settings, loop=loop)
         self.timezone_name = self.settings.TIMEZONE
-        self.ref = ref if ref is not None else hex(id(self))
+        self.ref = '{}-{}'.format(self.settings.LOCAL_DOMAIN, hex(id(self)))
         self.conversations = Conversations(self)
         components = [Messages, Participants]
         self.components = {c.name: c(self) for c in components}
+
+    async def prepare(self):
+        await self.ds.prepare()
 
     async def act(self, a: Action, **kwargs):
         """

@@ -3,7 +3,8 @@ import itertools
 import json
 from collections import OrderedDict
 
-from em2.core import Components, ConversationDataStore, DataStore
+from em2.core import Components
+from em2.core.datastore import ConversationDataStore, DataStore, VoidContextManager
 from em2.exceptions import ComponentNotFound, ConversationNotFound, EventNotFound
 
 
@@ -14,18 +15,18 @@ class UniversalEncoder(json.JSONEncoder):
         if isinstance(obj, set):
             return sorted(obj)
         try:
-            return super(UniversalEncoder, self).default(obj)
+            return super().default(obj)
         except TypeError:
             return repr(obj)
 
 
 class SimpleDataStore(DataStore):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.conversation_counter = itertools.count()
         self.data = {}
         self.users = {}
         self.user_counter = itertools.count()
-        super(SimpleDataStore, self).__init__()
 
     async def create_conversation(self, conn, **kwargs):
         id = next(self.conversation_counter)
@@ -70,17 +71,9 @@ class SimpleDataStore(DataStore):
         return json.dumps(self.data, indent=2, sort_keys=True, cls=UniversalEncoder)
 
 
-class VoidContextManager:
-    async def __aenter__(self):
-        pass
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-
 class SimpleConversationDataStore(ConversationDataStore):
     def __init__(self, *args, **kwargs):
-        super(SimpleConversationDataStore, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._conv_obj = None
 
     @property

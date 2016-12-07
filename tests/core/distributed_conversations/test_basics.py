@@ -27,52 +27,52 @@ async def test_create_basic_conversation(controller):
 
 
 async def test_create_conversation_add_external_participant():
-    ds = SimpleDataStore()
-    pusher = SimplePusher(Settings(LOCAL_DOMAIN='local.com'))
-    assert len(pusher.remotes) == 0
-    ctrl = Controller(ds, pusher, ref='ctrl1')
-    remote_ctrl = Controller(SimpleDataStore(), ref='ctrl2')
-    pusher.network.add_node('remote.com', remote_ctrl)
-    assert len(pusher.remotes) == 0
+    s_local = Settings(LOCAL_DOMAIN='local.com')
+    ctrl = Controller(s_local, datastore_cls=SimpleDataStore, pusher_cls=SimplePusher)
+    assert len(ctrl.pusher.remotes) == 0
+    s_remote = Settings(LOCAL_DOMAIN='remote.com')
+    remote_ctrl = Controller(s_remote, datastore_cls=SimpleDataStore)
+    ctrl.pusher.network.add_node('remote.com', remote_ctrl)
+    assert len(ctrl.pusher.remotes) == 0
 
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar')
-    assert len(ds.data[0]['participants']) == 1
+    assert len(ctrl.ds.data[0]['participants']) == 1
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
     a = Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     await ctrl.act(a)
-    assert len(ds.data[0]['participants']) == 2
-    assert len(pusher.remotes) == 1
+    assert len(ctrl.ds.data[0]['participants']) == 2
+    assert len(ctrl.pusher.remotes) == 1
 
 
 async def test_publish_conversation():
-    ds = SimpleDataStore()
-    pusher = SimplePusher(Settings(LOCAL_DOMAIN='local.com'))
-    ctrl = Controller(ds, pusher, ref='ctrl1')
-    other_ds = SimpleDataStore()
-    remote_ctrl = Controller(other_ds, ref='ctrl2')
-    pusher.network.add_node('remote.com', remote_ctrl)
+    local_settings = Settings(LOCAL_DOMAIN='local.com')
+    ctrl = Controller(local_settings, datastore_cls=SimpleDataStore, pusher_cls=SimplePusher)
+    remote_settings = Settings(LOCAL_DOMAIN='remote.com')
+    remote_ctrl = Controller(remote_settings, datastore_cls=SimpleDataStore, pusher_cls=SimplePusher)
+    ctrl.pusher.network.add_node('remote.com', remote_ctrl)
+    remote_ctrl.pusher.network.add_node('local.com', ctrl)
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='the subject', body='the body')
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
     await ctrl.act(a, address='receiver@remote.com', permissions=perms.WRITE)
 
-    messages_before = deepcopy(ds.data[0]['messages'])
-    assert len(other_ds.data) == 0
+    messages_before = deepcopy(ctrl.ds.data[0]['messages'])
+    assert len(remote_ctrl.ds.data) == 0
     a = Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     await ctrl.act(a)
-    assert ds.data[0]['messages'] == messages_before
-    assert len(other_ds.data) == 1
-    assert other_ds.data[0]['conv_id'] == ds.data[0]['conv_id']
-    assert other_ds.data[0]['subject'] == 'the subject'
-    assert len(other_ds.data[0]['messages']) == 1
-    msg1 = list(other_ds.data[0]['messages'].values())[0]
+    assert ctrl.ds.data[0]['messages'] == messages_before
+    assert len(remote_ctrl.ds.data) == 1
+    assert remote_ctrl.ds.data[0]['conv_id'] == ctrl.ds.data[0]['conv_id']
+    assert remote_ctrl.ds.data[0]['subject'] == 'the subject'
+    assert len(remote_ctrl.ds.data[0]['messages']) == 1
+    msg1 = list(remote_ctrl.ds.data[0]['messages'].values())[0]
     assert msg1['body'] == 'the body'
-    assert other_ds.data[0]['timestamp'] == ds.data[0]['timestamp']
+    assert remote_ctrl.ds.data[0]['timestamp'] == ctrl.ds.data[0]['timestamp']
 
-    assert ds.data[0]['participants'] == other_ds.data[0]['participants']
-    assert ds.data[0]['messages'] == other_ds.data[0]['messages']
+    assert ctrl.ds.data[0]['participants'] == remote_ctrl.ds.data[0]['participants']
+    assert ctrl.ds.data[0]['messages'] == remote_ctrl.ds.data[0]['messages']
 
 
 async def test_publish_conversation2(two_controllers):

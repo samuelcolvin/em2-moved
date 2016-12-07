@@ -1,11 +1,13 @@
+import logging
+
 from em2 import setup_logging
 from em2.core import Action, Components, Controller, Retrieval, RVerbs, Verbs
 from tests.fixture_classes import SimpleDataStore
 
 
 async def test_basic_conversation():
-    ds = SimpleDataStore()
-    controller = Controller(ds)
+    controller = Controller(datastore_cls=SimpleDataStore)
+    ds = controller.ds
 
     action = Action('sender@example.com', None, Verbs.ADD)
     assert str(action) == ('<Action(address=sender@example.com, participant_id=None, perm=None, conv=None, verb=add, '
@@ -28,11 +30,10 @@ async def test_basic_conversation():
 
 
 async def test_reprs():
-    ds = SimpleDataStore()
-    controller = Controller(ds)
+    controller = Controller(datastore_cls=SimpleDataStore)
 
-    assert str(controller) == '<Controller(0x{:x})>'.format(id(controller))
     print('controller:', controller)
+    assert str(controller) == '<Controller(no-domain-set-0x{:x})>'.format(id(controller))
 
     assert str(controller.conversations).startswith('<Conversations 0x')
     print('conversations:', controller.conversations)
@@ -44,8 +45,7 @@ async def test_reprs():
 
 async def test_logging(capsys):
     setup_logging(log_level='DEBUG')
-    ds = SimpleDataStore()
-    controller = Controller(ds)
+    controller = Controller(datastore_cls=SimpleDataStore)
 
     action = Action('sender@example.com', None, Verbs.ADD)
     await controller.act(action, subject='foo bar')
@@ -54,3 +54,7 @@ async def test_logging(capsys):
     assert 'local action by "sender@example.com" - > Components.CONVERSATIONS > Verbs.ADD' in err
     assert 'created draft conversation' in err
     assert 'first participant added to' in err
+
+    logger = logging.getLogger('em2')
+    for h in logger.handlers:
+        logger.removeHandler(h)

@@ -54,6 +54,9 @@ class SimplePusher(BasePusher):
     async def get_node(self, conv, domain, *addresses):
         return self.LOCAL if domain == self.settings.LOCAL_DOMAIN else self.network.nodes[domain]
 
+    def __str__(self):
+        return repr(self)
+
 
 class HttpMockedDNSPusher(HttpDNSPusher):
     @property

@@ -8,7 +8,11 @@ from em2.ds.pg.datastore import ConnectionContextManager, PostgresDataStore
 from em2.ds.pg.models import Base
 from em2.ds.pg.utils import get_dsn, pg_connect_kwargs
 
-settings = Settings(PG_DATABASE='em2_test')
+settings = Settings(
+    PG_DATABASE='em2_test',
+    PG_POOL_MAXSIZE=4,
+    PG_POOL_TIMEOUT=5,
+)
 
 
 @pytest.fixture(scope='session')

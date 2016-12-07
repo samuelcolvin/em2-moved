@@ -112,7 +112,7 @@ class Conversations:
             subject=data['subject'],
             status=self.Status.PENDING,
         )
-        logger.info('created pending conversation %s..., creator: "%s"', action.conv[:6], creator)
+        logger.info('created pending conversation %.6s, creator: "%s"', action.conv, creator)
 
         ds = self.controller.ds.new_conv_ds(action.conv, action.conn)
 

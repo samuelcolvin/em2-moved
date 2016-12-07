@@ -6,8 +6,7 @@ from tests.fixture_classes import SimpleDataStore
 
 @pytest.fixture
 def controller():
-    ds = SimpleDataStore()
-    return Controller(ds)
+    return Controller(datastore_cls=SimpleDataStore)
 
 
 @pytest.fixture

@@ -27,11 +27,10 @@ def get_ds(loop, db, dsn):
         pg_ds = ds_cls == 'PostgresDataStore'
         if pg_ds:
             ds = TestPostgresDataStore(pg_settings, loop)
-            await ds.prepare(minsize=1, maxsize=4, timeout=5)
-            return ds
         else:
             ds = SimpleDataStore()
-            return ds
+        await ds.prepare()
+        return ds
 
     yield datastore_creator
 

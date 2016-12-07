@@ -19,6 +19,10 @@ class Settings(ConnectionSettings):
     PG_PASSWORD = ''
     PG_DATABASE = 'em2'
 
+    PG_POOL_MINSIZE = 1
+    PG_POOL_MAXSIZE = 10
+    PG_POOL_TIMEOUT = 60.0
+
     LOCAL_DOMAIN = 'no-domain-set'
     PRIVATE_DOMAIN_KEY = 'no-key-set'
 

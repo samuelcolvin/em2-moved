@@ -29,8 +29,8 @@ async def test_get_node_remote(pusher):
 
 
 async def test_publish_conv(pusher):
-    ds = SimpleDataStore()
-    ctrl = Controller(ds, pusher=pusher)
+    ctrl = Controller(datastore_cls=SimpleDataStore)
+    ctrl.pusher = pusher
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar', body='great body')
 
@@ -48,8 +48,8 @@ async def test_publish_conv(pusher):
 
 
 async def test_publish_update_conv(pusher):
-    ds = SimpleDataStore()
-    ctrl = Controller(ds, pusher=pusher)
+    ctrl = Controller(datastore_cls=SimpleDataStore)
+    ctrl.pusher = pusher
     conv_id = await ctrl.act(Action('sender@local.com', None, Verbs.ADD), subject='foo bar', body='great body')
 
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)
