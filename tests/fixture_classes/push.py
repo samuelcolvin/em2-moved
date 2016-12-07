@@ -19,39 +19,29 @@ class Network:
 class SimplePusher(BasePusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.remotes = {}
         self.network = Network()
-
-    async def add_participant(self, conv, participant_addr):
-        d = self.get_domain(participant_addr)
-        if d not in self.remotes[conv]:
-            self.remotes[conv][d] = await self.get_node(conv, d, participant_addr)
-
-    async def add_many_participants(self, conv, *addresses):
-        self.remotes[conv] = await self.get_nodes(conv, *addresses)
-
-    async def remove_domain(self, conv, domain):
-        self.remotes[conv].pop(domain)
 
     async def publish(self, action, event_id, data):
         new_action = Action(action.address, action.conv, Verbs.ADD, timestamp=action.timestamp, event_id=event_id)
         prop_data = deepcopy(data)
 
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
-        await self.add_many_participants(action.conv, *addresses)
-        for ctrl in set(self.remotes[action.conv].values()):
+        nodes = await self.get_nodes(*addresses)
+
+        for ctrl in nodes:
             if ctrl != self.LOCAL:
                 await ctrl.act(new_action, data=prop_data)
 
-    async def push(self, action, event_id, data):
+    async def push(self, action, event_id, data, addresses):
         new_action = Action(action.address, action.conv, action.verb, action.component,
                             item=action.item, timestamp=action.timestamp, event_id=event_id)
         prop_data = deepcopy(data)
-        for ctrl in set(self.remotes[action.conv].values()):
+        nodes = await self.get_nodes(*addresses)
+        for ctrl in nodes:
             if ctrl != self.LOCAL:
                 await ctrl.act(new_action, **prop_data)
 
-    async def get_node(self, conv, domain, *addresses):
+    async def get_node(self, domain):
         return self.LOCAL if domain == self.settings.LOCAL_DOMAIN else self.network.nodes[domain]
 
     def __str__(self):
@@ -59,6 +49,14 @@ class SimplePusher(BasePusher):
 
 
 class HttpMockedDNSPusher(HttpDNSPusher):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._mx_query_count = 0
+
     @property
     def resolver(self):
         return MockDNSResolver()
+
+    def mx_query(self, host):
+        self._mx_query_count += 1
+        return super().mx_query(host)

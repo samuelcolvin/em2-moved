@@ -24,34 +24,26 @@ class HttpDNSPusher(livePusher):
             self._session = aiohttp.ClientSession(loop=self.loop)
         return self._session
 
-    async def get_node(self, conv, domain, *addresses):
-        cache_key = 'nd:{}:{}'.format(conv, domain).encode()
-        async with await self.get_redis_conn() as redis:
-            node = await redis.get(cache_key)
+    async def get_node(self, domain):
+        results = await self.mx_query(domain)
+        for _, host in results:
+            node = None
+            if host == self.settings.LOCAL_DOMAIN:
+                node = self.LOCAL
+            elif host.startswith('em2.'):
+                try:
+                    await self.authenticate(host)
+                except Em2ConnectionError:
+                    # connection failed domain is probably not em2
+                    pass
+                else:
+                    # TODO query host to find associated node
+                    node = host
             if node:
-                logger.info('node found in cashe for %s', domain)
+                logger.info('em2 node found %s -> %s', domain, node)
                 return node
-            results = await self.mx_query(domain)
-            for _, host in results:
-                node = None
-                if host == self.settings.LOCAL_DOMAIN:
-                    node = self.LOCAL
-                elif host.startswith('em2.'):
-                    try:
-                        await self.authenticate(host)
-                    except Em2ConnectionError:
-                        # connection failed domain is probably not em2
-                        pass
-                    else:
-                        # TODO query host to find associated node
-                        node = host
-                if node:
-                    logger.info('em2 node found for %s', domain)
-                    await redis.setex(cache_key, self.settings.COMMS_DOMAIN_CACHE_TIMEOUT, host.encode())
-                    return node
-        # TODO SMTP fallback
         logger.info('no em2 node found for %s, falling back', domain)
-        raise NotImplementedError()
+        return self.FALLBACK
 
     async def _post(self, domain, path, data):
         logger.info('posting to %s > %s', domain, path)

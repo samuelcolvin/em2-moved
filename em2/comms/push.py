@@ -1,5 +1,6 @@
 import base64
 import logging
+from typing import Set
 
 from arq import concurrent
 from Crypto.Hash import SHA256
@@ -25,6 +26,7 @@ class BasePusher(BaseServiceCls):
     # TODO: pushers need a way of getting data about conversations eg. if the cache is wiped.
     LOCAL = 'L'
     B_LOCAL = LOCAL.encode()
+    FALLBACK = 'F'
 
     def __init__(self, settings, *, fallback=None, loop=None, **kwargs):
         self.fallback = fallback
@@ -32,30 +34,7 @@ class BasePusher(BaseServiceCls):
         logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
 
-    async def add_participant(self, conv: str, participant: str):
-        """
-        Modify internal reference to platforms and participants when a new participant is added to the conversation.
-        Participant's platform may or may not be already included in the conversation.
-
-        :param conv: id of conversation
-        :param participant: address of participant added
-        """
-        # TODO deal with "hidden" (eg. bcc) participants, and also participants' names eg. for SMTP "to"
-        raise NotImplementedError()
-
-    async def add_many_participants(self, conv: str, *participants: str):
-        """
-        Modify internal reference to platforms and participants adding multiple participants.
-
-        :param conv: id of conversation
-        :param participants: participants of participants added
-        """
-        raise NotImplementedError()
-
-    async def remove_domain(self, conv, domain):
-        raise NotImplementedError()
-
-    async def push(self, action, event_id, data):
+    async def push(self, action, event_id, data, addresses):
         raise NotImplementedError()
 
     async def publish(self, action, event_id, data):
@@ -67,24 +46,30 @@ class BasePusher(BaseServiceCls):
         """
         return address[address.index('@') + 1:]
 
-    async def get_node(self, conv: str, domain: str, address: str):
+    async def get_node(self, domain: str) -> str:
         """
         Find the node for a given participant in a conversation.
 
-        :param conv: conversation id
-        :param domain: domain to
-        :param address: participant's address
-        :return:
+        :param domain: domain to find node for
+        :return: node's domain or None if em2 is not enabled for this address
         """
         raise NotImplementedError()
 
-    async def get_nodes(self, conv, *addresses):
-        domain_nodes = {}
+    async def get_nodes(self, *addresses: str) -> Set[str]:
+        """
+        Find a set of em2 enabled nodes/platforms for a list of address.
+
+        :param addresses: participants' addresses
+        :return: set of node domains
+        """
+        nodes = set()
+        checked_domains = set()
         for address in addresses:
             d = self.get_domain(address)
-            if d not in domain_nodes:
-                domain_nodes[d] = await self.get_node(conv, d, address)
-        return domain_nodes
+            if d not in checked_domains:
+                checked_domains.add(d)
+                nodes.add(await self.get_node(d))
+        return nodes
 
     def get_auth_data(self):
         timestamp = self._now_unix()
@@ -114,86 +99,73 @@ class NullPusher(BasePusher):  # pragma: no cover
     """
     Pusher with no functionality to connect to other platforms. Used for testing or trial purposes only.
     """
-    async def add_participant(self, conv, participant):
-        pass
-
-    async def add_many_participants(self, conv, *participants):
-        pass
-
-    async def remove_domain(self, conv, domain):
-        pass
-
-    async def push(self, action, event_id, data):
+    async def push(self, action, event_id, data, addresses):
         pass
 
     async def publish(self, action, event_id, data):
         pass
 
-    async def get_node(self, conv, domain, *addresses):
+    async def get_node(self, domain):
+        pass
+
+    async def authenticate(self, node_domain: str):
         pass
 
 
 class livePusher(BasePusher, RedisDNSActor):
-    # prefix hashes of address domain -> node (platform) domain for each conversation
-    conv_domain_node_prefix = b'pc:'
+    # prefix hashes of address domain -> node (platform) domain
+    domain_node_prefix = b'dn:'
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
-    # for fallback, prefix for hashes of address -> info (eg. hidden, name) for each conversation
-    conv_fallback_prefix = b'fa:'
 
-    @concurrent
-    async def add_participant(self, conv, participant):
-        domain = self.get_domain(participant)
-        node_hash_key = self.conv_domain_node_prefix + conv.encode()
-        fallback_hash_key = self.conv_fallback_prefix + conv.encode()
-        b_domain = domain.encode()
+    async def get_nodes(self, *addresses: str) -> Set[str]:
+        # cache here instead of in get_node so we can use the same redis connection
+        nodes = set()
+        checked_domains = set()
         async with await self.get_redis_conn() as redis:
-            if not await redis.hexists(node_hash_key, b_domain):
-                node = await self.get_node(conv, domain, participant)
-                await redis.hset(node_hash_key, b_domain, node)
-            await redis.hset(fallback_hash_key, participant.encode(), b'TODO')
+            for address in addresses:
+                d = self.get_domain(address)
+                if d in checked_domains:
+                    continue
+                checked_domains.add(d)
 
-    @concurrent
-    async def add_many_participants(self, conv, *participants):
-        node_hash_key = self.conv_domain_node_prefix + conv.encode()
-        fallback_hash_key = self.conv_fallback_prefix + conv.encode()
-        async with await self.get_redis_conn() as redis:
-            domain_nodes = await self.get_nodes(conv, *participants)
-            await redis.hmset_dict(node_hash_key, domain_nodes)
-            participant_dict = {p.encode(): b'void' for p in participants}
-            await redis.hmset_dict(fallback_hash_key, participant_dict)
-        return domain_nodes, participant_dict
-
-    @concurrent
-    async def remove_domain(self, conv, domain):
-        hash_key = self.conv_domain_node_prefix + conv.encode()
-        async with await self.get_redis_conn() as redis:
-            await redis.hdel(hash_key, domain)
+                key = self.domain_node_prefix + d.encode()
+                node_b = await redis.get(key)
+                if node_b:
+                    node = node_b.decode()
+                    logger.info('found cached node: % -> %s', d, node)
+                else:
+                    node = await self.get_node(d)
+                    await redis.setex(key, self.settings.COMMS_DNS_CACHE_EXPIRY, node.encode())
+                nodes.add(node)
+        return nodes
 
     async def publish(self, action, event_id, data):
         await self._publish_concurrent(action.attrs, event_id, data)
 
     @concurrent
     async def _publish_concurrent(self, action_attrs, event_id, data):
+        # TODO combine with _push_concurrent ?
         from em2.core import Components
         addresses = [p[0] for p in data[Components.PARTICIPANTS]]
-        domain_nodes, participants = await self.add_many_participants__direct(action_attrs['conv'], *addresses)
-        node_urls = domain_nodes.values()
-        remote_urls = [u for u in node_urls if u != self.LOCAL]
-        logger.info('publishing %.6s to %d urls', action_attrs['conv'], len(remote_urls))
-        await self._push_data(remote_urls, action_attrs, event_id, data=data)
+        nodes = await self.get_nodes(*addresses)
+        remote_em2_nodes = [n for n in nodes if n not in {self.LOCAL, self.FALLBACK}]
+        logger.info('publishing %.6s to %d urls', action_attrs['conv'], len(remote_em2_nodes))
+        await self._push_data(remote_em2_nodes, action_attrs, event_id, data=data)
+        if any(n for n in nodes if n == self.FALLBACK):
+            raise NotImplementedError()
 
-    async def push(self, action, event_id, data):
-        await self._push_concurrent(action.attrs, event_id, data)
+    async def push(self, action, event_id, data, addresses):
+        await self._push_concurrent(action.attrs, event_id, data, addresses)
 
     @concurrent
-    async def _push_concurrent(self, action_attrs, event_id, data):
-        print(action_attrs)
-        async with await self.get_redis_conn() as redis:
-            domain_nodes = await redis.hgetall(self.conv_domain_node_prefix + action_attrs['conv'].encode())
-        node_domains = [u.decode() for u in domain_nodes.values() if u != self.B_LOCAL]
-        logger.info('pushing %.6s to %d urls', action_attrs['conv'], len(node_domains))
-        await self._push_data(node_domains, action_attrs, event_id, **data)
+    async def _push_concurrent(self, action_attrs, event_id, data, addresses):
+        nodes = await self.get_nodes(*addresses)
+        remote_em2_nodes = [n for n in nodes if n not in {self.LOCAL, self.FALLBACK}]
+        logger.info('pushing %.6s to %d urls', action_attrs['conv'], len(remote_em2_nodes))
+        await self._push_data(remote_em2_nodes, action_attrs, event_id, **data)
+        if any(n for n in nodes if n == self.FALLBACK):
+            raise NotImplementedError()
 
     async def _push_data(self, urls, action_attrs, event_id, **kwargs):
         raise NotImplementedError

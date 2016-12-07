@@ -19,12 +19,12 @@ async def test_authenticate(pusher):
 
 
 async def test_get_node_local(pusher):
-    r = await pusher.get_node('123', 'local.com')
+    r = await pusher.get_node('local.com')
     assert r == pusher.LOCAL
 
 
 async def test_get_node_remote(pusher):
-    r = await pusher.get_node('123', 'remote.com')
+    r = await pusher.get_node('remote.com')
     assert r == 'em2.platform.remote.com'
 
 

@@ -1,9 +1,7 @@
 import pytest
-from arq.testing import RaiseWorker
 
 from em2 import Settings
 from tests.fixture_classes.push import HttpMockedDNSPusher
-
 
 # TODO perhaps move this to http or delete if it's not going to get more tests
 
@@ -25,14 +23,18 @@ def pusher(loop):
     loop.run_until_complete(_pusher.close())
 
 
+async def test_get_nodes_not_existing(loop, pusher):
+    await pusher.get_nodes('foo@nomx.com')
+    await pusher.get_nodes('foo@nomx.com')
+    async with await pusher.get_redis_conn() as redis:
+        node = await redis.get(b'dn:nomx.com')
+        assert node == b'F'
+
+
 async def test_save_nodes_existing(loop, pusher):
     async with await pusher.get_redis_conn() as redis:
-        await redis.set(b'nd:123:example.com', b'platform.com')
-    await pusher.add_many_participants('123', 'foo@example.com')
-    worker = RaiseWorker(settings=pusher.settings, burst=True, loop=loop, shadows=[HttpMockedDNSPusher])
-    await worker.run()
+        await redis.set(b'dn:nomx.com', b'somethingelse.com')
+    await pusher.get_nodes('foo@nomx.com')
     async with await pusher.get_redis_conn() as redis:
-        domains = await redis.hkeys(b'pc:123')
-        assert domains == [b'example.com']
-        platforms = await redis.hmget(b'pc:123', *domains)
-        assert platforms == [b'platform.com']
+        node = await redis.get(b'dn:nomx.com')
+        assert node == b'somethingelse.com'

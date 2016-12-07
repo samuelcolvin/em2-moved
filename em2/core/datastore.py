@@ -163,13 +163,6 @@ class ConversationDataStore:
         """
         raise NotImplementedError()
 
-    async def domain_count(self, domain):
-        """
-        :param domain: domain to count
-        :return: number of participants in the conversation with this domain
-        """
-        raise NotImplementedError()
-
 
 class NullDataStore(DataStore):
 
@@ -255,6 +248,3 @@ class NullConversationDataStore(ConversationDataStore):  # pragma: no cover
 
     async def get_participant(self, participant_address):
         return None, None
-
-    async def domain_count(self, domain):
-        return 0

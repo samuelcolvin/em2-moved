@@ -8,6 +8,7 @@ class Settings(ConnectionSettings):
     COMMS_PLATFORM_TOKEN_LENGTH = 64
     COMMS_AUTHENTICATION_TS_LENIENCY = (-10, 1)
     COMMS_PUSH_TOKEN_EARLY_EXPIRY = 10
+    COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
 
     DATASTORE_CLS = 'em2.ds.pg.datastore.PostgresDataStore'

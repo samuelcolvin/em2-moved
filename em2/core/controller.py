@@ -140,17 +140,22 @@ class Controller:
         save_data = self._subdict(data, 'sb')
         event_id = a.calc_event_id()
         await a.cds.save_event(event_id, a, **save_data)
-        if (await a.get_conv_status()) == Conversations.Status.DRAFT:
-            return
+        conv_status = await a.get_conv_status()
         if a.is_remote:
             # TODO some way to push events to clients here
             return
+        if conv_status == Conversations.Status.DRAFT:
+            return
         push_data = self._subdict(data, 'pb')
+
         # FIXME what happens when pushing fails, perhaps save status on update
-        await self.pusher.push(a, event_id, push_data)
+        # FIXME participants is a temporary fix until pushers have access to the datastore
+        participants_data = await a.cds.get_all_component_items(Components.PARTICIPANTS)
+        participants = [p['address'] for p in participants_data]
+        await self.pusher.push(a, event_id, push_data, participants)
 
     async def publish(self, action, **data):
-        logger.debug('publishing %d, author: "%s"', action.conv, action.address)
+        logger.info('publishing %.6s, author: "%s"', action.conv, action.address)
         event_id = action.calc_event_id()
         await action.cds.save_event(event_id, action)
         await self.pusher.publish(action, event_id, data)

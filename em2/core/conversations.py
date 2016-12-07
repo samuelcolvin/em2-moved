@@ -117,8 +117,6 @@ class Conversations:
         ds = self.controller.ds.new_conv_ds(action.conv, action.conn)
 
         participant_data = data[Components.PARTICIPANTS]
-        addresses = [p[0] for p in participant_data]
-        await self.controller.pusher.add_many_participants(action.conv, *addresses)
         await self._participants.add_multiple(ds, participant_data)
 
         message_data = data[Components.MESSAGES]

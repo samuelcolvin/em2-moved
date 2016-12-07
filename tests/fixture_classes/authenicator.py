@@ -103,6 +103,8 @@ class MockDNSResolver:
                 MXQueryResult(5, 'em2.local.com'),
                 MXQueryResult(10, 'mx.local.com'),
             ]
+        elif host == 'nomx.com':
+            return []
         else:
             return [
                 MXQueryResult(10, 'mx.platform.' + host),

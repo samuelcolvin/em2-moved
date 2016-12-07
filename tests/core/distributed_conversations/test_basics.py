@@ -29,11 +29,9 @@ async def test_create_basic_conversation(controller):
 async def test_create_conversation_add_external_participant():
     s_local = Settings(LOCAL_DOMAIN='local.com')
     ctrl = Controller(s_local, datastore_cls=SimpleDataStore, pusher_cls=SimplePusher)
-    assert len(ctrl.pusher.remotes) == 0
     s_remote = Settings(LOCAL_DOMAIN='remote.com')
     remote_ctrl = Controller(s_remote, datastore_cls=SimpleDataStore)
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
-    assert len(ctrl.pusher.remotes) == 0
 
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar')
@@ -43,7 +41,6 @@ async def test_create_conversation_add_external_participant():
     a = Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     await ctrl.act(a)
     assert len(ctrl.ds.data[0]['participants']) == 2
-    assert len(ctrl.pusher.remotes) == 1
 
 
 async def test_publish_conversation():

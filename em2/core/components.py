@@ -203,8 +203,6 @@ class Participants(_Component):
         action.item = await self._add(action.cds, address, permissions)
 
         logger.info('added participant to %.6s, address: "%s", permissions: "%s"', action.conv, address, permissions)
-        if (await action.get_conv_status()) != ConversationsStatus.DRAFT:
-            await self.controller.pusher.add_participant(action.conv, address)
         await self._event(action, b_address=address, b_permissions=permissions)
         return action.item
 
@@ -219,11 +217,6 @@ class Participants(_Component):
             raise InsufficientPermissions('FULL permission are required to delete participants with FULL permissions')
 
         await action.cds.delete_component(self.name, participant_id)
-
-        if (await action.get_conv_status()) != ConversationsStatus.DRAFT:
-            domain = self.controller.pusher.get_domain(address)
-            if (await action.cds.domain_count(domain)) == 0:
-                await self.controller.pusher.remove_domain(action.conv, domain)
         await self._event(action, b_address=address)
 
     async def _add(self, cds, address, permissions):
