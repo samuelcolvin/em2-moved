@@ -5,9 +5,8 @@ Database back-ends for em2 should define a child class for DataStore which imple
 """
 from copy import deepcopy
 
+from em2.core.components import Components
 from em2.utils import BaseServiceCls
-
-from .components import Components
 
 
 class DataStore(BaseServiceCls):

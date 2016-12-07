@@ -17,7 +17,7 @@ def import_string(dotted_path):
     try:
         return getattr(module, class_name)
     except AttributeError as e:
-        raise ImportError('Module "%s" does not define a "%s" attribute/class' % (module_path, class_name)) from e
+        raise ImportError('Module "%s" does not define a "%s" attribute' % (module_path, class_name)) from e
 
 
 class Settings(ConnectionSettings):
@@ -30,7 +30,7 @@ class Settings(ConnectionSettings):
     COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
 
-    DATASTORE_CLS = 'em2.core.datastore.NullDataStore'
+    DATASTORE_CLS = 'em2.ds.NullDataStore'
     PUSHER_CLS = 'em2.comms.NullPusher'
 
     PG_HOST = 'localhost'

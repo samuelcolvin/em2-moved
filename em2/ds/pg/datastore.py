@@ -2,7 +2,8 @@ import logging
 from aiopg.sa.engine import _create_engine
 from sqlalchemy import column, join, select
 
-from em2.core import Components, ConversationDataStore, DataStore
+from em2.core import Components
+from em2.ds import ConversationDataStore, DataStore
 from em2.exceptions import ComponentNotFound, ConversationNotFound, Em2Exception, EventNotFound
 
 from .models import sa_conversations, sa_events, sa_messages, sa_participants

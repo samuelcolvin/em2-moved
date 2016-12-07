@@ -1,7 +1,7 @@
 import pytest
 
 from em2 import Settings
-from em2.core import DataStore
+from em2.ds import DataStore
 
 
 def test_unchanged():
@@ -31,4 +31,4 @@ def test_settings_load_module_bad_ds_cls():
     assert excinfo.value.args[0] == "foobar doesn't look like a module path"
     with pytest.raises(ImportError) as excinfo:
         Settings(DATASTORE_CLS='em2.ds.pg.datastore.missing').datastore_cls
-    assert excinfo.value.args[0] == 'Module "em2.ds.pg.datastore" does not define a "missing" attribute/class'
+    assert excinfo.value.args[0] == 'Module "em2.ds.pg.datastore" does not define a "missing" attribute'

@@ -4,7 +4,7 @@ import json
 from collections import OrderedDict
 
 from em2.core import Components
-from em2.core.datastore import ConversationDataStore, DataStore, VoidContextManager
+from em2.ds.main import ConversationDataStore, DataStore, VoidContextManager
 from em2.exceptions import ComponentNotFound, ConversationNotFound, EventNotFound
 
 

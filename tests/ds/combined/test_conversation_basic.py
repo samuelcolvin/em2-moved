@@ -1,6 +1,7 @@
 import datetime
 
-from em2.core import Action, Components, Controller, ConversationDataStore, DataStore, Verbs, perms
+from em2.core import Action, Components, Controller, Verbs, perms
+from em2.ds import ConversationDataStore, DataStore
 
 
 async def test_datastore_type(get_ds, datastore_cls):
