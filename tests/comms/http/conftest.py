@@ -13,7 +13,7 @@ from tests.fixture_classes.push import HttpMockedDNSPusher
 
 def _create_app(loop):
     ctrl = Controller(datastore_cls=SimpleDataStore)
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(settings=Settings())
     auth._now_unix = lambda: 2461449600
     return create_app(ctrl, auth, loop=loop)
 

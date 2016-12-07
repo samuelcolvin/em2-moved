@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 
+from em2 import Settings
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE, SimpleAuthenticator
 
@@ -9,13 +10,13 @@ TS = 2461449600
 
 
 async def test_key_doesnt_exists():
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(Settings())
     with pytest.raises(PlatformForbidden):
         await auth.valid_platform_token('foobar.com:123:whatever')
 
 
 async def test_key_does_exists():
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(Settings())
     auth.valid_signature_override = True
 
     # note: strftime('%s') has to be used with now() to avoid double tz conversion
@@ -31,7 +32,7 @@ async def test_key_does_exists():
 
 
 async def test_key_verification():
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(Settings())
     auth._now_unix = lambda: TS
 
     platform_key = await auth.authenticate_platform(PLATFORM, TIMESTAMP, VALID_SIGNATURE)
@@ -39,7 +40,7 @@ async def test_key_verification():
 
 
 async def test_key_verification_bad_signature():
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(Settings())
     auth._now_unix = lambda: TS
     with pytest.raises(FailedInboundAuthentication) as excinfo:
         await auth.authenticate_platform(PLATFORM, TIMESTAMP, VALID_SIGNATURE.replace('2', '3'))
@@ -47,7 +48,7 @@ async def test_key_verification_bad_signature():
 
 
 async def test_key_verification_old_ts():
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(Settings())
     auth._now_unix = lambda: TS
     with pytest.raises(FailedInboundAuthentication) as excinfo:
         await auth.authenticate_platform('foobar.com', 2461449100, VALID_SIGNATURE)
@@ -55,7 +56,7 @@ async def test_key_verification_old_ts():
 
 
 async def test_invalid_public_key():
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(Settings())
     auth.public_key_value = 'whatever'
     auth._now_unix = lambda: TS
 
@@ -65,7 +66,7 @@ async def test_invalid_public_key():
 
 
 async def test_check_domain():
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(Settings())
     auth.valid_signature_override = True
     ts = int(datetime.now().strftime('%s'))
     platform_token = await auth.authenticate_platform('testing.foobar.com', ts, 'anything')
@@ -74,7 +75,7 @@ async def test_check_domain():
 
 
 async def test_check_domain_missing():
-    auth = SimpleAuthenticator()
+    auth = SimpleAuthenticator(Settings())
     auth.valid_signature_override = True
     ts = int(datetime.now().strftime('%s'))
     platform_token = await auth.authenticate_platform('testing.foobar.com', ts, 'anything')

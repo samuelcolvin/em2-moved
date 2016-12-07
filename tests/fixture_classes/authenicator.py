@@ -32,7 +32,7 @@ def get_private_key():
 
 
 class SimpleAuthenticator(BaseAuthenticator):
-    def __init__(self, settings=None):
+    def __init__(self, settings):
         super().__init__(settings)
         self._cache = {
             'already-authenticated.com:123:whatever': 2461449700

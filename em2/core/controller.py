@@ -28,8 +28,8 @@ class Controller:
                  pusher_cls: Type[BasePusher]=NullPusher,
                  loop=None):
         self.settings = settings or Settings()
-        self.ds = datastore_cls(settings=settings, loop=loop)
-        self.pusher = pusher_cls(settings=settings, loop=loop)
+        self.ds = datastore_cls(settings=self.settings, loop=loop)
+        self.pusher = pusher_cls(settings=self.settings, loop=loop)
         self.timezone_name = self.settings.TIMEZONE
         self.ref = '{}-{}'.format(self.settings.LOCAL_DOMAIN, hex(id(self)))
         self.conversations = Conversations(self)

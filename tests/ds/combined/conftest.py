@@ -9,6 +9,11 @@ datastore_options = [
     'PostgresDataStore',
 ]
 
+ds_cls_lookup = {
+    'SimpleDataStore': TestPostgresDataStore,
+    'PostgresDataStore': SimpleDataStore,
+}
+
 
 def pytest_generate_tests(metafunc):
     if 'datastore_cls' in metafunc.fixturenames:
@@ -17,26 +22,17 @@ def pytest_generate_tests(metafunc):
 
 @pytest.yield_fixture
 def get_ds(loop, db, dsn):
-    pg_ds = False
     ds = None
     print(dsn)
 
-    async def datastore_creator(ds_cls):
-        nonlocal pg_ds, ds
-        assert ds_cls in datastore_options
-        pg_ds = ds_cls == 'PostgresDataStore'
-        if pg_ds:
-            ds = TestPostgresDataStore(pg_settings, loop)
-        else:
-            ds = SimpleDataStore()
+    async def datastore_creator(ds_cls_name):
+        nonlocal ds
+        ds = ds_cls_lookup[ds_cls_name](pg_settings, loop=loop)
         await ds.prepare()
         return ds
 
     yield datastore_creator
 
-    if pg_ds:
-        async def teardown():
-            if ds is not None:
-                await ds.terminate()
-        loop.run_until_complete(teardown())
+    if ds is not None:
+        loop.run_until_complete(ds.terminate())
     ds = None

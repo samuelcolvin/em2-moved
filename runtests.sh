@@ -6,6 +6,7 @@ py.test --cov=em2 --fast
 pytest=$?
 if [ $pytest == 0 ] ; then
     echo building coverage html
+    coverage combine
     coverage html
 fi
 echo "pytest exit code: ${pytest}"

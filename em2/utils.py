@@ -49,7 +49,7 @@ def now_unix_ms():
 
 
 class BaseServiceCls:
-    def __init__(self, settings: Settings=None, loop: asyncio.AbstractEventLoop=None, **kwargs):
-        self.settings = settings or Settings()
+    def __init__(self, settings: Settings, *, loop: asyncio.AbstractEventLoop=None, **kwargs):
+        self.settings = settings
         self.loop = loop
         super().__init__(**kwargs)

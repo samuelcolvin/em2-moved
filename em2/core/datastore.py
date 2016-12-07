@@ -17,6 +17,9 @@ class DataStore(BaseServiceCls):
     async def prepare(self):
         pass
 
+    async def terminate(self):
+        pass
+
     async def list_conversations(self, conn, address, limit=None, offset=None):
         raise NotImplementedError()
 
@@ -192,7 +195,7 @@ class VoidContextManager:
         pass
 
 
-class NullConversationDataStore(ConversationDataStore):
+class NullConversationDataStore(ConversationDataStore):  # pragma: no cover
     async def get_core_properties(self):
         return {}
 

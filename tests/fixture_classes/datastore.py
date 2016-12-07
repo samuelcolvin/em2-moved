@@ -21,8 +21,8 @@ class UniversalEncoder(json.JSONEncoder):
 
 
 class SimpleDataStore(DataStore):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.conversation_counter = itertools.count()
         self.data = {}
         self.users = {}

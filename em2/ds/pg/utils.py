@@ -26,7 +26,7 @@ def get_dsn(settings: Settings):
     return str(URL(**kwargs))
 
 
-def prepare_database(settings: Settings, *, delete_existing: bool) -> bool:
+def prepare_database(settings: Settings, *, delete_existing: bool) -> bool:  # pragma: no cover
     """
     (Re)create a fresh database and run migrations.
 
