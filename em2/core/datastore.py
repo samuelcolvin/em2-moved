@@ -14,6 +14,9 @@ class DataStore(BaseServiceCls):
     async def create_conversation(self, conn, conv_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 
+    async def prepare(self, **kwargs):
+        pass
+
     async def list_conversations(self, conn, address, limit=None, offset=None):
         raise NotImplementedError()
 

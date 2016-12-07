@@ -25,7 +25,7 @@ class PostgresDataStore(DataStore):
         # TODO qualify the columns in case of conflict
         self._list_columns = [column('conv_id')] + PostgresConversationDataStore.sa_core_property_keys
 
-    async def create_engine(self, **kwargs):
+    async def prepare(self, **kwargs):
         if self.engine is not None:
             raise Em2Exception('postgres engine already initialised')
         logger.info('creating postgres data store connection pool')

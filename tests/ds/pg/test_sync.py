@@ -72,7 +72,7 @@ def test_prepare_database(pg_conn):
     assert cur.fetchone()[0] is True
 
     ds = PostgresDataStore(settings, loop)
-    loop.run_until_complete(ds.create_engine())
+    loop.run_until_complete(ds.prepare())
     ctrl = Controller(ds)
     loop.run_until_complete(ctrl.act(Action('testing@example.com', None, Verbs.ADD), subject='first conversation'))
     assert count_convs(ctrl) == 1
@@ -82,7 +82,7 @@ def test_prepare_database(pg_conn):
 
     # check conversation still exists as we haven't recreated the database
     ds = PostgresDataStore(settings, loop)
-    loop.run_until_complete(ds.create_engine())
+    loop.run_until_complete(ds.prepare())
     assert count_convs(Controller(ds)) == 1
     loop.run_until_complete(ds.finish())
 
@@ -90,6 +90,6 @@ def test_prepare_database(pg_conn):
 
     # check conversation doesn't exists as we have recreated the database
     ds = PostgresDataStore(settings, loop)
-    loop.run_until_complete(ds.create_engine())
+    loop.run_until_complete(ds.prepare())
     assert count_convs(Controller(ds)) == 0
     loop.run_until_complete(ds.finish())

@@ -20,7 +20,8 @@ def test_invalid():
 
 
 def test_create_controller_good():
-    ctrl = create_controller()
+    # had to use the base datastore here as the postgres one requires the database to already exist
+    ctrl = create_controller(DATASTORE_CLS='em2.core.datastore.DataStore')
     assert isinstance(ctrl, Controller)
     assert ctrl.settings.COMMS_HTTP_TIMEOUT == 4
 

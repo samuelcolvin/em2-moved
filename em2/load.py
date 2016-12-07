@@ -30,7 +30,7 @@ def create_controller(loop=None, **extra_settings):
 
     ds_cls = import_string(settings.DATASTORE_CLS)
     ds = ds_cls(settings=settings, loop=loop)
-    loop.run_until_complete(ds.create_engine())
+    loop.run_until_complete(ds.prepare())
 
     pusher_cls = import_string(settings.PUSHER_CLS)
     pusher = pusher_cls(settings=settings, loop=loop)
