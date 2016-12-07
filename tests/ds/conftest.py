@@ -8,7 +8,7 @@ from em2.ds.pg.datastore import ConnectionContextManager, PostgresDataStore
 from em2.ds.pg.models import Base
 from em2.ds.pg.utils import get_dsn, pg_connect_kwargs
 
-settings = Settings(
+pg_settings = Settings(
     PG_DATABASE='em2_test',
     PG_POOL_MAXSIZE=4,
     PG_POOL_TIMEOUT=5,
@@ -17,16 +17,16 @@ settings = Settings(
 
 @pytest.fixture(scope='session')
 def dsn():
-    return get_dsn(settings)
+    return get_dsn(pg_settings)
 
 
 @pytest.yield_fixture(scope='session')
 def db(dsn):
-    conn = psycopg2.connect(**pg_connect_kwargs(settings))
+    conn = psycopg2.connect(**pg_connect_kwargs(pg_settings))
     conn.autocommit = True
     cur = conn.cursor()
-    cur.execute('DROP DATABASE IF EXISTS {}'.format(settings.PG_DATABASE))
-    cur.execute('CREATE DATABASE {}'.format(settings.PG_DATABASE))
+    cur.execute('DROP DATABASE IF EXISTS {}'.format(pg_settings.PG_DATABASE))
+    cur.execute('CREATE DATABASE {}'.format(pg_settings.PG_DATABASE))
 
     engine = sa_create_engine(dsn)
     Base.metadata.create_all(engine)
@@ -34,7 +34,7 @@ def db(dsn):
     yield engine
 
     engine.dispose()
-    cur.execute('DROP DATABASE {}'.format(settings.PG_DATABASE))
+    cur.execute('DROP DATABASE {}'.format(pg_settings.PG_DATABASE))
     cur.close()
     conn.close()
 
@@ -100,7 +100,10 @@ class TestCtx(ConnectionContextManager):
 
 @pytest.yield_fixture
 def pg_conn():
-    settings = Settings(PG_DATABASE='test_prepare_database')
+    settings = Settings(
+        PG_DATABASE='test_prepare_database',
+        DATASTORE_CLS='em2.ds.pg.datastore.PostgresDataStore',
+    )
     conn = psycopg2.connect(**pg_connect_kwargs(settings))
     conn.autocommit = True
     cur = conn.cursor()

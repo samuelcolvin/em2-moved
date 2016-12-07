@@ -1,18 +1,12 @@
 import pytest
 
-from tests.ds.conftest import settings as pg_settings
-from tests.ds.conftest import TestPostgresDataStore
-from tests.fixture_classes import SimpleDataStore
+from em2 import Settings
+from em2.core import Controller
 
 datastore_options = [
-    'SimpleDataStore',
-    'PostgresDataStore',
+    'tests.fixture_classes.SimpleDataStore',
+    'tests.ds.conftest.TestPostgresDataStore',
 ]
-
-ds_cls_lookup = {
-    'SimpleDataStore': TestPostgresDataStore,
-    'PostgresDataStore': SimpleDataStore,
-}
 
 
 def pytest_generate_tests(metafunc):
@@ -22,17 +16,23 @@ def pytest_generate_tests(metafunc):
 
 @pytest.yield_fixture
 def get_ds(loop, db, dsn):
-    ds = None
+    ctrl = None
     print(dsn)
 
     async def datastore_creator(ds_cls_name):
-        nonlocal ds
-        ds = ds_cls_lookup[ds_cls_name](pg_settings, loop=loop)
-        await ds.prepare()
-        return ds
+        nonlocal ctrl
+        settings = Settings(
+            PG_DATABASE='em2_test',
+            DATASTORE_CLS=ds_cls_name,
+            PG_POOL_MAXSIZE=4,
+            PG_POOL_TIMEOUT=5,
+        )
+        ctrl = Controller(settings, loop=loop)
+        await ctrl.prepare()
+        return ctrl.ds
 
     yield datastore_creator
 
-    if ds is not None:
-        loop.run_until_complete(ds.terminate())
-    ds = None
+    if ctrl is not None:
+        loop.run_until_complete(ctrl.ds.terminate())
+    ctrl = None

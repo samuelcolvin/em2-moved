@@ -1,17 +1,14 @@
 import datetime
 import inspect
 import logging
-from typing import Type
 
 import pytz
 
-from em2.comms import BasePusher, NullPusher
 from em2.exceptions import BadDataException, BadHash, VerbNotFound
 from em2.settings import Settings
 
 from .components import Components, Messages, Participants
 from .conversations import Conversations
-from .datastore import DataStore, NullDataStore
 from .interactions import Action, Retrieval
 
 logger = logging.getLogger('em2.core')
@@ -21,15 +18,10 @@ class Controller:
     """
     Top level class for accessing conversations and conversation components.
     """
-    def __init__(self,
-                 settings: Settings=None,
-                 *,
-                 datastore_cls: Type[DataStore]=NullDataStore,
-                 pusher_cls: Type[BasePusher]=NullPusher,
-                 loop=None):
+    def __init__(self, settings: Settings=None, *, loop=None):
         self.settings = settings or Settings()
-        self.ds = datastore_cls(settings=self.settings, loop=loop)
-        self.pusher = pusher_cls(settings=self.settings, loop=loop)
+        self.ds = self.settings.datastore_cls(settings=self.settings, loop=loop)
+        self.pusher = self.settings.pusher_cls(settings=self.settings, loop=loop)
         self.timezone_name = self.settings.TIMEZONE
         self.ref = '{}-{}'.format(self.settings.LOCAL_DOMAIN, hex(id(self)))
         self.conversations = Conversations(self)

@@ -6,7 +6,6 @@ from copy import deepcopy
 from em2 import Settings
 from em2.core import Action, Components, Controller, Verbs, perms
 from em2.utils import to_unix_ms
-from tests.fixture_classes import SimpleDataStore, SimplePusher
 
 
 async def test_create_basic_conversation(controller):
@@ -26,11 +25,19 @@ async def test_create_basic_conversation(controller):
     assert conv['conv_id'] == hash_result
 
 
-async def test_create_conversation_add_external_participant():
-    s_local = Settings(LOCAL_DOMAIN='local.com')
-    ctrl = Controller(s_local, datastore_cls=SimpleDataStore, pusher_cls=SimplePusher)
-    s_remote = Settings(LOCAL_DOMAIN='remote.com')
-    remote_ctrl = Controller(s_remote, datastore_cls=SimpleDataStore)
+async def test_create_conversation_add_external_participant(loop):
+    s_local = Settings(
+        DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
+        PUSHER_CLS='tests.fixture_classes.SimplePusher',
+        LOCAL_DOMAIN='local.com',
+    )
+    ctrl = Controller(s_local, loop=loop)
+    s_remote = Settings(
+        DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
+        PUSHER_CLS='tests.fixture_classes.SimplePusher',
+        LOCAL_DOMAIN='remote.com'
+    )
+    remote_ctrl = Controller(s_remote, loop=loop)
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
 
     action = Action('sender@local.com', None, Verbs.ADD)
@@ -43,11 +50,20 @@ async def test_create_conversation_add_external_participant():
     assert len(ctrl.ds.data[0]['participants']) == 2
 
 
-async def test_publish_conversation():
-    local_settings = Settings(LOCAL_DOMAIN='local.com')
-    ctrl = Controller(local_settings, datastore_cls=SimpleDataStore, pusher_cls=SimplePusher)
-    remote_settings = Settings(LOCAL_DOMAIN='remote.com')
-    remote_ctrl = Controller(remote_settings, datastore_cls=SimpleDataStore, pusher_cls=SimplePusher)
+async def test_publish_conversation(loop):
+    local_settings = Settings(
+        DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
+        PUSHER_CLS='tests.fixture_classes.SimplePusher',
+        LOCAL_DOMAIN='local.com',
+    )
+    ctrl = Controller(local_settings, loop=loop)
+
+    remote_settings = Settings(
+        DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
+        PUSHER_CLS='tests.fixture_classes.SimplePusher',
+        LOCAL_DOMAIN='remote.com',
+    )
+    remote_ctrl = Controller(remote_settings, loop=loop)
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
     remote_ctrl.pusher.network.add_node('local.com', ctrl)
     action = Action('sender@local.com', None, Verbs.ADD)

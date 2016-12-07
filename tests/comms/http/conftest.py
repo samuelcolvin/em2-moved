@@ -6,14 +6,15 @@ from aiohttp.test_utils import TestClient
 from em2 import Settings
 from em2.comms.http import create_app
 from em2.core import Controller
-from tests.fixture_classes import SimpleAuthenticator, SimpleDataStore
+from tests.fixture_classes import SimpleAuthenticator
 from tests.fixture_classes.authenicator import get_private_key
 from tests.fixture_classes.push import HttpMockedDNSPusher
 
 
 def _create_app(loop):
-    ctrl = Controller(datastore_cls=SimpleDataStore)
-    auth = SimpleAuthenticator(settings=Settings())
+    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
+    ctrl = Controller(settings, loop=loop)
+    auth = SimpleAuthenticator(settings=settings)
     auth._now_unix = lambda: 2461449600
     return create_app(ctrl, auth, loop=loop)
 

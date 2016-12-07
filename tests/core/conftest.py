@@ -1,12 +1,13 @@
 import pytest
 
+from em2 import Settings
 from em2.core import Action, Controller, Verbs
-from tests.fixture_classes import SimpleDataStore
 
 
 @pytest.fixture
-def controller():
-    return Controller(datastore_cls=SimpleDataStore)
+def controller(loop):
+    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
+    return Controller(settings, loop=loop)
 
 
 @pytest.fixture

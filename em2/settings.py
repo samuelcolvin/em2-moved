@@ -1,4 +1,23 @@
+from importlib import import_module
+
 from arq import ConnectionSettings
+
+
+def import_string(dotted_path):
+    """
+    Stolen from django. Import a dotted module path and return the attribute/class designated by the
+    last name in the path. Raise ImportError if the import failed.
+    """
+    try:
+        module_path, class_name = dotted_path.rsplit('.', 1)
+    except ValueError as e:
+        raise ImportError("%s doesn't look like a module path" % dotted_path) from e
+
+    module = import_module(module_path)
+    try:
+        return getattr(module, class_name)
+    except AttributeError as e:
+        raise ImportError('Module "%s" does not define a "%s" attribute/class' % (module_path, class_name)) from e
 
 
 class Settings(ConnectionSettings):
@@ -11,8 +30,8 @@ class Settings(ConnectionSettings):
     COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
 
-    DATASTORE_CLS = 'em2.ds.pg.datastore.PostgresDataStore'
-    PUSHER_CLS = 'em2.comms.http.push.HttpDNSPusher'
+    DATASTORE_CLS = 'em2.core.datastore.NullDataStore'
+    PUSHER_CLS = 'em2.comms.NullPusher'
 
     PG_HOST = 'localhost'
     PG_PORT = '5432'
@@ -28,3 +47,11 @@ class Settings(ConnectionSettings):
     PRIVATE_DOMAIN_KEY = 'no-key-set'
 
     TIMEZONE = 'utc'
+
+    @property
+    def datastore_cls(self):
+        return import_string(self.DATASTORE_CLS)
+
+    @property
+    def pusher_cls(self):
+        return import_string(self.PUSHER_CLS)

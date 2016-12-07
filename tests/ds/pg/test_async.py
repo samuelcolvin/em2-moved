@@ -1,8 +1,8 @@
 import pytest
 from aiopg.sa import create_engine
 
+from em2 import Settings
 from em2.core import Action, Controller, Verbs
-from em2.ds.pg.datastore import PostgresDataStore
 from em2.ds.pg.models import sa_conversations
 from em2.exceptions import ConversationNotFound
 
@@ -36,7 +36,7 @@ async def test_conversation_insert_raw(timestamp, loop, db, dsn):
 
 async def test_datastore_setup(loop, empty_db, dsn):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
-        ctrl = Controller(datastore_cls=PostgresDataStore)
+        ctrl = Controller(Settings(DATASTORE_CLS='em2.ds.pg.datastore.PostgresDataStore'))
         ctrl.ds.engine = engine
         async with ctrl.ds.connection() as conn:
             action = Action('sender@example.com', None, Verbs.ADD)
@@ -48,7 +48,7 @@ async def test_datastore_setup(loop, empty_db, dsn):
 
 async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
-        ctrl = Controller(datastore_cls=PostgresDataStore)
+        ctrl = Controller(Settings(DATASTORE_CLS='em2.ds.pg.datastore.PostgresDataStore'))
         ctrl.ds.engine = engine
         line = 0
         with pytest.raises(ConversationNotFound):

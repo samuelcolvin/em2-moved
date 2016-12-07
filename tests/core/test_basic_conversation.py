@@ -1,12 +1,12 @@
 import logging
 
-from em2 import setup_logging
+from em2 import Settings, setup_logging
 from em2.core import Action, Components, Controller, Retrieval, RVerbs, Verbs
-from tests.fixture_classes import SimpleDataStore
 
 
-async def test_basic_conversation():
-    controller = Controller(datastore_cls=SimpleDataStore)
+async def test_basic_conversation(loop):
+    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
+    controller = Controller(settings, loop=loop)
     ds = controller.ds
 
     action = Action('sender@example.com', None, Verbs.ADD)
@@ -29,8 +29,9 @@ async def test_basic_conversation():
     assert len(conversations) == 1
 
 
-async def test_reprs():
-    controller = Controller(datastore_cls=SimpleDataStore)
+async def test_reprs(loop):
+    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
+    controller = Controller(settings, loop=loop)
 
     print('controller:', controller)
     assert str(controller) == '<Controller(no-domain-set-0x{:x})>'.format(id(controller))
@@ -43,9 +44,10 @@ async def test_reprs():
     print(msgs)
 
 
-async def test_logging(capsys):
+async def test_logging(loop, capsys):
     setup_logging(log_level='DEBUG')
-    controller = Controller(datastore_cls=SimpleDataStore)
+    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
+    controller = Controller(settings, loop=loop)
 
     action = Action('sender@example.com', None, Verbs.ADD)
     await controller.act(action, subject='foo bar')

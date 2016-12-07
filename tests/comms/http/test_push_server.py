@@ -3,7 +3,6 @@ from arq.testing import RaiseWorker
 from em2 import Settings
 from em2.core import Action, Components, Controller, Verbs, perms
 from em2.utils import now_unix_secs
-from tests.fixture_classes import SimpleDataStore
 
 
 async def test_authenticate(pusher):
@@ -28,8 +27,9 @@ async def test_get_node_remote(pusher):
     assert r == 'em2.platform.remote.com'
 
 
-async def test_publish_conv(pusher):
-    ctrl = Controller(datastore_cls=SimpleDataStore)
+async def test_publish_conv(pusher, loop):
+    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
+    ctrl = Controller(settings, loop=loop)
     ctrl.pusher = pusher
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar', body='great body')
@@ -47,8 +47,9 @@ async def test_publish_conv(pusher):
     assert data[0]['conv_id'] == conv_id
 
 
-async def test_publish_update_conv(pusher):
-    ctrl = Controller(datastore_cls=SimpleDataStore)
+async def test_publish_update_conv(pusher, loop):
+    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
+    ctrl = Controller(settings, loop=loop)
     ctrl.pusher = pusher
     conv_id = await ctrl.act(Action('sender@local.com', None, Verbs.ADD), subject='foo bar', body='great body')
 
