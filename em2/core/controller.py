@@ -6,6 +6,7 @@ import pytz
 
 from em2.comms import BasePusher, NullPusher
 from em2.exceptions import BadDataException, BadHash, VerbNotFound
+from em2.settings import Settings
 
 from .components import Components, Messages, Participants
 from .conversations import Conversations
@@ -19,11 +20,17 @@ class Controller:
     """
     Top level class for accessing conversations and conversation components.
     """
-    def __init__(self, datastore: DataStore, pusher: BasePusher=None, timezone_name='utc', ref=None):
-        pusher = pusher or NullPusher()
+    def __init__(self,
+                 datastore: DataStore,
+                 pusher: BasePusher=None,
+                 settings: Settings=None,
+                 *,
+                 ref=None):
+        self.settings = settings or Settings()
+        pusher = pusher or NullPusher(settings=settings)
         self.ds = datastore
         self.pusher = pusher
-        self.timezone_name = timezone_name
+        self.timezone_name = self.settings.TIMEZONE
         self.ref = ref if ref is not None else hex(id(self))
         self.conversations = Conversations(self)
         components = [Messages, Participants]

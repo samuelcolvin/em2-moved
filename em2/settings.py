@@ -10,6 +10,9 @@ class Settings(ConnectionSettings):
     COMMS_PUSH_TOKEN_EARLY_EXPIRY = 10
     COMMS_HTTP_TIMEOUT = 4
 
+    DATASTORE_CLS = 'em2.ds.pg.datastore.PostgresDataStore'
+    PUSHER_CLS = 'em2.comms.http.push.HttpDNSPusher'
+
     PG_HOST = 'localhost'
     PG_PORT = '5432'
     PG_USER = 'postgres'
@@ -18,3 +21,5 @@ class Settings(ConnectionSettings):
 
     LOCAL_DOMAIN = 'no-domain-set'
     PRIVATE_DOMAIN_KEY = 'no-key-set'
+
+    TIMEZONE = 'utc'
