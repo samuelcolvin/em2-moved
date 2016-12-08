@@ -15,11 +15,11 @@ def pytest_generate_tests(metafunc):
 
 
 @pytest.yield_fixture
-def get_ds(loop, db, dsn):
+def get_ctrl(loop, db, dsn):
     ctrl = None
     print(dsn)
 
-    async def datastore_creator(ds_cls_name):
+    async def ctrl_creator(ds_cls_name):
         nonlocal ctrl
         settings = Settings(
             PG_DATABASE='em2_test',
@@ -29,10 +29,18 @@ def get_ds(loop, db, dsn):
         )
         ctrl = Controller(settings, loop=loop)
         await ctrl.prepare()
-        return ctrl.ds
+        return ctrl
 
-    yield datastore_creator
+    yield ctrl_creator
 
     if ctrl is not None:
         loop.run_until_complete(ctrl.ds.terminate())
     ctrl = None
+
+
+@pytest.fixture
+def get_ds(get_ctrl):
+    async def ds_creator(ds_cls_name):
+        ctrl = await get_ctrl(ds_cls_name)
+        return ctrl.ds
+    return ds_creator

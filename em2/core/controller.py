@@ -18,15 +18,15 @@ class Controller:
     """
     Top level class for accessing conversations and conversation components.
     """
-    def __init__(self, settings: Settings=None, *, loop=None):
-        self.settings = settings or Settings()
-        self.ds = self.settings.datastore_cls(settings=self.settings, loop=loop)
-        self.pusher = self.settings.pusher_cls(settings=self.settings, loop=loop)
-        self.timezone_name = self.settings.TIMEZONE
-        self.ref = '{}-{}'.format(self.settings.LOCAL_DOMAIN, hex(id(self)))
+    def __init__(self, settings: Settings, *, loop=None):
+        self.ds = settings.datastore_cls(settings=settings, loop=loop)
+        self.pusher = settings.pusher_cls(settings=settings, loop=loop)
+        self.timezone_name = settings.TIMEZONE
+        self.ref = '{}-{}'.format(settings.LOCAL_DOMAIN, hex(id(self)))
         self.conversations = Conversations(self)
         components = [Messages, Participants]
         self.components = {c.name: c(self) for c in components}
+        self.settings = settings
 
     async def prepare(self):
         await self.ds.prepare()

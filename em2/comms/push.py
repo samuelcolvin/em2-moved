@@ -168,7 +168,7 @@ class livePusher(BasePusher, RedisDNSActor):
             raise NotImplementedError()
 
     async def _push_data(self, urls, action_attrs, event_id, **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     async def authenticate(self, node_domain: str) -> str:
         logger.info('authenticating with %s', node_domain)
