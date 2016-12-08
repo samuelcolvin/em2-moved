@@ -32,7 +32,7 @@ class RedisDNSActor(Actor):
         try:
             return await self.resolver.query(host, qtype)
         except (DNSError, ValueError) as e:
-            dns_logger.warning('%s query error on %s, %s: %s', qtype, host, e.__class__.__name, e)
+            dns_logger.warning('%s query error on %s, %s: %s', qtype, host, e.__class__.__name__, e)
             return []
 
     async def set_exat(self, redis, key: bytes, value: str, expires_at: int):

@@ -4,7 +4,7 @@ import logging
 import aiohttp
 
 from em2.comms import encoding
-from em2.comms.push import livePusher
+from em2.comms.push import LivePusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
 
 JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
@@ -12,7 +12,7 @@ JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 logger = logging.getLogger('em2.push.http')
 
 
-class HttpDNSPusher(livePusher):
+class HttpDNSPusher(LivePusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = None
@@ -78,7 +78,7 @@ class HttpDNSPusher(livePusher):
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",
             # the exception is fairly useless at giving specifics
-            raise ConnectionError('cannot connect to "{}"'.format(url)) from e
+            raise Em2ConnectionError('cannot connect to "{}"'.format(url)) from e
         else:
             if r.status != 201:
                 raise FailedOutboundAuthentication('{} response {} != 201, response: {}'.format(url, r.status, body))

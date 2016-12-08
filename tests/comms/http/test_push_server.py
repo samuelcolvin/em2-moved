@@ -1,11 +1,84 @@
+from asyncio import Future
+
+import aiohttp
 from arq.testing import RaiseWorker
 
 from em2 import Settings
-from em2.core import Action, Components, Controller, Verbs, perms
+from em2.comms.http.push import HttpDNSPusher
+from em2.core import Action, Components, Verbs, perms
 from em2.utils import now_unix_secs
 
 
-async def test_authenticate(pusher):
+async def test_push_no_mx(pusher, loop, mocker):
+    mock_mx_query = mocker.patch('em2.comms.http.push.HttpDNSPusher.mx_query')
+    r = Future(loop=loop)
+    r.set_result([])
+    mock_mx_query.return_value = r
+    mock_authenticate = mocker.patch('em2.comms.http.push.HttpDNSPusher.authenticate')
+
+    v = await pusher.get_node('example.com')
+    assert v == HttpDNSPusher.FALLBACK
+
+    mock_mx_query.assert_called_with('example.com')
+    assert mock_authenticate.called is False
+    await pusher.close()
+
+
+async def test_push_mx_em2(pusher, loop, mocker):
+    mock_mx_query = mocker.patch('em2.comms.http.push.HttpDNSPusher.mx_query')
+    r = Future(loop=loop)
+    r.set_result([(0, 'em2.example.com')])
+    mock_mx_query.return_value = r
+    mock_authenticate = mocker.patch('em2.comms.http.push.HttpDNSPusher.authenticate')
+    r = Future(loop=loop)
+    r.set_result('the_key')
+    mock_authenticate.return_value = r
+
+    v = await pusher.get_node('example.com')
+    assert v == 'em2.example.com'
+
+    mock_mx_query.assert_called_with('example.com')
+    mock_authenticate.assert_called_with('em2.example.com')
+    await pusher.close()
+
+
+async def test_push_mx_not_em2(pusher, loop, mocker):
+    mock_mx_query = mocker.patch('em2.comms.http.push.HttpDNSPusher.mx_query')
+    r = Future(loop=loop)
+    r.set_result([(0, 'notem2.example.com')])
+    mock_mx_query.return_value = r
+
+    mock_authenticate = mocker.patch('em2.comms.http.push.HttpDNSPusher.authenticate')
+    r = Future(loop=loop)
+    r.set_result('the_key')
+    mock_authenticate.return_value = r
+
+    v = await pusher.get_node('example.com')
+    assert v == HttpDNSPusher.FALLBACK
+
+    mock_mx_query.assert_called_with('example.com')
+    assert mock_authenticate.called is False
+    await pusher.close()
+
+
+async def test_push_client_os_error(pusher, loop, mocker):
+    mock_mx_query = mocker.patch('em2.comms.http.push.HttpDNSPusher.mx_query')
+    r = Future(loop=loop)
+    r.set_result([(0, 'em2.example.com')])
+    mock_mx_query.return_value = r
+    mock_post = mocker.patch('em2.comms.http.push.aiohttp.ClientSession.post')
+    mock_post.side_effect = aiohttp.ClientOSError('foobar')
+
+    v = await pusher.get_node('example.com')
+    assert v == HttpDNSPusher.FALLBACK
+
+    mock_mx_query.assert_called_with('example.com')
+    assert mock_post.call_args[0] == ('https://em2.example.com/authenticate',)
+    await pusher.close()
+
+
+async def test_authenticate(ctrl_pusher):
+    ctrl, pusher = await ctrl_pusher()
     token = await pusher.authenticate('em2.platform.remote.com')
     assert token.startswith('em2.local.com:2461536000:')
     async with pusher._redis_pool.get() as redis:
@@ -17,20 +90,20 @@ async def test_authenticate(pusher):
         assert abs(expiry - expected_expiry) < 10
 
 
-async def test_get_node_local(pusher):
+async def test_get_node_local(ctrl_pusher):
+    ctrl, pusher = await ctrl_pusher()
     r = await pusher.get_node('local.com')
     assert r == pusher.LOCAL
 
 
-async def test_get_node_remote(pusher):
+async def test_get_node_remote(ctrl_pusher):
+    ctrl, pusher = await ctrl_pusher()
     r = await pusher.get_node('remote.com')
     assert r == 'em2.platform.remote.com'
 
 
-async def test_publish_conv(pusher, loop):
-    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
-    ctrl = Controller(settings, loop=loop)
-    ctrl.pusher = pusher
+async def test_publish_conv(ctrl_pusher):
+    ctrl, pusher = await ctrl_pusher()
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar', body='great body')
 
@@ -47,10 +120,8 @@ async def test_publish_conv(pusher, loop):
     assert data[0]['conv_id'] == conv_id
 
 
-async def test_publish_update_conv(pusher, loop):
-    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
-    ctrl = Controller(settings, loop=loop)
-    ctrl.pusher = pusher
+async def test_publish_update_conv(ctrl_pusher):
+    ctrl, pusher = await ctrl_pusher()
     conv_id = await ctrl.act(Action('sender@local.com', None, Verbs.ADD), subject='foo bar', body='great body')
 
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.PARTICIPANTS)

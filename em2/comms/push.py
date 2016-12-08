@@ -33,11 +33,14 @@ class BasePusher(BaseServiceCls):
         super().__init__(settings, loop=loop, **kwargs)
         logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
+        self.ds = None
 
-    async def push(self, action, event_id, data, addresses):
-        raise NotImplementedError()
+    async def init_ds(self):
+        assert self.ds is None, 'datastore already initialised'
+        self.ds = self.settings.datastore_cls(settings=self.settings, loop=self.loop)
+        await self.ds.prepare()
 
-    async def publish(self, action, event_id, data):
+    async def push(self, action, event_id, data):
         raise NotImplementedError()
 
     def get_domain(self, address):
@@ -99,10 +102,7 @@ class NullPusher(BasePusher):  # pragma: no cover
     """
     Pusher with no functionality to connect to other platforms. Used for testing or trial purposes only.
     """
-    async def push(self, action, event_id, data, addresses):
-        pass
-
-    async def publish(self, action, event_id, data):
+    async def push(self, action, event_id, data):
         pass
 
     async def get_node(self, domain):
@@ -112,11 +112,15 @@ class NullPusher(BasePusher):  # pragma: no cover
         pass
 
 
-class livePusher(BasePusher, RedisDNSActor):
+class LivePusher(BasePusher, RedisDNSActor):
     # prefix hashes of address domain -> node (platform) domain
     domain_node_prefix = b'dn:'
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
+
+    async def init_ds(self):
+        assert self.is_shadow, 'datastore should only be initialised with the pusher in shadow mode'
+        await super().init_ds()
 
     async def get_nodes(self, *addresses: str) -> Set[str]:
         # cache here instead of in get_node so we can use the same redis connection
@@ -140,32 +144,24 @@ class livePusher(BasePusher, RedisDNSActor):
                 nodes.add(node)
         return nodes
 
-    async def publish(self, action, event_id, data):
-        await self._publish_concurrent(action.attrs, event_id, data)
+    async def push(self, action, event_id, data):
+        await self._send(action.attrs, event_id, data)
 
     @concurrent
-    async def _publish_concurrent(self, action_attrs, event_id, data):
-        # TODO combine with _push_concurrent ?
-        from em2.core import Components
-        addresses = [p[0] for p in data[Components.PARTICIPANTS]]
-        nodes = await self.get_nodes(*addresses)
-        remote_em2_nodes = [n for n in nodes if n not in {self.LOCAL, self.FALLBACK}]
-        logger.info('publishing %.6s to %d urls', action_attrs['conv'], len(remote_em2_nodes))
-        await self._push_data(remote_em2_nodes, action_attrs, event_id, data=data)
-        if any(n for n in nodes if n == self.FALLBACK):
-            raise NotImplementedError()
+    async def _send(self, action_attrs, event_id, data):
+        async with self.ds.connection() as conn:
+            cds = self.ds.new_conv_ds(action_attrs['conv'], conn)
 
-    async def push(self, action, event_id, data, addresses):
-        await self._push_concurrent(action.attrs, event_id, data, addresses)
+            participants_data = await cds.receiving_participants()
+            addresses = [p['address'] for p in participants_data]
+            nodes = await self.get_nodes(*addresses)
+            remote_em2_nodes = [n for n in nodes if n not in {self.LOCAL, self.FALLBACK}]
 
-    @concurrent
-    async def _push_concurrent(self, action_attrs, event_id, data, addresses):
-        nodes = await self.get_nodes(*addresses)
-        remote_em2_nodes = [n for n in nodes if n not in {self.LOCAL, self.FALLBACK}]
-        logger.info('pushing %.6s to %d urls', action_attrs['conv'], len(remote_em2_nodes))
-        await self._push_data(remote_em2_nodes, action_attrs, event_id, **data)
-        if any(n for n in nodes if n == self.FALLBACK):
-            raise NotImplementedError()
+            logger.info('%(verb)s %(conv).6s to %(nodes)d nodes', nodes=len(remote_em2_nodes), **action_attrs)
+            await self._push_data(remote_em2_nodes, action_attrs, event_id, **data)
+            if any(n for n in nodes if n == self.FALLBACK):
+                raise NotImplementedError()
+            # TODO update event with success or failure
 
     async def _push_data(self, urls, action_attrs, event_id, **kwargs):
         raise NotImplementedError()

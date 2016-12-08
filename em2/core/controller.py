@@ -139,18 +139,14 @@ class Controller:
         if conv_status == Conversations.Status.DRAFT:
             return
         push_data = self._subdict(data, 'pb')
+        await self.pusher.push(a, event_id, push_data)
 
-        # FIXME what happens when pushing fails, perhaps save status on update
-        # FIXME participants is a temporary fix until pushers have access to the datastore
-        participants_data = await a.cds.get_all_component_items(Components.PARTICIPANTS)
-        participants = [p['address'] for p in participants_data]
-        await self.pusher.push(a, event_id, push_data, participants)
-
-    async def publish(self, action, **data):
-        logger.info('publishing %.6s, author: "%s"', action.conv, action.address)
-        event_id = action.calc_event_id()
-        await action.cds.save_event(event_id, action)
-        await self.pusher.publish(action, event_id, data)
+    async def publish(self, a, **data):
+        logger.info('publishing %.6s, author: "%s"', a.conv, a.address)
+        event_id = a.calc_event_id()
+        await a.cds.save_event(event_id, a)
+        # we could change Conversation.remote_add to accept **data and therefore just pass push_data below
+        await self.pusher.push(a, event_id, {'data': data})
 
     def __repr__(self):
         return '<Controller({})>'.format(self.ref)

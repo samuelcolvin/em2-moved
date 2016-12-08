@@ -162,6 +162,23 @@ class ConversationDataStore:
         """
         raise NotImplementedError()
 
+    async def receiving_participants(self):
+        """
+        Get data suitable for propagating data to participants. This is used both for em2 distribution and fallback.
+
+        Could be overwritten by subclasses to be more performant, eg. only get the required fields from the db.
+
+        :return: list of key information for each participant in a conversation
+        """
+        participants = []
+        for p in await self.get_all_component_items(Components.PARTICIPANTS):
+            participants.append({
+                'address': p['address'],
+                # 'dn': p['display_name'],  # TODO
+                # 'hd': p['hidden'],  # TODO
+            })
+        return participants
+
 
 class NullDataStore(DataStore):
 

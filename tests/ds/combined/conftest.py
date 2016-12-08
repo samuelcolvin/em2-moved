@@ -15,7 +15,7 @@ def pytest_generate_tests(metafunc):
 
 
 @pytest.yield_fixture
-def get_ctrl(loop, db, dsn):
+def get_ctrl(loop, dsn, db, reset_store):
     ctrl = None
     print(dsn)
 

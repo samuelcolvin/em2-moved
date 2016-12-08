@@ -6,6 +6,7 @@ from collections import OrderedDict
 from em2.core import Components
 from em2.ds.main import ConversationDataStore, DataStore, VoidContextManager
 from em2.exceptions import ComponentNotFound, ConversationNotFound, EventNotFound
+from tests.conftest import test_store
 
 
 class UniversalEncoder(json.JSONEncoder):
@@ -24,8 +25,7 @@ class SimpleDataStore(DataStore):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.conversation_counter = itertools.count()
-        self.data = {}
-        self.users = {}
+        self.data = test_store(self.settings.LOCAL_DOMAIN)
         self.user_counter = itertools.count()
 
     async def create_conversation(self, conn, **kwargs):

@@ -4,7 +4,7 @@ from em2 import Settings, setup_logging
 from em2.core import Action, Components, Controller, Retrieval, RVerbs, Verbs
 
 
-async def test_basic_conversation(loop):
+async def test_basic_conversation(reset_store, loop):
     settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
     controller = Controller(settings, loop=loop)
     ds = controller.ds
@@ -29,7 +29,7 @@ async def test_basic_conversation(loop):
     assert len(conversations) == 1
 
 
-async def test_reprs(loop):
+async def test_reprs(reset_store, loop):
     settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
     controller = Controller(settings, loop=loop)
 
@@ -44,7 +44,7 @@ async def test_reprs(loop):
     print(msgs)
 
 
-async def test_logging(loop, capsys):
+async def test_logging(reset_store, loop, capsys):
     setup_logging(log_level='DEBUG')
     settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
     controller = Controller(settings, loop=loop)
