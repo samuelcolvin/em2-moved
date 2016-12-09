@@ -45,14 +45,18 @@ def reset_store():
 @pytest.yield_fixture
 def redis_pool(loop):
     address = 'localhost', 6379
-    pool = loop.run_until_complete(aioredis.create_pool(address, loop=loop))
+
+    async def _prepare():
+        _pool = await aioredis.create_pool(address, loop=loop)
+        async with _pool.get() as redis:
+            await redis.flushall()
+        return _pool
+
+    pool = loop.run_until_complete(_prepare())
 
     yield pool
 
     async def finish():
-        async with pool.get() as redis:
-            await redis.flushall()
-
         pool.close()
         await pool.wait_closed()
         await pool.clear()

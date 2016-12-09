@@ -32,7 +32,7 @@ def ctrl_pusher(loop, reset_store):
         await _pusher.ainit()
         await _pusher.create_test_client()
         async with await _pusher.get_redis_conn() as redis:
-            await redis.flushdb()
+            await redis.flushall()
         return _ctrl, _pusher
 
     yield _create

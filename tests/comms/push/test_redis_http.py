@@ -7,20 +7,18 @@ from tests.fixture_classes.push import HttpMockedDNSPusher
 
 
 @pytest.yield_fixture
-def pusher(loop):
+def pusher(redis_pool, loop):
     settings = Settings(R_DATABASE=2)
 
     async def setup(push_class=HttpMockedDNSPusher):
-        _pusher = push_class(settings=settings, loop=loop)
-        async with await _pusher.get_redis_conn() as redis:
-            await redis.flushdb()
+        _pusher = push_class(settings=settings, loop=loop, is_shadow=True)
+        _pusher._redis_pool = redis_pool
+        await _pusher.ainit()
         return _pusher
 
     _pusher = loop.run_until_complete(setup())
 
     yield _pusher
-
-    loop.run_until_complete(_pusher.close())
 
 
 async def test_get_nodes_not_existing(loop, pusher):

@@ -6,26 +6,18 @@ from em2.exceptions import FailedInboundAuthentication
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE, RedisMockDNSAuthenticator
 
 
-@pytest.yield_fixture
-def redis_auth(loop):
+@pytest.fixture
+def redis_auth(redis_pool, loop):
     settings = Settings(R_DATABASE=2)
     auth = None
-
-    async def flushdb():
-        async with await auth.get_redis_conn() as redis:
-            await redis.flushdb()
 
     async def setup(auth_class=RedisDNSAuthenticator):
         nonlocal auth
         auth = auth_class(settings=settings, loop=loop)
-        await flushdb()
+        auth._redis_pool = redis_pool
         return auth
 
-    yield setup
-
-    if auth:
-        loop.run_until_complete(flushdb())
-        loop.run_until_complete(auth.close())
+    return setup
 
 
 async def test_key_set_get(redis_auth):
