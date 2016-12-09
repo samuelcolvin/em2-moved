@@ -8,6 +8,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from em2 import Settings
+from em2.core import Action
 from em2.utils import now_unix_secs
 
 from .redis import RedisDNSActor
@@ -33,10 +34,10 @@ class BasePusher(RedisDNSActor):
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
 
-    def __init__(self, settings: Settings, *, loop=None, fallback=None, **kwargs):
+    def __init__(self, settings: Settings, *, loop=None, **kwargs):
         self.settings = settings
         self.loop = loop
-        self.fallback = fallback
+        # self.fallback = fallback
         logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.ds = None
@@ -49,26 +50,27 @@ class BasePusher(RedisDNSActor):
         self.ds = self.settings.datastore_cls(settings=self.settings, loop=self.loop)
         await self.ds.ainit()
 
-    async def push(self, action, event_id, data):
-        await self._send(action.attrs, event_id, data)
+    async def push(self, action, data):
+        await self._send(action.to_dict(), data)
 
     @concurrent
-    async def _send(self, action_attrs, event_id, data):
+    async def _send(self, action_dict, data):
+        action = Action(**action_dict)
         async with self.ds.connection() as conn:
-            cds = self.ds.new_conv_ds(action_attrs['conv'], conn)
+            cds = self.ds.new_conv_ds(action.conv, conn)
 
             participants_data = await cds.receiving_participants()
             addresses = [p['address'] for p in participants_data]
             nodes = await self.get_nodes(*addresses)
             remote_em2_nodes = [n for n in nodes if n not in {self.LOCAL, self.FALLBACK}]
 
-            logger.info('%s %.6s to %d nodes', action_attrs['verb'], action_attrs['conv'], len(remote_em2_nodes))
-            await self._push_data(remote_em2_nodes, action_attrs, event_id, **data)
+            logger.info('%s %.6s to %d nodes', action.verb, action.conv, len(remote_em2_nodes))
+            await self._push_em2(remote_em2_nodes, action, data)
             if any(n for n in nodes if n == self.FALLBACK):
                 raise NotImplementedError()
             # TODO update event with success or failure
 
-    async def _push_data(self, nodes, action_attrs, event_id, **kwargs):
+    async def _push_em2(self, nodes, action, data):
         raise NotImplementedError()
 
     def get_domain(self, address):
@@ -149,7 +151,7 @@ class NullPusher(BasePusher):  # pragma: no cover
     """
     Pusher with no functionality to connect to other platforms. Used for testing or trial purposes only.
     """
-    async def push(self, action, event_id, data):
+    async def push(self, action, data):
         pass
 
     async def get_node(self, domain):

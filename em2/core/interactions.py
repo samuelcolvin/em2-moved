@@ -39,8 +39,7 @@ class _Interaction:
     def loc_rem(self):
         return 'remote' if self.is_remote else 'local'
 
-    @property
-    def attrs(self):
+    def to_dict(self):
         return {a: getattr(self, a) for a in self._attr_names}
 
     def __repr__(self):
@@ -52,24 +51,25 @@ class Action(_Interaction):
     """
     Define something someone does.
     """
-    _attr_names = ['address', 'participant_id', 'perm', 'conv', 'verb', 'component', 'item', 'timestamp',
-                   'event_id', 'parent_event_id']
+    _attr_names = ['address', 'conv', 'verb', 'component', 'item', 'timestamp',
+                   'event_id', 'parent_event_id', 'perm', 'participant_id']
 
-    def __init__(self, address, conversation, verb, component=Components.CONVERSATIONS,
-                 *, item=None, timestamp=None, event_id=None, parent_event_id=None):
+    def __init__(self, address, conv, verb, component=Components.CONVERSATIONS,
+                 *, item=None, timestamp=None, event_id=None, parent_event_id=None, perm=None, participant_id=None):
         """
         :param address: address of person performing action
-        :param conversation: id of the conversation being acted upon
+        :param conv: id of the conversation being acted upon
         :param verb: what is being done, see Verbs
         :param component: what it's being done to, see Components
         :param item: id of the item being acted upon
         :param timestamp: remote only, datetime action originally occurred
         :param event_id: remote only, hash of event
         :param parent_event_id: id of the event which this action follows
+        :param perm: permissions of the participant, generally set later by set_participant
+        :param participant_id: id of the participant, generally set later by set_participant
         """
-        self.perm = None
         self.address = address
-        self.conv = conversation
+        self.conv = conv
         try:
             self.verb = Verbs(verb)
         except ValueError as e:
@@ -83,6 +83,8 @@ class Action(_Interaction):
         self.timestamp = timestamp
         self.event_id = event_id
         self.parent_event_id = parent_event_id
+        self.perm = perm
+        self.participant_id = participant_id
         self._status = None
 
     @property

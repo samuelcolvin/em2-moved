@@ -107,9 +107,9 @@ class PostgresConversationDataStore(ConversationDataStore):
             raise ConversationNotFound('conversation {} not found'.format(self.conv))
         return dict(row)
 
-    async def save_event(self, event_id, action, **data):
+    async def save_event(self, action, **data):
         kwargs = {
-            'id': event_id,
+            'id': action.event_id,
             'conversation': await self._get_local_id(),
             'actor': action.participant_id,
             'verb': action.verb,

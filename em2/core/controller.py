@@ -121,31 +121,32 @@ class Controller:
     def _subdict(self, data, first_chars):
         return {k[2:]: v for k, v in data.items() if k[0] in first_chars}
 
-    async def event(self, a: Action, **data):
+    async def event(self, action: Action, **data):
         """
         Record and push updates of conversations and conversation components.
 
-        :param a: Action instance
+        :param action: Action instance
         :param data: extra information to either be saved (s_*), pushed (p_*) or both (b_*)
         """
+        was_remote = action.is_remote
         save_data = self._subdict(data, 'sb')
-        event_id = a.calc_event_id()
-        await a.cds.save_event(event_id, a, **save_data)
-        conv_status = await a.get_conv_status()
-        if a.is_remote:
+        action.event_id = action.calc_event_id()
+        await action.cds.save_event(action, **save_data)
+        conv_status = await action.get_conv_status()
+        if was_remote:
             # TODO some way to push events to clients here
             return
         if conv_status == Conversations.Status.DRAFT:
             return
         push_data = self._subdict(data, 'pb')
-        await self.pusher.push(a, event_id, push_data)
+        await self.pusher.push(action, push_data)
 
-    async def publish(self, a, **data):
-        logger.info('publishing %.6s, author: "%s"', a.conv, a.address)
-        event_id = a.calc_event_id()
-        await a.cds.save_event(event_id, a)
+    async def publish(self, action, **data):
+        logger.info('publishing %.6s, author: "%s"', action.conv, action.address)
+        action.event_id = action.calc_event_id()
+        await action.cds.save_event(action)
         # we could change Conversation.remote_add to accept **data and therefore just pass push_data below
-        await self.pusher.push(a, event_id, {'data': data})
+        await self.pusher.push(action, {'data': data})
 
     def __repr__(self):
         return '<Controller({})>'.format(self.ref)

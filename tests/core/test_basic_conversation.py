@@ -10,8 +10,9 @@ async def test_basic_conversation(reset_store, loop):
     ds = controller.ds
 
     action = Action('sender@example.com', None, Verbs.ADD)
-    assert str(action) == ('<Action(address=sender@example.com, participant_id=None, perm=None, conv=None, verb=add, '
-                           'component=conversations, item=None, timestamp=None, event_id=None, parent_event_id=None)>')
+    assert str(action) == ('<Action(address=sender@example.com, conv=None, verb=add, component=conversations, '
+                           'item=None, timestamp=None, event_id=None, parent_event_id=None, perm=None, '
+                           'participant_id=None)>')
     print('action:', action)
     await controller.act(action, subject='foo bar')
     print(ds)

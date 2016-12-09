@@ -7,7 +7,7 @@ from em2 import Settings
 from em2.comms import BasePusher
 from em2.comms.http import create_app
 from em2.comms.http.push import HttpDNSPusher
-from em2.core import Action, Controller
+from em2.core import Controller
 from tests.conftest import test_store
 
 from .authenicator import MockDNSResolver, SimpleAuthenticator
@@ -32,21 +32,12 @@ class SimplePusher(BasePusher):
         await super().ainit()
         self.ds.data = test_store(self.settings.LOCAL_DOMAIN)
 
-    async def _push_data(self, nodes, action_attrs, event_id, **kwargs):
-        new_action = Action(
-            address=action_attrs['address'],
-            conversation=action_attrs['conv'],
-            verb=action_attrs['verb'],
-            component=action_attrs['component'],
-            item=action_attrs['item'],
-            timestamp=action_attrs['timestamp'],
-            event_id=event_id,
-        )
-        prop_data = deepcopy(kwargs)
+    async def _push_em2(self, nodes, action, data):
+        prop_data = deepcopy(data)
         for d in nodes:
             ctrl = self.network.nodes[d]
             if ctrl != self.LOCAL:
-                await ctrl.act(new_action, **prop_data)
+                await ctrl.act(action, **prop_data)
 
     async def get_node(self, domain):
         return self.LOCAL if domain == self.settings.LOCAL_DOMAIN else domain

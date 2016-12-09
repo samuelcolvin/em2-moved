@@ -86,7 +86,7 @@ class ConversationDataStore:
         """
         raise NotImplementedError()
 
-    async def save_event(self, event_id, action, **data):
+    async def save_event(self, action, **data):
         raise NotImplementedError()
 
     async def set_published_id(self, new_timestamp, new_id):
@@ -213,7 +213,7 @@ class NullConversationDataStore(ConversationDataStore):  # pragma: no cover
     async def get_core_properties(self):
         return {}
 
-    async def save_event(self, event_id, action, **data):
+    async def save_event(self, action, **data):
         pass
 
     async def set_published_id(self, new_timestamp, new_id):

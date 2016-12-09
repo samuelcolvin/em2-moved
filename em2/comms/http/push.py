@@ -54,14 +54,14 @@ class HttpDNSPusher(BasePusher):
             if r.status != 201:
                 raise PushError('{}: {}'.format(r.status, await r.read()))
 
-    async def _push_data(self, nodes, action_attrs, event_id, **kwargs):
-        action_attrs['item'] = action_attrs['item'] or ''
-        path = '{conv}/{component}/{verb}/{item}'.format(**action_attrs)
+    async def _push_em2(self, nodes, action, data):
+        action.item = action.item or ''
+        path = '{a.conv}/{a.component}/{a.verb}/{a.item}'.format(a=action)
         post_data = {
-            'address': action_attrs['address'],
-            'timestamp': action_attrs['timestamp'],
-            'event_id': event_id,
-            'kwargs': kwargs,
+            'address': action.address,
+            'timestamp': action.timestamp,
+            'event_id': action.event_id,
+            'kwargs': data,
         }
         post_data = encoding.encode(post_data)
         cos = [self._post(node, path, post_data) for node in nodes]
