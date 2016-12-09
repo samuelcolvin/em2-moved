@@ -16,7 +16,7 @@ from .redis import RedisDNSActor
 logger = logging.getLogger('em2.push')
 
 
-class BasePusher(RedisDNSActor):
+class Pusher(RedisDNSActor):
     """
     Pushers are responsible for distributing data to other platforms and also for prompting the distribution of
     data to addresses which do not support em2, eg. to SMTP addresses.
@@ -37,7 +37,7 @@ class BasePusher(RedisDNSActor):
     def __init__(self, settings: Settings, *, loop=None, **kwargs):
         self.settings = settings
         self.loop = loop
-        # self.fallback = fallback
+        self.fallback = settings.fallback_cls(settings, loop=loop)
         logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.ds = None
@@ -67,7 +67,7 @@ class BasePusher(RedisDNSActor):
             logger.info('%s %.6s to %d nodes', action.verb, action.conv, len(remote_em2_nodes))
             await self._push_em2(remote_em2_nodes, action, data)
             if any(n for n in nodes if n == self.FALLBACK):
-                raise NotImplementedError()
+                await self.fallback.push(action, data, participants_data)
             # TODO update event with success or failure
 
     async def _push_em2(self, nodes, action, data):
@@ -147,7 +147,7 @@ class BasePusher(RedisDNSActor):
         return '{}<{}>'.format(self.__class__.__name__, self.settings.LOCAL_DOMAIN)
 
 
-class NullPusher(BasePusher):  # pragma: no cover
+class NullPusher(Pusher):  # pragma: no cover
     """
     Pusher with no functionality to connect to other platforms. Used for testing or trial purposes only.
     """

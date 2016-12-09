@@ -4,7 +4,7 @@ import logging
 import aiohttp
 
 from em2.comms import encoding
-from em2.comms.push import BasePusher
+from em2.comms.push import Pusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
 
 JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
@@ -12,7 +12,7 @@ JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 logger = logging.getLogger('em2.push.http')
 
 
-class HttpDNSPusher(BasePusher):
+class HttpDNSPusher(Pusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = None

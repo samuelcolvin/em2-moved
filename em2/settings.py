@@ -32,6 +32,7 @@ class Settings(ConnectionSettings):
 
     DATASTORE_CLS = 'em2.ds.NullDataStore'
     PUSHER_CLS = 'em2.comms.NullPusher'
+    FALLBACK_CLS = 'em2.comms.fallback.FallbackHandler'
 
     PG_HOST = 'localhost'
     PG_PORT = '5432'
@@ -55,3 +56,7 @@ class Settings(ConnectionSettings):
     @property
     def pusher_cls(self):
         return import_string(self.PUSHER_CLS)
+
+    @property
+    def fallback_cls(self):
+        return import_string(self.FALLBACK_CLS)

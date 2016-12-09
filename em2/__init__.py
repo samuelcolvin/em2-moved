@@ -1,3 +1,4 @@
-from .logging import setup_logging  # noqa
-from .settings import Settings  # noqa
-from .version import VERSION  # noqa
+# flake8: noqa
+from .logging import setup_logging
+from .settings import Settings
+from .version import VERSION

@@ -4,7 +4,7 @@ from copy import deepcopy
 from aiohttp.test_utils import TestClient
 
 from em2 import Settings
-from em2.comms import BasePusher
+from em2.comms import Pusher
 from em2.comms.http import create_app
 from em2.comms.http.push import HttpDNSPusher
 from em2.core import Controller
@@ -22,7 +22,7 @@ class Network:
         self.nodes[domain] = controller
 
 
-class SimplePusher(BasePusher):
+class SimplePusher(Pusher):
     def __init__(self, *args, **kwargs):
         kwargs['concurrency_enabled'] = False
         super().__init__(*args, **kwargs)

@@ -1,3 +1,4 @@
 # flake8: noqa
 from .auth import BaseAuthenticator, RedisDNSAuthenticator
-from .push import BasePusher, NullPusher
+from .fallback import FallbackHandler
+from .push import Pusher, NullPusher
