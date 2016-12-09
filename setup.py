@@ -17,11 +17,6 @@ http_extras = [
     'cchardet>=1.1.1',
 ]
 
-redis_extras = [
-    'aioredis>=0.2.9',
-    'arq>=0.1.0',
-]
-
 # avoid loading the package before requirements are installed:
 version = SourceFileLoader('version', 'em2/version.py').load_module()
 
@@ -44,6 +39,8 @@ setup(
     zip_safe=True,
     install_requires=[
         'aiodns>=1.1.1',
+        'aioredis>=0.2.9',
+        'arq>=0.2.0',
         'Cerberus>=1.0.1',
         'msgpack-python>=0.4.8',
         'pycrypto==2.6.1',
@@ -52,7 +49,6 @@ setup(
     extras_require={
         'postgres': pg_extra,
         'http': http_extras,
-        'redis': redis_extras,
-        'all': pg_extra + http_extras + redis_extras,
+        'all': pg_extra + http_extras,
     }
 )
