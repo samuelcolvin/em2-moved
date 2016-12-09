@@ -6,15 +6,18 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
+from em2 import Settings
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
-from em2.utils import BaseServiceCls, now_unix_secs
+from em2.utils import now_unix_secs
 
 from .redis import RedisDNSActor
 
 
-class BaseAuthenticator(BaseServiceCls):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class BaseAuthenticator:
+    def __init__(self, settings: Settings, *, loop=None, **kwargs):
+        self.settings = settings
+        self.loop = loop
+        super().__init__(**kwargs)
         self._head_request_timeout = self.settings.COMMS_HEAD_REQUEST_TIMEOUT
         self._domain_timeout = self.settings.COMMS_DOMAIN_CACHE_TIMEOUT
         self._platform_token_timeout = self.settings.COMMS_PLATFORM_TOKEN_TIMEOUT

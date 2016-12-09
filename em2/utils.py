@@ -1,12 +1,9 @@
-import asyncio
 from datetime import datetime, timedelta
 from enum import Enum as _PyEnum
 from enum import EnumMeta as _PyEnumMeta
 from enum import unique
 
 import pytz
-
-from em2.settings import Settings
 
 
 class EnumMeta(_PyEnumMeta):
@@ -46,10 +43,3 @@ def now_unix_secs():
 
 def now_unix_ms():
     return to_unix_ms(datetime.utcnow())
-
-
-class BaseServiceCls:
-    def __init__(self, settings: Settings, *, loop: asyncio.AbstractEventLoop=None, **kwargs):
-        self.settings = settings
-        self.loop = loop
-        super().__init__(**kwargs)

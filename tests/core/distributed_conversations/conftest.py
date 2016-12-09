@@ -15,7 +15,7 @@ async def create_controller(name, network=None):
     ctrl = Controller(settings)
     ctrl.pusher.network = network or Network()
     ctrl.pusher.network.add_node(local_domain, ctrl)
-    await ctrl.pusher.init_ds()
+    await ctrl.pusher.ainit()
     return ctrl
 
 

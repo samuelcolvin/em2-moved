@@ -5,15 +5,20 @@ Database back-ends for em2 should define a child class for DataStore which imple
 """
 from copy import deepcopy
 
+from em2 import Settings
 from em2.core.components import Components
-from em2.utils import BaseServiceCls
 
 
-class DataStore(BaseServiceCls):
+class DataStore:
+    def __init__(self, settings: Settings, *, loop=None, **kwargs):
+        self.settings = settings
+        self.loop = loop
+        super().__init__(**kwargs)
+
     async def create_conversation(self, conn, conv_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 
-    async def prepare(self):
+    async def ainit(self):
         pass
 
     async def terminate(self):

@@ -7,14 +7,15 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-from em2.utils import BaseServiceCls, now_unix_secs
+from em2 import Settings
+from em2.utils import now_unix_secs
 
 from .redis import RedisDNSActor
 
 logger = logging.getLogger('em2.push')
 
 
-class BasePusher(BaseServiceCls):
+class BasePusher:
     """
     Pushers are responsible for distributing data to other platforms and also for prompting the distribution of
     data to addresses which do not support em2, eg. to SMTP addresses.
@@ -23,22 +24,23 @@ class BasePusher(BaseServiceCls):
     but also keep a complete list of participants to be included (eg. cc'd in SMTP) in fallback.
 
     """
-    # TODO: pushers need a way of getting data about conversations eg. if the cache is wiped.
     LOCAL = 'L'
     B_LOCAL = LOCAL.encode()
     FALLBACK = 'F'
 
-    def __init__(self, settings, *, fallback=None, loop=None, **kwargs):
+    def __init__(self, settings: Settings, *, loop=None, fallback=None, **kwargs):
+        self.settings = settings
+        self.loop = loop
         self.fallback = fallback
-        super().__init__(settings, loop=loop, **kwargs)
+        super().__init__(**kwargs)
         logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.ds = None
 
-    async def init_ds(self):
+    async def ainit(self):
         assert self.ds is None, 'datastore already initialised'
         self.ds = self.settings.datastore_cls(settings=self.settings, loop=self.loop)
-        await self.ds.prepare()
+        await self.ds.ainit()
 
     async def push(self, action, event_id, data):
         raise NotImplementedError()
@@ -118,9 +120,9 @@ class LivePusher(BasePusher, RedisDNSActor):
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
 
-    async def init_ds(self):
+    async def ainit(self):
         assert self.is_shadow, 'datastore should only be initialised with the pusher in shadow mode'
-        await super().init_ds()
+        await super().ainit()
 
     async def get_nodes(self, *addresses: str) -> Set[str]:
         # cache here instead of in get_node so we can use the same redis connection

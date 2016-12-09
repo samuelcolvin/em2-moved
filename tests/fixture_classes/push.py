@@ -27,8 +27,8 @@ class SimplePusher(BasePusher):
         super().__init__(*args, **kwargs)
         self.network = Network()
 
-    async def init_ds(self):
-        await super().init_ds()
+    async def ainit(self):
+        await super().ainit()
         self.ds.data = test_store(self.settings.LOCAL_DOMAIN)
 
     async def push(self, action, event_id, data):

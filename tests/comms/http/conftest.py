@@ -29,7 +29,7 @@ def ctrl_pusher(loop, reset_store):
         )
         _ctrl = Controller(settings, loop=loop)
         _pusher = DoubleMockPusher(settings, loop=loop, is_shadow=True)
-        await _pusher.init_ds()
+        await _pusher.ainit()
         await _pusher.create_test_client()
         async with await _pusher.get_redis_conn() as redis:
             await redis.flushdb()

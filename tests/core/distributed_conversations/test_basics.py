@@ -32,14 +32,14 @@ async def test_create_conversation_add_external_participant(reset_store, loop):
         LOCAL_DOMAIN='local.com',
     )
     ctrl = Controller(s_local, loop=loop)
-    await ctrl.pusher.init_ds()
+    await ctrl.pusher.ainit()
     s_remote = Settings(
         DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
         PUSHER_CLS='tests.fixture_classes.SimplePusher',
         LOCAL_DOMAIN='remote.com'
     )
     remote_ctrl = Controller(s_remote, loop=loop)
-    await remote_ctrl.pusher.init_ds()
+    await remote_ctrl.pusher.ainit()
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
 
     action = Action('sender@local.com', None, Verbs.ADD)
@@ -67,7 +67,7 @@ async def test_publish_conversation(reset_store, loop):
     )
     remote_ctrl = Controller(remote_settings, loop=loop)
 
-    await ctrl.pusher.init_ds()
+    await ctrl.pusher.ainit()
 
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
     remote_ctrl.pusher.network.add_node('local.com', ctrl)
