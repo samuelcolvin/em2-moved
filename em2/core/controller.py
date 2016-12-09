@@ -38,7 +38,6 @@ class Controller:
         :param kwargs: extra key word arguments to pass to the method with action
         :return: result of method associated with verb
         """
-
         if a.is_remote:
             if a.event_id != a.calc_event_id():
                 raise BadHash('event_id "{}" incorrect'.format(a.event_id))

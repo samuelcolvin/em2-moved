@@ -4,7 +4,7 @@ import logging
 import aiohttp
 
 from em2.comms import encoding
-from em2.comms.push import LivePusher
+from em2.comms.push import BasePusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
 
 JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
@@ -12,7 +12,7 @@ JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 logger = logging.getLogger('em2.push.http')
 
 
-class HttpDNSPusher(LivePusher):
+class HttpDNSPusher(BasePusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._session = None
@@ -54,7 +54,7 @@ class HttpDNSPusher(LivePusher):
             if r.status != 201:
                 raise PushError('{}: {}'.format(r.status, await r.read()))
 
-    async def _push_data(self, domains, action_attrs, event_id, **kwargs):
+    async def _push_data(self, nodes, action_attrs, event_id, **kwargs):
         action_attrs['item'] = action_attrs['item'] or ''
         path = '{conv}/{component}/{verb}/{item}'.format(**action_attrs)
         post_data = {
@@ -64,7 +64,7 @@ class HttpDNSPusher(LivePusher):
             'kwargs': kwargs,
         }
         post_data = encoding.encode(post_data)
-        cos = [self._post(domain, path, post_data) for domain in domains]
+        cos = [self._post(node, path, post_data) for node in nodes]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 

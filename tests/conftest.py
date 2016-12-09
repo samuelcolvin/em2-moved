@@ -1,5 +1,6 @@
 import datetime
 
+import aioredis
 import pytest
 import pytz
 
@@ -39,3 +40,21 @@ def reset_store():
     yield
 
     test_store.data = None
+
+
+@pytest.yield_fixture
+def redis_pool(loop):
+    address = 'localhost', 6379
+    pool = loop.run_until_complete(aioredis.create_pool(address, loop=loop))
+
+    yield pool
+
+    async def finish():
+        async with pool.get() as redis:
+            await redis.flushall()
+
+        pool.close()
+        await pool.wait_closed()
+        await pool.clear()
+
+    loop.run_until_complete(finish())

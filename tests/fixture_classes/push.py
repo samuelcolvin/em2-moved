@@ -24,6 +24,7 @@ class Network:
 
 class SimplePusher(BasePusher):
     def __init__(self, *args, **kwargs):
+        kwargs['concurrency_enabled'] = False
         super().__init__(*args, **kwargs)
         self.network = Network()
 
@@ -31,26 +32,24 @@ class SimplePusher(BasePusher):
         await super().ainit()
         self.ds.data = test_store(self.settings.LOCAL_DOMAIN)
 
-    async def push(self, action, event_id, data):
-        new_action = Action(action.address, action.conv, action.verb, action.component,
-                            item=action.item, timestamp=action.timestamp, event_id=event_id)
-        prop_data = deepcopy(data)
-
-        async with self.ds.connection() as conn:
-            cds = self.ds.new_conv_ds(action.conv, conn)
-            participants_data = await cds.receiving_participants()
-            addresses = [p['address'] for p in participants_data]
-
-        nodes = await self.get_nodes(*addresses)
-        for ctrl in nodes:
+    async def _push_data(self, nodes, action_attrs, event_id, **kwargs):
+        new_action = Action(
+            address=action_attrs['address'],
+            conversation=action_attrs['conv'],
+            verb=action_attrs['verb'],
+            component=action_attrs['component'],
+            item=action_attrs['item'],
+            timestamp=action_attrs['timestamp'],
+            event_id=event_id,
+        )
+        prop_data = deepcopy(kwargs)
+        for d in nodes:
+            ctrl = self.network.nodes[d]
             if ctrl != self.LOCAL:
                 await ctrl.act(new_action, **prop_data)
 
     async def get_node(self, domain):
-        return self.LOCAL if domain == self.settings.LOCAL_DOMAIN else self.network.nodes[domain]
-
-    def __str__(self):
-        return repr(self)
+        return self.LOCAL if domain == self.settings.LOCAL_DOMAIN else domain
 
 
 class CustomTestClient(TestClient):

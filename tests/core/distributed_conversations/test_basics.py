@@ -1,7 +1,7 @@
-import datetime
 import hashlib
 import time
 from copy import deepcopy
+from datetime import datetime, timedelta
 
 from em2 import Settings
 from em2.core import Action, Components, Controller, Verbs, perms
@@ -19,13 +19,13 @@ async def test_create_basic_conversation(controller):
     assert conv['creator'] == 'sender@example.com'
     assert conv['status'] == 'draft'
     assert conv['subject'] == 'foo bar'
-    assert isinstance(conv['timestamp'], datetime.datetime)
+    assert isinstance(conv['timestamp'], datetime)
     hash_data = 'sender@example.com_{}_foo bar'.format(to_unix_ms(conv['timestamp'])).encode()
     hash_result = hashlib.sha256(hash_data).hexdigest()
     assert conv['conv_id'] == hash_result
 
 
-async def test_create_conversation_add_external_participant(reset_store, loop):
+async def test_create_conversation_add_external_participant(redis_pool, reset_store, loop):
     s_local = Settings(
         DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
         PUSHER_CLS='tests.fixture_classes.SimplePusher',
@@ -42,6 +42,9 @@ async def test_create_conversation_add_external_participant(reset_store, loop):
     await remote_ctrl.pusher.ainit()
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
 
+    ctrl.pusher._redis_pool = redis_pool
+    remote_ctrl.pusher._redis_pool = redis_pool
+
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar')
     assert len(ctrl.ds.data[0]['participants']) == 1
@@ -52,7 +55,22 @@ async def test_create_conversation_add_external_participant(reset_store, loop):
     assert len(ctrl.ds.data[0]['participants']) == 2
 
 
-async def test_publish_conversation(reset_store, loop):
+def compare_messages(ctrl1, ctrl2):
+    m1 = ctrl1.ds.data[0]['messages']
+    m2 = ctrl2.ds.data[0]['messages']
+    assert m1.keys() == m2.keys()
+    v1 = list(m1.values())
+    v2 = list(m2.values())
+    for i in range(len(m1.keys())):
+        vv1 = v1[i]
+        ts1 = vv1.pop('timestamp')
+        vv2 = v2[i]
+        ts2 = vv2.pop('timestamp')
+        assert vv1 == vv2
+        assert abs(ts1 - ts2) < timedelta(milliseconds=1)
+
+
+async def test_publish_conversation(redis_pool, reset_store, loop):
     local_settings = Settings(
         DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
         PUSHER_CLS='tests.fixture_classes.SimplePusher',
@@ -68,6 +86,8 @@ async def test_publish_conversation(reset_store, loop):
     remote_ctrl = Controller(remote_settings, loop=loop)
 
     await ctrl.pusher.ainit()
+    ctrl.pusher._redis_pool = redis_pool
+    remote_ctrl.pusher._redis_pool = redis_pool
 
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
     remote_ctrl.pusher.network.add_node('local.com', ctrl)
@@ -87,10 +107,10 @@ async def test_publish_conversation(reset_store, loop):
     assert len(remote_ctrl.ds.data[0]['messages']) == 1
     msg1 = list(remote_ctrl.ds.data[0]['messages'].values())[0]
     assert msg1['body'] == 'the body'
-    assert remote_ctrl.ds.data[0]['timestamp'] == ctrl.ds.data[0]['timestamp']
+    assert abs(ctrl.ds.data[0]['timestamp'] - remote_ctrl.ds.data[0]['timestamp']) < timedelta(milliseconds=1)
 
     assert ctrl.ds.data[0]['participants'] == remote_ctrl.ds.data[0]['participants']
-    assert ctrl.ds.data[0]['messages'] == remote_ctrl.ds.data[0]['messages']
+    compare_messages(ctrl, remote_ctrl)
 
 
 async def test_publish_conversation2(two_controllers):
@@ -106,4 +126,4 @@ async def test_publish_conversation2(two_controllers):
     assert new_conv_id == ctrl1.ds.data[0]['conv_id']
 
     assert ctrl1.ds.data[0]['participants'] == ctrl2.ds.data[0]['participants']
-    assert ctrl1.ds.data[0]['messages'] == ctrl2.ds.data[0]['messages']
+    compare_messages(ctrl1, ctrl2)

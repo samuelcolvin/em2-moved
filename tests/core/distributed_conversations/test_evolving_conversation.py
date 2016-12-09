@@ -3,6 +3,7 @@ import pytest
 from em2.core import Action, Components, Verbs, perms
 from em2.exceptions import BadDataException
 from tests.conftest import datetime_tz
+from tests.core.distributed_conversations.test_basics import compare_messages
 
 
 async def test_publish_reply(two_controllers):
@@ -19,7 +20,7 @@ async def test_publish_reply(two_controllers):
     await ctrl2.act(a, parent_id=msg1_id, body='this is a reply')
 
     assert ctrl1.ds.data[0]['participants'] == ctrl2.ds.data[0]['participants']
-    assert ctrl1.ds.data[0]['messages'] == ctrl2.ds.data[0]['messages']
+    compare_messages(ctrl1, ctrl2)
 
 
 async def test_publish_reply_bad_ts(two_controllers):
