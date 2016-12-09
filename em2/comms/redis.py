@@ -44,7 +44,3 @@ class RedisDNSActor(Actor):
     async def key_exists(self, platform_token: str):
         async with await self.get_redis_conn() as redis:
             return bool(await redis.exists(platform_token.encode()))
-
-    async def get_value(self, key: str):
-        async with await self.get_redis_conn() as redis:
-            return await redis.get(key.encode())

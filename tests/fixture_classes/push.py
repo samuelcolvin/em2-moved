@@ -42,6 +42,9 @@ class SimplePusher(Pusher):
     async def get_node(self, domain):
         return self.LOCAL if domain == self.settings.LOCAL_DOMAIN else domain
 
+    async def _authenticate_direct(self, node_domain):
+        raise NotImplemented()
+
 
 class CustomTestClient(TestClient):
     def __init__(self, app, domain):

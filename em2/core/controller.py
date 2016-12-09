@@ -48,7 +48,7 @@ class Controller:
 
         func = self._get_function(a)
         self._check_arguments(func, 'action', kwargs)
-        logger.info('%s action by "%s" %.6s > %s > %s', a.loc_rem, a.address, a.conv or '-', a.component, a.verb)
+        logger.info('%s action by "%s" %.6s > %s . %s', a.loc_rem, a.address, a.conv or '-', a.component, a.verb)
 
         async with self.ds.connection() as conn:
             if a.known_conversation:
@@ -69,7 +69,7 @@ class Controller:
         func = self._get_function(r)
 
         self._check_arguments(func, 'retrieval', kwargs)
-        logger.info('%s retrieval by "%s" %.6s > %s > %s', r.loc_rem, r.address, r.conv, r.component, r.verb)
+        logger.info('%s retrieval by "%s" %.6s > %s . %s', r.loc_rem, r.address, r.conv, r.component, r.verb)
 
         async with self.ds.connection() as conn:
             if r.known_conversation:

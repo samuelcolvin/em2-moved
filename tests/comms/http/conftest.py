@@ -1,7 +1,6 @@
 import pytest
 
 from em2 import Settings
-from em2.comms.http.push import HttpDNSPusher
 from em2.core import Controller
 from tests.fixture_classes.authenicator import get_private_key
 from tests.fixture_classes.push import DoubleMockPusher, create_test_app
@@ -43,15 +42,3 @@ def ctrl_pusher(loop, reset_store):
         await _ctrl.pusher.close()
 
     loop.run_until_complete(close())
-
-
-@pytest.yield_fixture
-def pusher(loop):
-    settings = Settings(
-        PUSHER_CLS='em2.comms.http.push.HttpDNSPusher',
-        PRIVATE_DOMAIN_KEY=get_private_key(),
-    )
-    pusher = HttpDNSPusher(settings, loop=loop, is_shadow=True)
-
-    yield pusher
-    loop.run_until_complete(pusher.close())

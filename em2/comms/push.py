@@ -23,7 +23,6 @@ class Pusher(RedisDNSActor):
 
     To do this Pushers should keep track of the distinct platforms involved in each conversation,
     but also keep a complete list of participants to be included (eg. cc'd in SMTP) in fallback.
-
     """
     LOCAL = 'L'
     B_LOCAL = LOCAL.encode()
@@ -49,6 +48,7 @@ class Pusher(RedisDNSActor):
             assert self.is_shadow, 'datastore should only be initialised with the pusher in shadow mode'
         self.ds = self.settings.datastore_cls(settings=self.settings, loop=self.loop)
         await self.ds.ainit()
+        await self.fallback.ainit()
 
     async def push(self, action, data):
         await self._send(action.to_dict(), data)

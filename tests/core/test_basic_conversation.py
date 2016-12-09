@@ -54,7 +54,7 @@ async def test_logging(reset_store, loop, capsys):
     await controller.act(action, subject='foo bar')
     out, err = capsys.readouterr()
     assert out == ''
-    assert 'local action by "sender@example.com" - > Components.CONVERSATIONS > Verbs.ADD' in err
+    assert 'local action by "sender@example.com" - > Components.CONVERSATIONS . Verbs.ADD' in err
     assert 'created draft conversation' in err
     assert 'first participant added to' in err
 

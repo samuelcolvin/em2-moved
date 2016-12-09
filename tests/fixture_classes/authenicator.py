@@ -105,6 +105,12 @@ class MockDNSResolver:
             ]
         elif host == 'nomx.com':
             return []
+        elif host == 'error.com':
+            raise ValueError('DNS error with error.com')
+        if host == 'fallback.com':
+            return [
+                MXQueryResult(10, 'mx.local.com'),
+            ]
         else:
             return [
                 MXQueryResult(10, 'mx.platform.' + host),
