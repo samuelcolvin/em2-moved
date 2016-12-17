@@ -49,6 +49,10 @@ class Settings(ConnectionSettings):
 
     TIMEZONE = 'utc'
 
+    FALLBACK_USERNAME = None
+    FALLBACK_PASSWORD = None
+    FALLBACK_ENDPOINT = None
+
     @property
     def datastore_cls(self):
         return import_string(self.DATASTORE_CLS)

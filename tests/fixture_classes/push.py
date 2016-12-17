@@ -88,17 +88,20 @@ class DoubleMockPusher(HttpMockedDNSPusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.test_client = None
+        self.session = None
 
     async def create_test_client(self, remote_domain='platform.remote.com'):
         self.app = create_test_app(self.loop, remote_domain)
         self.test_client = CustomTestClient(self.app, remote_domain)
         await self.test_client.start_server()
-
-    @property
-    def session(self):
-        if not self.test_client:
-            raise RuntimeError('test_client must be initialised with create_test_client before accessing session')
-        return self.test_client
+        self.session = self.test_client
 
     def _now_unix(self):
         return 2461449600
+
+    async def close(self):
+        try:
+            await super().close()
+        except AttributeError:
+            # can happen if create_test_client hasn't been called
+            pass

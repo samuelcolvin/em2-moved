@@ -84,5 +84,9 @@ class PushError(Em2Exception):
     pass
 
 
+class FallbackPushError(PushError):
+    pass
+
+
 class Em2ConnectionError(Em2Exception):
     pass

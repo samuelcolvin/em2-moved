@@ -1,12 +1,6 @@
-from asyncio import Future
 from aiohttp import ClientOSError
 from em2.comms.http.push import HttpDNSPusher
-
-
-def future_result(loop, result):
-    r = Future(loop=loop)
-    r.set_result(result)
-    return r
+from tests.fixture_classes import future_result
 
 
 async def test_get_nodes_not_existing(pusher):

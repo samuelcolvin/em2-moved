@@ -67,7 +67,10 @@ class Pusher(RedisDNSActor):
             logger.info('%s %.6s to %d nodes', action.verb, action.conv, len(remote_em2_nodes))
             await self._push_em2(remote_em2_nodes, action, data)
             if any(n for n in nodes if n == self.FALLBACK):
-                await self.fallback.push(action, data, participants_data)
+                logger.info('%s %.6s fallback required', action.verb, action.conv)
+                # some actions eg. publish already include subject
+                subject = data.get('subject') or await cds.get_subject()
+                await self.fallback.push(action, data, participants_data, subject)
             # TODO update event with success or failure
 
     async def _push_em2(self, nodes, action, data):

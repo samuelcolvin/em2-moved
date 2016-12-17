@@ -112,8 +112,16 @@ class ConversationDataStore:
 
     # Subject
 
-    async def set_subject(self, subject):
+    async def set_subject(self, subject: str):
         raise NotImplementedError()
+
+    async def get_subject(self) -> str:
+        """
+        Could be overwritten by subclasses to be more performant, eg. only get a single fields from the db.
+        :return: the conversation's subject
+        """
+        props = await self.get_core_properties()
+        return props['subject']
 
     # Component generic methods
 
