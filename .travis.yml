@@ -17,7 +17,7 @@ matrix:
   - python: 'nightly'
 
 install:
-- pip install -U -e .[all]
+- pip install -U -e .
 - pip install -U -r tests/requirements.txt
 
 script:

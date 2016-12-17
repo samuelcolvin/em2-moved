@@ -6,17 +6,6 @@ em2
 ===
 """
 
-pg_extra = [
-    'SQLAlchemy>=1.1.3',
-    'aiopg>=0.13.0',
-    'psycopg2>=2.6.2',
-]
-
-http_extras = [
-    'aiohttp>=1.1.6',
-    'cchardet>=1.1.1',
-]
-
 # avoid loading the package before requirements are installed:
 version = SourceFileLoader('version', 'em2/version.py').load_module()
 
@@ -38,17 +27,21 @@ setup(
     packages=['em2'],
     zip_safe=True,
     install_requires=[
-        'aiodns>=1.1.1',
-        'aioredis>=0.2.9',
-        'arq>=0.2.0',
-        'Cerberus>=1.0.1',
-        'msgpack-python>=0.4.8',
+        'aiodns==1.1.1',
+        'aioredis==0.2.9',
+        'arq==0.2.0',
+        'Cerberus==1.0.1',
+        'msgpack-python==0.4.8',
         'pycrypto==2.6.1',
-        'pytz>=2016.10',
-    ],
-    extras_require={
-        'postgres': pg_extra,
-        'http': http_extras,
-        'all': pg_extra + http_extras,
-    }
+        'pytz==2016.10',
+
+        # aiohttp
+        'aiohttp==1.1.6',
+        'cchardet==1.1.1',
+
+        # postgres
+        'SQLAlchemy==1.1.3',
+        'aiopg==0.13.0',
+        'psycopg2==2.6.2',
+    ]
 )

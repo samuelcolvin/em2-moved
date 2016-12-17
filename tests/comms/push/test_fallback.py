@@ -6,7 +6,7 @@ from tests.fixture_classes import future_result, get_private_key
 
 
 @pytest.yield_fixture
-def ctrl_pusher(loop, reset_store):
+def fallback_ctrl_pusher(loop, reset_store):
     _ctrl = None
 
     async def _create(fallback_cls='em2.comms.fallback.FallbackHandler'):
@@ -33,10 +33,10 @@ def ctrl_pusher(loop, reset_store):
     loop.run_until_complete(close())
 
 
-async def test_no_mx(ctrl_pusher, mocker, caplog):
+async def test_no_mx(fallback_ctrl_pusher, mocker, caplog):
     mock_authenticate = mocker.patch('em2.comms.http.push.HttpDNSPusher.authenticate')
 
-    ctrl = await ctrl_pusher()
+    ctrl = await fallback_ctrl_pusher()
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar', body='great body')
 
@@ -48,12 +48,12 @@ async def test_no_mx(ctrl_pusher, mocker, caplog):
     assert 'Components.CONVERSATIONS . Verbs.ADD, from: sender@local.com, to: (1) receiver@fallback.com' in caplog
 
 
-async def test_smtp_fallback(ctrl_pusher, mocker, loop):
+async def test_smtp_fallback(fallback_ctrl_pusher, mocker, loop):
     mock_authenticate = mocker.patch('em2.comms.http.push.HttpDNSPusher.authenticate')
     mock_send_message = mocker.patch('em2.comms.fallback.SmtpFallbackHandler.send_message')
     mock_send_message.return_value = future_result(loop, '123')
 
-    ctrl = await ctrl_pusher('em2.comms.fallback.SmtpFallbackHandler')
+    ctrl = await fallback_ctrl_pusher('em2.comms.fallback.SmtpFallbackHandler')
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='the subject', body='x')
 
