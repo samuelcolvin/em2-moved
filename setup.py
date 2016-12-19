@@ -1,4 +1,5 @@
 from importlib.machinery import SourceFileLoader
+from pathlib import Path
 from setuptools import setup
 
 description = """
@@ -8,6 +9,7 @@ em2
 
 # avoid loading the package before requirements are installed:
 version = SourceFileLoader('version', 'em2/version.py').load_module()
+requirements = [r for r in Path('em2/requirements.txt').read_text().split('\n') if r and not r.startswith('#')]
 
 setup(
     name='em2',
@@ -26,22 +28,8 @@ setup(
     license='MIT',
     packages=['em2'],
     zip_safe=True,
-    install_requires=[
-        'aiodns==1.1.1',
-        'aioredis==0.2.9',
-        'arq==0.2.0',
-        'Cerberus==1.0.1',
-        'msgpack-python==0.4.8',
-        'pycrypto==2.6.1',
-        'pytz==2016.10',
-
-        # aiohttp
-        'aiohttp==1.2.0',
-        'cchardet==1.1.1',
-
-        # postgres
-        'SQLAlchemy==1.1.4',
-        'aiopg==0.13.0',
-        'psycopg2==2.6.2',
-    ]
+    package_data={
+        'em2': ['requirements.txt'],
+    },
+    install_requires=requirements,
 )
