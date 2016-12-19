@@ -1,6 +1,10 @@
+import os
+from datetime import datetime
+
 import pytest
 
 from em2 import Settings
+from em2.comms.fallback.aws import AwsFallbackHandler
 from em2.core import Action, Components, Controller, Verbs, perms
 from tests.fixture_classes import future_result, get_private_key
 
@@ -81,3 +85,67 @@ async def test_smtp_fallback(fallback_ctrl_pusher, mocker, loop):
         subject='the subject',
         to=['receiver@fallback.com']
     )
+
+
+class MockPost:
+    async def __aenter__(self):
+        class Response:
+            status = 200
+
+            async def text(self):
+                return 'fake response\n<MessageId>123</MessageId>'
+        return Response()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+async def test_aws_fallback_mocked(mocker, loop):
+    settings = Settings(
+        FALLBACK_USERNAME='aws_access_key',
+        FALLBACK_PASSWORD='aws_secret_key',
+        FALLBACK_ENDPOINT='eu-west-1',
+    )
+    fallback = AwsFallbackHandler(settings, loop=loop)
+    mock_post = mocker.patch.object(fallback.session, 'post')
+    mock_post.return_value = MockPost()
+    mock_now = mocker.patch.object(fallback, '_now')
+    mock_now.return_value = datetime(2032, 1, 1)
+
+    msg_id = await fallback.send_message(
+        e_from='from@local.com',
+        to=['to@remote.com'],
+        bcc=['bcc@remote.com'],
+        subject='the subject',
+        plain_body='hello',
+        html_body='<h1>hello</h1>',
+    )
+    assert mock_post.called
+    assert mock_post.call_args[0] == ('https://email.eu-west-1.amazonaws.com/',)
+    assert msg_id == '123'
+    kwargs = mock_post.call_args[1]
+    assert kwargs['timeout'] == 5
+    assert kwargs['headers']['Content-Type'] == 'application/x-www-form-urlencoded'
+    assert kwargs['headers']['X-Amz-Date'] == '20320101T000000Z'
+    await fallback.close()
+
+
+@pytest.mark.skipif(os.getenv('EM2_TEST_AWS_ACCESS_KEY') is None, reason='aws env vars not set')
+async def test_aws_fallback_live(loop):
+    settings = Settings(
+        FALLBACK_USERNAME=os.environ['EM2_TEST_AWS_ACCESS_KEY'],
+        FALLBACK_PASSWORD=os.environ['EM2_TEST_AWS_SECRET_KEY'],
+        FALLBACK_ENDPOINT='eu-west-1',
+    )
+
+    fallback = AwsFallbackHandler(settings, loop=loop)
+    msg_id = await fallback.send_message(
+        e_from='testing@imber.io',
+        to=['success@simulator.amazonses.com'],
+        bcc=[],
+        subject='the subject',
+        plain_body='hello',
+        html_body='<h1>hello</h1>',
+    )
+    assert len(msg_id) == 60
+    await fallback.close()
