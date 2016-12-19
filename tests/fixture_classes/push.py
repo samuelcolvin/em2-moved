@@ -98,10 +98,3 @@ class DoubleMockPusher(HttpMockedDNSPusher):
 
     def _now_unix(self):
         return 2461449600
-
-    async def close(self):
-        try:
-            await super().close()
-        except AttributeError:
-            # can happen if create_test_client hasn't been called
-            pass

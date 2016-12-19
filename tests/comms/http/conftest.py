@@ -9,7 +9,7 @@ from tests.fixture_classes.push import DoubleMockPusher, create_test_app
 @pytest.fixture
 def client(loop, test_client, reset_store):
     test_client = loop.run_until_complete(test_client(create_test_app))
-    test_client.em2_ctrl = test_client.app['controller']
+    test_client.em2_ctrl = test_client.server.app['controller']
     return test_client
 
 

@@ -80,5 +80,5 @@ class HttpDNSPusher(Pusher):
 
     async def close(self):
         logger.warning('closing http session')
-        await self.session.close()
+        self.session and await self.session.close()
         await super().close()

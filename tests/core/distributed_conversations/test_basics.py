@@ -25,7 +25,7 @@ async def test_create_basic_conversation(controller):
     assert conv['conv_id'] == hash_result
 
 
-async def test_create_conversation_add_external_participant(redis_pool, reset_store, loop):
+async def test_create_conversation_add_external_participant(get_redis_pool, reset_store, loop):
     s_local = Settings(
         DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
         PUSHER_CLS='tests.fixture_classes.SimplePusher',
@@ -42,8 +42,9 @@ async def test_create_conversation_add_external_participant(redis_pool, reset_st
     await remote_ctrl.pusher.ainit()
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
 
-    ctrl.pusher._redis_pool = redis_pool
-    remote_ctrl.pusher._redis_pool = redis_pool
+    pool = await get_redis_pool()
+    ctrl.pusher._redis_pool = pool
+    remote_ctrl.pusher._redis_pool = pool
 
     action = Action('sender@local.com', None, Verbs.ADD)
     conv_id = await ctrl.act(action, subject='foo bar')
@@ -70,7 +71,7 @@ def compare_messages(ctrl1, ctrl2):
         assert abs(ts1 - ts2) < timedelta(milliseconds=1)
 
 
-async def test_publish_conversation(redis_pool, reset_store, loop):
+async def test_publish_conversation(get_redis_pool, reset_store, loop):
     local_settings = Settings(
         DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
         PUSHER_CLS='tests.fixture_classes.SimplePusher',
@@ -86,8 +87,9 @@ async def test_publish_conversation(redis_pool, reset_store, loop):
     remote_ctrl = Controller(remote_settings, loop=loop)
 
     await ctrl.pusher.ainit()
-    ctrl.pusher._redis_pool = redis_pool
-    remote_ctrl.pusher._redis_pool = redis_pool
+    pool = await get_redis_pool()
+    ctrl.pusher._redis_pool = pool
+    remote_ctrl.pusher._redis_pool = pool
 
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
     remote_ctrl.pusher.network.add_node('local.com', ctrl)

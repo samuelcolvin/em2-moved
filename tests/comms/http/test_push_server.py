@@ -40,10 +40,10 @@ async def test_publish_conv(ctrl_pusher):
     a = Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS)
     conv_id = await ctrl.act(a)  # conv id could have changed depending on milliseconds
 
-    assert pusher.test_client.app['controller'].ds.data == {}
+    assert pusher.test_client.server.app['controller'].ds.data == {}
     worker = RaiseWorker(settings=pusher.settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
     await worker.run()
-    data = pusher.test_client.app['controller'].ds.data
+    data = pusher.test_client.server.app['controller'].ds.data
     assert len(data) == 1
     assert data[0]['conv_id'] == conv_id
 
@@ -57,10 +57,10 @@ async def test_publish_update_conv(ctrl_pusher):
     conv_id = await ctrl.act(Action('sender@local.com', conv_id, Verbs.PUBLISH, Components.CONVERSATIONS))
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.MESSAGES)
 
-    assert pusher.test_client.app['controller'].ds.data == {}
+    assert pusher.test_client.server.app['controller'].ds.data == {}
     worker = RaiseWorker(settings=pusher.settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
     await worker.run(reuse=True)
-    assert pusher.test_client.app['controller'].ds.data[0]['conv_id'] == conv_id
+    assert pusher.test_client.server.app['controller'].ds.data[0]['conv_id'] == conv_id
 
     # conversation is now published, add another message
 

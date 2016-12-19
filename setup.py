@@ -36,7 +36,7 @@ setup(
         'pytz==2016.10',
 
         # aiohttp
-        'aiohttp==1.1.6',
+        'aiohttp==1.2.0',
         'cchardet==1.1.1',
 
         # postgres

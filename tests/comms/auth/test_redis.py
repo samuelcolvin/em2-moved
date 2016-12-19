@@ -7,14 +7,14 @@ from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE, RedisMoc
 
 
 @pytest.fixture
-def redis_auth(redis_pool, loop):
+def redis_auth(get_redis_pool, loop):
     settings = Settings(R_DATABASE=2)
     auth = None
 
     async def setup(auth_class=RedisDNSAuthenticator):
         nonlocal auth
         auth = auth_class(settings=settings, loop=loop)
-        auth._redis_pool = redis_pool
+        auth._redis_pool = await get_redis_pool()
         return auth
 
     return setup
