@@ -40,7 +40,7 @@ setup(
         'cchardet==1.1.1',
 
         # postgres
-        'SQLAlchemy==1.1.3',
+        'SQLAlchemy==1.1.4',
         'aiopg==0.13.0',
         'psycopg2==2.6.2',
     ]
