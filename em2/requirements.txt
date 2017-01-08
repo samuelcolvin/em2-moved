@@ -11,7 +11,7 @@ pytz==2016.10
 
 # aiohttp
 aiohttp==1.2.0
-cchardet==1.1.1
+cchardet==1.1.2
 
 # postgres
 SQLAlchemy==1.1.4
