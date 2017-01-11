@@ -2,7 +2,7 @@
 # hang out with other packages with conflicting requirements. Therefore all requirements are strict
 # they're kept in a separate file to keep things explicit and to work with pyup
 aiodns==1.1.1
-aioredis==0.2.9
+aioredis==0.3.0
 arq==0.2.0
 Cerberus==1.0.1
 msgpack-python==0.4.8
