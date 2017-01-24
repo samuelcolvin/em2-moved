@@ -3,7 +3,7 @@
 # they're kept in a separate file to keep things explicit and to work with pyup
 aiodns==1.1.1
 aioredis==0.3.0
-arq==0.2.0
+arq==0.3.2
 Cerberus==1.0.1
 msgpack-python==0.4.8
 pycrypto==2.6.1
