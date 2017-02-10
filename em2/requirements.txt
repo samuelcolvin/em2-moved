@@ -4,7 +4,7 @@
 aiodns==1.1.1
 aioredis==0.3.0
 arq==0.2.0
-Cerberus==1.0.1
+Cerberus==1.1
 msgpack-python==0.4.8
 pycrypto==2.6.1
 pytz==2016.10
