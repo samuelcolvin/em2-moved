@@ -1,6 +1,7 @@
 # em2 can be installed via setup.py however it has strict requirements and should never be expected to
 # hang out with other packages with conflicting requirements. Therefore all requirements are strict
 # they're kept in a separate file to keep things explicit and to work with pyup
+
 aiodns==1.1.1
 aioredis==0.3.0
 arq==0.2.0
