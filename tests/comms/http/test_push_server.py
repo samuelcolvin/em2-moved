@@ -30,6 +30,12 @@ async def test_get_node_remote(ctrl_pusher):
     assert r == 'em2.platform.remote.com'
 
 
+def async_def(result):
+    async def _func():
+        return result
+    return _func
+
+
 async def test_publish_conv(ctrl_pusher):
     ctrl, pusher = await ctrl_pusher()
     action = Action('sender@local.com', None, Verbs.ADD)
@@ -41,7 +47,8 @@ async def test_publish_conv(ctrl_pusher):
     conv_id = await ctrl.act(a)  # conv id could have changed depending on milliseconds
 
     assert pusher.test_client.server.app['controller'].ds.data == {}
-    worker = RaiseWorker(settings=pusher.settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
+    worker = RaiseWorker(redis_settings=pusher.settings.redis, burst=True, loop=pusher.loop)
+    worker.shadow_factory = async_def([pusher])
     await worker.run()
     data = pusher.test_client.server.app['controller'].ds.data
     assert len(data) == 1
@@ -58,7 +65,8 @@ async def test_publish_update_conv(ctrl_pusher):
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.MESSAGES)
 
     assert pusher.test_client.server.app['controller'].ds.data == {}
-    worker = RaiseWorker(settings=pusher.settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
+    worker = RaiseWorker(redis_settings=pusher.settings.redis, burst=True, loop=pusher.loop)
+    worker.shadow_factory = async_def([pusher])
     await worker.run(reuse=True)
     assert pusher.test_client.server.app['controller'].ds.data[0]['conv_id'] == conv_id
 

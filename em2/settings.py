@@ -1,6 +1,6 @@
 from importlib import import_module
 
-from arq import ConnectionSettings
+from arq import RedisSettings
 
 
 def import_string(dotted_path):
@@ -20,7 +20,7 @@ def import_string(dotted_path):
         raise ImportError('Module "%s" does not define a "%s" attribute' % (module_path, class_name)) from e
 
 
-class Settings(ConnectionSettings):
+class Settings:
     COMMS_HEAD_REQUEST_TIMEOUT = 0.8
     COMMS_DOMAIN_CACHE_TIMEOUT = 86400
     COMMS_PLATFORM_TOKEN_TIMEOUT = 86400
@@ -52,6 +52,24 @@ class Settings(ConnectionSettings):
     FALLBACK_USERNAME = None
     FALLBACK_PASSWORD = None
     FALLBACK_ENDPOINT = None
+
+    def __init__(self, **custom_settings):
+        """
+        :param custom_settings: Custom settings to override defaults, only attributes already defined
+            can be set.
+        """
+        redis_kwargs = 'R_HOST', 'R_PORT', 'R_DATABASE', 'R_PASSWORD'
+        redis_settings = {}
+        for kw in redis_kwargs:
+            v = custom_settings.pop(kw, None)
+            if v is not None:
+                redis_settings[kw.replace('R_', '').lower()] = v
+        self.redis = RedisSettings(**redis_settings)
+
+        for name, value in custom_settings.items():
+            if not hasattr(self, name):
+                raise TypeError('{} is not a valid setting name'.format(name))
+            setattr(self, name, value)
 
     @property
     def datastore_cls(self):
