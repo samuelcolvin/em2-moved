@@ -13,6 +13,7 @@ class RedisDNSActor(Actor):
     _dft_value = b'1'
 
     def __init__(self, **kwargs):
+        self.redis_settings = self.settings.redis
         super().__init__(**kwargs)
         self._resolver = None
 

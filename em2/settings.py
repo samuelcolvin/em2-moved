@@ -20,7 +20,7 @@ def import_string(dotted_path):
         raise ImportError('Module "%s" does not define a "%s" attribute' % (module_path, class_name)) from e
 
 
-class Settings(RedisSettings):
+class Settings:
     COMMS_HEAD_REQUEST_TIMEOUT = 0.8
     COMMS_DOMAIN_CACHE_TIMEOUT = 86400
     COMMS_PLATFORM_TOKEN_TIMEOUT = 86400
@@ -64,12 +64,12 @@ class Settings(RedisSettings):
             v = custom_settings.pop(kw, None)
             if v is not None:
                 redis_settings[kw.replace('R_', '').lower()] = v
+        self.redis = RedisSettings(**redis_settings)
 
         for name, value in custom_settings.items():
             if not hasattr(self, name):
                 raise TypeError('{} is not a valid setting name'.format(name))
             setattr(self, name, value)
-        super().__init__(**redis_settings)
 
     @property
     def datastore_cls(self):

@@ -1,4 +1,3 @@
-import asyncio
 from arq.testing import RaiseWorker
 
 from em2 import Settings
@@ -48,7 +47,7 @@ async def test_publish_conv(ctrl_pusher):
     conv_id = await ctrl.act(a)  # conv id could have changed depending on milliseconds
 
     assert pusher.test_client.server.app['controller'].ds.data == {}
-    worker = RaiseWorker(redis_settings=pusher.settings, burst=True, loop=pusher.loop)
+    worker = RaiseWorker(redis_settings=pusher.settings.redis, burst=True, loop=pusher.loop)
     worker.shadow_factory = async_def([pusher])
     await worker.run()
     data = pusher.test_client.server.app['controller'].ds.data
@@ -66,7 +65,8 @@ async def test_publish_update_conv(ctrl_pusher):
     a = Action('sender@local.com', conv_id, Verbs.ADD, Components.MESSAGES)
 
     assert pusher.test_client.server.app['controller'].ds.data == {}
-    worker = RaiseWorker(settings=pusher.settings, burst=True, loop=pusher.loop, existing_shadows=[pusher])
+    worker = RaiseWorker(redis_settings=pusher.settings.redis, burst=True, loop=pusher.loop)
+    worker.shadow_factory = async_def([pusher])
     await worker.run(reuse=True)
     assert pusher.test_client.server.app['controller'].ds.data[0]['conv_id'] == conv_id
 
