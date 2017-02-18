@@ -1,3 +1,4 @@
+import os
 from importlib import import_module
 
 from arq import RedisSettings
@@ -21,6 +22,8 @@ def import_string(dotted_path):
 
 
 class Settings:
+    ENV_PREFIX = 'EM2_'
+
     COMMS_HEAD_REQUEST_TIMEOUT = 0.8
     COMMS_DOMAIN_CACHE_TIMEOUT = 86400
     COMMS_PLATFORM_TOKEN_TIMEOUT = 86400
@@ -53,23 +56,43 @@ class Settings:
     FALLBACK_PASSWORD = None
     FALLBACK_ENDPOINT = None
 
+    R_HOST = 'localhost'
+    R_PORT = 6379
+    R_DATABASE = 0
+    R_PASSWORD = None
+
     def __init__(self, **custom_settings):
         """
-        :param custom_settings: Custom settings to override defaults, only attributes already defined
-            can be set.
+        :param custom_settings: Custom settings to override defaults, only attributes already defined can be set.
         """
-        redis_kwargs = 'R_HOST', 'R_PORT', 'R_DATABASE', 'R_PASSWORD'
-        redis_settings = {}
-        for kw in redis_kwargs:
-            v = custom_settings.pop(kw, None)
-            if v is not None:
-                redis_settings[kw.replace('R_', '').lower()] = v
-        self.redis = RedisSettings(**redis_settings)
-
         for name, value in custom_settings.items():
             if not hasattr(self, name):
                 raise TypeError('{} is not a valid setting name'.format(name))
             setattr(self, name, value)
+        self.substitute_environ()
+
+        self.redis = RedisSettings(
+            host=self.R_HOST,
+            port=self.R_PORT,
+            database=self.R_DATABASE,
+            password=self.R_PASSWORD,
+        )
+
+    def substitute_environ(self):
+        """
+        Substitute environment variables into a settings.
+        """
+        for attr_name in dir(self):
+            if attr_name == 'ENV_PREFIX' or attr_name.startswith('_') or attr_name.upper() != attr_name:
+                continue
+
+            value = getattr(self, attr_name)
+            env_var = os.getenv(self.ENV_PREFIX + attr_name, None)
+            if env_var:
+                if isinstance(value, int):
+                    env_var = int(env_var)
+                # could do floats here and lists etc via json
+                setattr(self, attr_name, env_var)
 
     @property
     def datastore_cls(self):
