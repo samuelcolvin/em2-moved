@@ -1,6 +1,8 @@
 import logging
 import logging.config
 
+logger = logging.getLogger('em2.main')
+
 
 def prepare_log_config(log_level: str) -> dict:
     return {

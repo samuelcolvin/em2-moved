@@ -2,7 +2,7 @@
 #
 # Simple wrapper to run tests fast, collect coverage and check linting
 #
-py.test --cov=em2 --fast
+pytest --cov=em2 --fast
 pytest=$?
 if [ $pytest == 0 ] ; then
     echo building coverage html
