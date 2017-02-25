@@ -39,7 +39,7 @@ class Settings:
     AUTHENTICATOR_CLS = 'em2.comms.auth.RedisDNSAuthenticator'
 
     # default address for webservers eg. gunicorn to bind to
-    WEB_BIND = '127.0.0.1:8000'
+    WEB_PORT = 8000
 
     PG_HOST = 'localhost'
     PG_PORT = '5432'

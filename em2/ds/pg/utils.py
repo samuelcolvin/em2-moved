@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 
 from em2 import Settings
+from em2.exceptions import StartupException
 
 from .models import Base
 
@@ -106,3 +107,13 @@ def prepare_database(settings: Settings, *, delete_existing: bool) -> bool:  # p
     engine.dispose()
     logger.info('db and tables creation finished.')
     return True
+
+
+def check_database_exists(settings: Settings):  # pragma: no cover
+    db_name = settings.PG_DATABASE
+    sleep(1)
+    with psycopg2_cursor(**pg_connect_kwargs(settings)) as cur:
+        cur.execute('SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=%s)', (db_name,))
+        db_exists = bool(cur.fetchone()[0])
+        if not db_exists:
+            raise StartupException(f'database {db_name} does not exist')

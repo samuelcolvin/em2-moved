@@ -17,6 +17,7 @@ RUN pip install /home/root/src/
 ADD ./docker/run.py /home/root/
 ADD ./docker/check.py /home/root/
 
+WORKDIR /home/root
 EXPOSE 8000
-HEALTHCHECK --interval=10s --timeout=5s --retries=2 CMD /home/root/check.py
-ENTRYPOINT ["/home/root/run.py"]
+HEALTHCHECK --interval=20s --timeout=10s --retries=2 CMD /home/root/check.py
+CMD ["./run.py"]

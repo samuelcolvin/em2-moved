@@ -7,6 +7,7 @@ from enum import unique
 
 import pytz
 
+from em2 import Settings
 from .exceptions import StartupException
 
 logger = logging.getLogger('em2.utils')
@@ -78,16 +79,16 @@ def wait_for_services(settings, *, delay=10, loop=None):
     loop.run_until_complete(asyncio.gather(*coros, loop=loop))
 
 
-async def check_server(url, expected_status=200):
+async def check_server(settings: Settings, expected_status=200):
     from aiohttp import ClientSession
+    url = f'http://127.0.0.1:{settings.WEB_PORT}/'
     try:
         async with ClientSession() as session:
             async with session.get(url) as r:
                 assert r.status == expected_status, f'response error {r.status} != {expected_status}'
     except (ValueError, AssertionError, OSError) as e:
-        print(e)
         logger.error('web check error: %s: %s, url: "%s"', e.__class__.__name__, e, url)
         return 1
     else:
-        logger.info('web check successful')
+        logger.info('web check successful "%s", response %d', url, expected_status)
         return 0
