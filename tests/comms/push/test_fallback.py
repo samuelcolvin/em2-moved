@@ -140,6 +140,7 @@ async def test_aws_fallback_live(loop):
     )
 
     fallback = AwsFallbackHandler(settings, loop=loop)
+    await fallback.ainit()
     msg_id = await fallback.send_message(
         e_from='testing@imber.io',
         to=['success@simulator.amazonses.com'],
