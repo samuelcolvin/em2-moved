@@ -37,7 +37,7 @@ class Pusher(RedisDNSActor):
         self.settings = settings
         self.loop = loop
         self.fallback = settings.fallback_cls(settings, loop=loop)
-        logger.info('initialising pusher %s', self)
+        logger.info('initialising pusher %s, ds: %s', self, self.settings.datastore_cls.__name__)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.ds = None
         super().__init__(**kwargs)
@@ -68,7 +68,8 @@ class Pusher(RedisDNSActor):
             nodes = await self.get_nodes(*addresses)
             remote_em2_nodes = [n for n in nodes if n not in {self.LOCAL, self.FALLBACK}]
 
-            logger.info('%s %.6s to %d nodes', action.verb, action.conv, len(remote_em2_nodes))
+            logger.info('%s %.6s to %d parts on %d nodes, of which em2 %d', action.verb, action.conv,
+                        len(participants_data), len(nodes), len(remote_em2_nodes))
             await self._push_em2(remote_em2_nodes, action, data)
             if any(n for n in nodes if n == self.FALLBACK):
                 logger.info('%s %.6s fallback required', action.verb, action.conv)
@@ -110,9 +111,10 @@ class Pusher(RedisDNSActor):
                 node_b = await redis.get(key)
                 if node_b:
                     node = node_b.decode()
-                    logger.info('found cached node: % -> %s', d, node)
+                    logger.info('found cached node %s -> %s', d, node)
                 else:
                     node = await self.get_node(d)
+                    logger.info('got node for %s -> %s', d, node)
                     await redis.setex(key, self.settings.COMMS_DNS_CACHE_EXPIRY, node.encode())
                 nodes.add(node)
         return nodes
