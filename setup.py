@@ -1,6 +1,6 @@
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
-from setuptools import setup
+from setuptools import find_packages, setup
 
 description = """
 em2
@@ -26,7 +26,7 @@ setup(
     author_email='s@muelcolvin.com',
     url='https://github.com/em-2/em2',
     license='MIT',
-    packages=['em2'],
+    packages=find_packages(include=('em2*',)),
     zip_safe=True,
     package_data={
         'em2': ['requirements.txt'],
