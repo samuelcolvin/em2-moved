@@ -31,6 +31,9 @@ class Controller:
     async def ainit(self):
         await self.ds.ainit()
 
+    async def finish(self):
+        await self.ds.finish()
+
     async def act(self, a: Action, **kwargs):
         """
         Routes actions to the appropriate component and executes the right verb.

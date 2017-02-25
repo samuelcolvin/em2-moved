@@ -80,17 +80,19 @@ class Settings:
 
     def substitute_environ(self):
         """
-        Substitute environment variables into a settings.
+        Substitute environment variables into settings.
         """
         for attr_name in dir(self):
             if attr_name == 'ENV_PREFIX' or attr_name.startswith('_') or attr_name.upper() != attr_name:
                 continue
 
-            value = getattr(self, attr_name)
+            orig_value = getattr(self, attr_name)
             env_var = os.getenv(self.ENV_PREFIX + attr_name, None)
             if env_var:
-                if isinstance(value, int):
+                if isinstance(orig_value, int):
                     env_var = int(env_var)
+                elif isinstance(orig_value, bytes):
+                    env_var = env_var.encode()
                 # could do floats here and lists etc via json
                 setattr(self, attr_name, env_var)
 

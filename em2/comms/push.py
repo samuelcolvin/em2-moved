@@ -45,10 +45,14 @@ class Pusher(RedisDNSActor):
     async def ainit(self):
         assert self.ds is None, 'datastore already initialised'
         if self._concurrency_enabled:
-            assert self.is_shadow, 'datastore should only be initialised with the pusher in shadow mode'
+            assert self.is_shadow, 'datastore should only be initialised for the pusher in shadow mode'
         self.ds = self.settings.datastore_cls(settings=self.settings, loop=self.loop)
         await self.ds.ainit()
         await self.fallback.ainit()
+
+    async def finish(self):
+        await self.ds.finish()
+        await self.fallback.finish()
 
     async def push(self, action, data):
         await self._send(action.to_dict(), data)

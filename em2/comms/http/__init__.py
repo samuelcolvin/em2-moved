@@ -1,6 +1,7 @@
 import asyncio
 from aiohttp import web
 
+from .push import HttpDNSPusher  # noqa
 from .views import act, authenticate
 
 
@@ -22,7 +23,6 @@ def create_app(controller, authenticator, loop=None):
     # TODO deal with domain routing
     app.router.add_route('POST', '/authenticate', authenticate)
 
-    url = '/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}'
-    app.router.add_route('POST', url, act)
+    app.router.add_route('POST', '/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}', act)
 
     return app

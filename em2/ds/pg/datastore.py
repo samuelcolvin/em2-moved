@@ -64,7 +64,7 @@ class PostgresDataStore(DataStore):
         return ConnectionContextManager(self.engine)
 
     async def finish(self):
-        logger.warning('closing postgres data store connection pool')
+        logger.info('closing postgres data store connection pool')
         self.engine.close()
         await self.engine.wait_closed()
         self.engine = None

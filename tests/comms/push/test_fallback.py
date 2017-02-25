@@ -107,6 +107,7 @@ async def test_aws_fallback_mocked(mocker, loop):
         FALLBACK_ENDPOINT='eu-west-1',
     )
     fallback = AwsFallbackHandler(settings, loop=loop)
+    await fallback.ainit()
     mock_post = mocker.patch.object(fallback.session, 'post')
     mock_post.return_value = MockPost()
     mock_now = mocker.patch.object(fallback, '_now')

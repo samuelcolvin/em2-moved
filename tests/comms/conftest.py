@@ -17,6 +17,7 @@ def get_pusher(loop, get_redis_pool):
         )
         pusher = HttpMockedDNSPusher(settings, loop=loop, is_shadow=True)
         pusher._redis_pool = await get_redis_pool()
+        await pusher.ainit()
         return pusher
 
     yield _create_pusher

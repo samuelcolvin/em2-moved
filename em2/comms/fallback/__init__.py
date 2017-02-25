@@ -13,6 +13,9 @@ class FallbackHandler:
     async def ainit(self):
         pass
 
+    async def finish(self):
+        pass
+
     def get_from_to_bcc(self, action, participants):
         _from = None
         _to = []

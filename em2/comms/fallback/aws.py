@@ -47,7 +47,7 @@ class AwsFallbackHandler(SmtpFallbackHandler):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.session = aiohttp.ClientSession(loop=self.loop)
+        self.session = None
         if None in {self.settings.FALLBACK_USERNAME, self.settings.FALLBACK_PASSWORD, self.settings.FALLBACK_ENDPOINT}:
             raise ConfigException('The following settings must be set to use AwsFallbackHandler: '
                                   'FALLBACK_USERNAME, FALLBACK_PASSWORD, FALLBACK_ENDPOINT')
@@ -56,6 +56,12 @@ class AwsFallbackHandler(SmtpFallbackHandler):
         self.region = self.settings.FALLBACK_ENDPOINT
         self._host = _AWS_HOST.format(region=self.region)
         self._endpoint = _AWS_ENDPOINT.format(host=self._host)
+
+    async def ainit(self):
+        self.session = aiohttp.ClientSession(loop=self.loop)
+
+    async def finish(self):
+        self.session.close()
 
     @staticmethod
     def _now():
