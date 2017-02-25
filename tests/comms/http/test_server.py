@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from em2.comms import encoding
 from em2.core import Action, Components, Verbs
+from em2.utils import check_server
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 AUTH_HEADER = {
@@ -28,6 +29,13 @@ async def test_add_message(client):
     r = await client.post('/{}/messages/add/'.format(conv_id), data=encoding.encode(data), headers=AUTH_HEADER)
     assert r.status == 201
     assert await r.text() == '\n'
+
+
+async def test_check_server(client):
+    r = await check_server(client.make_url('/'))
+    assert r == 0
+    r = await check_server(client.make_url('/wrong'))
+    assert r == 1
 
 
 async def test_no_auth_header(client):

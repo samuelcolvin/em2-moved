@@ -20,6 +20,8 @@ class Controller:
     """
     def __init__(self, settings: Settings, *, loop=None):
         self.ds = settings.datastore_cls(settings=settings, loop=loop)
+        # TODO as per /docker/run.py the pusher doesn't have to have an associated worker,
+        # in that situation the pusher shouldn't be initialised
         self.pusher = settings.pusher_cls(settings=settings, loop=loop)
         self.timezone_name = settings.TIMEZONE
         self.ref = '{}-{}'.format(settings.LOCAL_DOMAIN, hex(id(self)))

@@ -22,6 +22,10 @@ AUTHENTICATION_SCHEMA = {
 }
 
 
+async def index(request):
+    return web.Response(text='hello', content_type='text/plain')
+
+
 async def authenticate(request):
     logger.info('authentication request from %s', get_ip(request))
 

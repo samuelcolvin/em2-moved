@@ -8,6 +8,10 @@ class ConfigException(Em2Exception):
     pass
 
 
+class StartupException(Em2Exception):
+    pass
+
+
 class NotFoundException(Em2Exception):
     pass
 

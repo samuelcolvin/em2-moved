@@ -1,3 +1,4 @@
+import logging
 from contextlib import contextmanager
 from time import sleep
 
@@ -6,9 +7,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 
 from em2 import Settings
-from em2.logging import logger
 
 from .models import Base
+
+logger = logging.getLogger('em2.ds.pg.utils')
 
 
 def pg_connect_kwargs(settings: Settings):
@@ -66,13 +68,12 @@ WHERE pg_stat_activity.datname = %s AND pid <> pg_backend_pid();
 """
 
 
-def prepare_database(settings: Settings, *, delete_existing: bool, print_func=print) -> bool:  # pragma: no cover
+def prepare_database(settings: Settings, *, delete_existing: bool) -> bool:  # pragma: no cover
     """
     (Re)create a fresh database and run migrations.
 
     :param settings: settings to use
     :param delete_existing: whether or not to drop an existing database if it exists
-    :param print_func: function to use for printing, eg. could be set to `logger.info`
     :return: whether or not a database as (re)created
     """
     db_name = settings.PG_DATABASE
@@ -86,22 +87,22 @@ def prepare_database(settings: Settings, *, delete_existing: bool, print_func=pr
             else:
                 _delete_existing = bool(delete_existing)
             if not _delete_existing:
-                print_func('database "{}" already exists, not recreating it'.format(db_name))
+                logger.info('database "%s" already exists, not recreating it', db_name)
                 return False
             else:
-                print_func('dropping existing connections to "{}"...'.format(db_name))
+                logger.info('dropping existing connections to "%s"...', db_name)
                 cur.execute(DROP_CONNECTIONS, (db_name,))
-                print_func('dropping database "{}" as it already exists...'.format(db_name))
+                logger.info('dropping database "%s" as it already exists...', db_name)
                 cur.execute('DROP DATABASE {}'.format(db_name))
         else:
-            print_func('database "{}" does not yet exist'.format(db_name))
+            logger.info('database "%s" does not yet exist', db_name)
 
-        print_func('creating database "{}"...'.format(db_name))
+        logger.info('creating database "%s"...', db_name)
         cur.execute('CREATE DATABASE {}'.format(db_name))
 
     engine = create_engine(get_dsn(settings))
-    print_func('creating tables from model definition...')
+    logger.info('creating tables from model definition...')
     Base.metadata.create_all(engine)
     engine.dispose()
-    print_func('db and tables creation finished.')
+    logger.info('db and tables creation finished.')
     return True

@@ -33,10 +33,13 @@ class Settings:
     COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
 
-    DATASTORE_CLS = 'em2.ds.NullDataStore'
-    PUSHER_CLS = 'em2.comms.NullPusher'
+    DATASTORE_CLS = 'em2.ds.pg.PostgresDataStore'
+    PUSHER_CLS = 'em2.comms.http.HttpDNSPusher'
     FALLBACK_CLS = 'em2.comms.fallback.FallbackHandler'
     AUTHENTICATOR_CLS = 'em2.comms.auth.RedisDNSAuthenticator'
+
+    # default address for webservers eg. gunicorn to bind to
+    WEB_BIND = '127.0.0.1:8000'
 
     PG_HOST = 'localhost'
     PG_PORT = '5432'
