@@ -66,8 +66,9 @@ async def test_publish_update_conv(ctrl_pusher):
 
     assert pusher.test_client.server.app['controller'].ds.data == {}
     worker = RaiseWorker(redis_settings=pusher.settings.redis, burst=True, loop=pusher.loop)
+    worker.reusable = True
     worker.shadow_factory = async_def([pusher])
-    await worker.run(reuse=True)
+    await worker.run()
     assert pusher.test_client.server.app['controller'].ds.data[0]['conv_id'] == conv_id
 
     # conversation is now published, add another message
@@ -75,3 +76,4 @@ async def test_publish_update_conv(ctrl_pusher):
     msg1_id = list(ctrl.ds.data[0]['messages'])[0]
     await ctrl.act(a, parent_id=msg1_id, body='this is another message')
     await worker.run()
+    await worker.close()
