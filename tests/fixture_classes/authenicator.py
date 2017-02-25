@@ -32,13 +32,19 @@ def get_private_key():
 
 
 class SimpleAuthenticator(BaseAuthenticator):
-    def __init__(self, settings):
-        super().__init__(settings)
+    def __init__(self, settings, **kwargs):
+        super().__init__(settings, **kwargs)
         self._cache = {
             'already-authenticated.com:123:whatever': 2461449700
         }
         self.public_key_value = get_public_key()
         self.valid_signature_override = None
+
+    async def startup(self):
+        pass
+
+    async def shutdown(self):
+        pass
 
     async def key_exists(self, platform_key):
         exp = self._cache.get(platform_key, 1)

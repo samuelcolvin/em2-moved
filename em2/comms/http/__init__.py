@@ -1,24 +1,33 @@
 import asyncio
 from aiohttp import web
 
+from em2.core import Controller
 from .push import HttpDNSPusher  # noqa
 from .views import act, authenticate
 
 
-async def finish_controller(app):
-    ctrl = app['controller']
-    await ctrl.ds.shutdown()
+async def startup(app):
+    settings = app['settings']
+    app.update(
+        controller=Controller(settings=settings, loop=app.loop),
+        authenticator=settings.authenticator_cls(settings=settings, loop=app.loop)
+    )
+    await app['controller'].startup()
+    await app['authenticator'].startup()
 
 
-def create_app(controller, authenticator, loop=None):
+async def cleanup(app):
+    await app['controller'].shutdown()
+    await app['authenticator'].shutdown()
+
+
+def create_app(*, settings, loop=None):
     loop = loop or asyncio.get_event_loop()
     app = web.Application(loop=loop)
-    app.update(
-        controller=controller,
-        authenticator=authenticator,
-    )
+    app['settings'] = settings
 
-    app.on_cleanup.append(finish_controller)
+    app.on_startup.append(startup)
+    app.on_cleanup.append(cleanup)
 
     # TODO deal with domain routing
     app.router.add_route('POST', '/authenticate', authenticate)

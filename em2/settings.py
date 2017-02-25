@@ -36,6 +36,7 @@ class Settings:
     DATASTORE_CLS = 'em2.ds.NullDataStore'
     PUSHER_CLS = 'em2.comms.NullPusher'
     FALLBACK_CLS = 'em2.comms.fallback.FallbackHandler'
+    AUTHENTICATOR_CLS = 'em2.comms.auth.RedisDNSAuthenticator'
 
     PG_HOST = 'localhost'
     PG_PORT = '5432'
@@ -107,3 +108,7 @@ class Settings:
     @property
     def fallback_cls(self):
         return import_string(self.FALLBACK_CLS)
+
+    @property
+    def authenticator_cls(self):
+        return import_string(self.AUTHENTICATOR_CLS)

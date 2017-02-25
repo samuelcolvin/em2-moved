@@ -7,7 +7,6 @@ from em2 import Settings
 from em2.comms import Pusher
 from em2.comms.http import create_app
 from em2.comms.http.push import HttpDNSPusher
-from em2.core import Controller
 from tests.conftest import test_store
 
 from .authenicator import MockDNSResolver, SimpleAuthenticator
@@ -59,12 +58,18 @@ class CustomTestClient(TestClient):
         return self._server.make_url(sub_path)
 
 
+class FixedSimpleAuthenticator(SimpleAuthenticator):
+    def _now_unix(self):
+        return 2461449600
+
+
 def create_test_app(loop, domain='testapp.com'):
-    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore', LOCAL_DOMAIN=domain)
-    ctrl = Controller(settings, loop=loop)
-    auth = SimpleAuthenticator(settings=settings)
-    auth._now_unix = lambda: 2461449600
-    return create_app(ctrl, auth, loop=loop)
+    settings = Settings(
+        DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
+        LOCAL_DOMAIN=domain,
+        AUTHENTICATOR_CLS='tests.fixture_classes.FixedSimpleAuthenticator',
+    )
+    return create_app(settings=settings, loop=loop)
 
 
 class HttpMockedDNSPusher(HttpDNSPusher):
