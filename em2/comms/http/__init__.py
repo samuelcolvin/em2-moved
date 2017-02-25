@@ -7,7 +7,7 @@ from .views import act, authenticate
 
 async def finish_controller(app):
     ctrl = app['controller']
-    await ctrl.ds.finish()
+    await ctrl.ds.shutdown()
 
 
 def create_app(controller, authenticator, loop=None):

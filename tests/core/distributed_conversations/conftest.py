@@ -16,7 +16,7 @@ async def create_controller(name, loop, redis_db, network):
     ctrl = Controller(settings, loop=loop)
     ctrl.pusher.network = network
     network.add_node(local_domain, ctrl)
-    await ctrl.pusher.ainit()
+    await ctrl.pusher.startup()
     return ctrl
 
 
@@ -37,11 +37,11 @@ def two_controllers(reset_store, loop):
 
     yield get_controllers
 
-    async def finish():
+    async def shutdown():
         async with await ctrl1.pusher.get_redis_conn() as redis:
             await redis.flushall()
         await ctrl1.pusher.close()
         await ctrl2.pusher.close()
 
     if ctrl1:
-        loop.run_until_complete(finish())
+        loop.run_until_complete(shutdown())

@@ -28,11 +28,11 @@ class Controller:
         self.components = {c.name: c(self) for c in components}
         self.settings = settings
 
-    async def ainit(self):
-        await self.ds.ainit()
+    async def startup(self):
+        await self.ds.startup()
 
-    async def finish(self):
-        await self.ds.finish()
+    async def shutdown(self):
+        await self.ds.shutdown()
 
     async def act(self, a: Action, **kwargs):
         """

@@ -71,23 +71,23 @@ def test_prepare_database(pg_conn):
     assert cur.fetchone()[0] is True
 
     ctrl = Controller(settings=settings, loop=loop)
-    loop.run_until_complete(ctrl.ainit())
+    loop.run_until_complete(ctrl.startup())
     loop.run_until_complete(ctrl.act(Action('testing@example.com', None, Verbs.ADD), subject='first conversation'))
     assert count_convs(ctrl) == 1
-    loop.run_until_complete(ctrl.ds.finish())
+    loop.run_until_complete(ctrl.ds.shutdown())
 
     assert prepare_database(settings, delete_existing=False) is False
 
     # check conversation still exists as we haven't recreated the database
     ctrl = Controller(settings=settings, loop=loop)
-    loop.run_until_complete(ctrl.ainit())
+    loop.run_until_complete(ctrl.startup())
     assert count_convs(ctrl) == 1
-    loop.run_until_complete(ctrl.ds.finish())
+    loop.run_until_complete(ctrl.ds.shutdown())
 
     assert prepare_database(settings, delete_existing=True) is True
 
     # check conversation doesn't exists as we have recreated the database
     ctrl = Controller(settings=settings, loop=loop)
-    loop.run_until_complete(ctrl.ainit())
+    loop.run_until_complete(ctrl.startup())
     assert count_convs(ctrl) == 0
-    loop.run_until_complete(ctrl.ds.finish())
+    loop.run_until_complete(ctrl.ds.shutdown())

@@ -10,10 +10,10 @@ class FallbackHandler:
         self.settings = settings
         self.loop = loop
 
-    async def ainit(self):
+    async def startup(self):
         pass
 
-    async def finish(self):
+    async def shutdown(self):
         pass
 
     def get_from_to_bcc(self, action, participants):

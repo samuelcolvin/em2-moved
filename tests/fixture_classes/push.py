@@ -28,8 +28,8 @@ class SimplePusher(Pusher):
         super().__init__(*args, **kwargs)
         self.network = Network()
 
-    async def ainit(self):
-        await super().ainit()
+    async def startup(self):
+        await super().startup()
         self.ds.data = test_store(self.settings.LOCAL_DOMAIN)
 
     async def _push_em2(self, nodes, action, data):

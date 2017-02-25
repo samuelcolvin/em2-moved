@@ -56,10 +56,10 @@ def get_redis_pool(loop):
 
     yield create_pool
 
-    async def finish():
+    async def shutdown():
         pool.close()
         await pool.wait_closed()
         await pool.clear()
 
     if pool and not pool.closed:
-        loop.run_until_complete(finish())
+        loop.run_until_complete(shutdown())

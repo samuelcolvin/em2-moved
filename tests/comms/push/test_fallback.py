@@ -24,7 +24,7 @@ def fallback_ctrl_pusher(loop, reset_store):
         )
         _ctrl = Controller(settings, loop=loop)
         _ctrl.pusher._concurrency_enabled = False
-        await _ctrl.pusher.ainit()
+        await _ctrl.pusher.startup()
         async with await _ctrl.pusher.get_redis_conn() as redis:
             await redis.flushall()
         return _ctrl
@@ -107,7 +107,7 @@ async def test_aws_fallback_mocked(mocker, loop):
         FALLBACK_ENDPOINT='eu-west-1',
     )
     fallback = AwsFallbackHandler(settings, loop=loop)
-    await fallback.ainit()
+    await fallback.startup()
     mock_post = mocker.patch.object(fallback.session, 'post')
     mock_post.return_value = MockPost()
     mock_now = mocker.patch.object(fallback, '_now')
@@ -140,7 +140,7 @@ async def test_aws_fallback_live(loop):
     )
 
     fallback = AwsFallbackHandler(settings, loop=loop)
-    await fallback.ainit()
+    await fallback.startup()
     msg_id = await fallback.send_message(
         e_from='testing@imber.io',
         to=['success@simulator.amazonses.com'],

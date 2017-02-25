@@ -13,8 +13,8 @@ logger = logging.getLogger('em2.push.http')
 
 
 class HttpDNSPusher(Pusher):
-    async def ainit(self):
-        await super().ainit()
+    async def startup(self):
+        await super().startup()
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_node(self, domain):
@@ -78,6 +78,6 @@ class HttpDNSPusher(Pusher):
         data = encoding.decode(body)
         return data['key']
 
-    async def finish(self):
+    async def shutdown(self):
         self.session and await self.session.close()
         await super().close()

@@ -57,10 +57,10 @@ class AwsFallbackHandler(SmtpFallbackHandler):
         self._host = _AWS_HOST.format(region=self.region)
         self._endpoint = _AWS_ENDPOINT.format(host=self._host)
 
-    async def ainit(self):
+    async def startup(self):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
-    async def finish(self):
+    async def shutdown(self):
         self.session.close()
 
     @staticmethod

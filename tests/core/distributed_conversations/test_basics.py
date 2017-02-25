@@ -32,14 +32,14 @@ async def test_create_conversation_add_external_participant(get_redis_pool, rese
         LOCAL_DOMAIN='local.com',
     )
     ctrl = Controller(s_local, loop=loop)
-    await ctrl.pusher.ainit()
+    await ctrl.pusher.startup()
     s_remote = Settings(
         DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
         PUSHER_CLS='tests.fixture_classes.SimplePusher',
         LOCAL_DOMAIN='remote.com'
     )
     remote_ctrl = Controller(s_remote, loop=loop)
-    await remote_ctrl.pusher.ainit()
+    await remote_ctrl.pusher.startup()
     ctrl.pusher.network.add_node('remote.com', remote_ctrl)
 
     pool = await get_redis_pool()
@@ -86,7 +86,7 @@ async def test_publish_conversation(get_redis_pool, reset_store, loop):
     )
     remote_ctrl = Controller(remote_settings, loop=loop)
 
-    await ctrl.pusher.ainit()
+    await ctrl.pusher.startup()
     pool = await get_redis_pool()
     ctrl.pusher._redis_pool = pool
     remote_ctrl.pusher._redis_pool = pool

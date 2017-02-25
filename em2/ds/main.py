@@ -18,7 +18,7 @@ class DataStore:
     async def create_conversation(self, conn, conv_id, creator, timestamp, ref, subject, status):
         raise NotImplementedError()
 
-    async def ainit(self):
+    async def startup(self):
         pass
 
     async def terminate(self):
@@ -34,7 +34,7 @@ class DataStore:
     def connection(self):
         raise NotImplementedError()
 
-    async def finish(self):
+    async def shutdown(self):
         pass
 
     def new_conv_ds(self, conv_id, conn):

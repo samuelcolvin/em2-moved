@@ -28,7 +28,7 @@ def get_ctrl(loop, dsn, db, reset_store):
             PG_POOL_TIMEOUT=5,
         )
         ctrl = Controller(settings, loop=loop)
-        await ctrl.ainit()
+        await ctrl.startup()
         return ctrl
 
     yield ctrl_creator
