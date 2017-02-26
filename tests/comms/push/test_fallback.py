@@ -6,7 +6,7 @@ import pytest
 from em2 import Settings
 from em2.comms.fallback.aws import AwsFallbackHandler
 from em2.core import Action, Components, Controller, Verbs, perms
-from tests.fixture_classes import future_result, get_private_key
+from tests.fixture_classes import future_result, get_private_key_file
 
 
 @pytest.yield_fixture
@@ -17,7 +17,7 @@ def fallback_ctrl_pusher(loop, reset_store):
         nonlocal _ctrl
         settings = Settings(
             LOCAL_DOMAIN='em2.local.com',
-            PRIVATE_DOMAIN_KEY=get_private_key(),
+            PRIVATE_DOMAIN_KEY_FILE=get_private_key_file(),
             DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
             PUSHER_CLS='tests.fixture_classes.push.HttpMockedDNSPusher',
             FALLBACK_CLS=fallback_cls,

@@ -124,7 +124,7 @@ class Pusher(RedisDNSActor):
         msg = '{}:{}'.format(self.settings.LOCAL_DOMAIN, timestamp)
         h = SHA256.new(msg.encode())
 
-        key = RSA.importKey(self.settings.PRIVATE_DOMAIN_KEY)
+        key = RSA.importKey(self.settings.private_domain_key)
         signer = PKCS1_v1_5.new(key)
         signature = base64.urlsafe_b64encode(signer.sign(h)).decode()
         return {

@@ -3,6 +3,9 @@ from textwrap import wrap
 
 from em2.comms.auth import BaseAuthenticator, RedisDNSAuthenticator
 
+# to generate public and private keys
+# openssl genrsa -out private.pem 4096
+# openssl rsa -in private.pem -pubout > public.pem
 KEY_DIR = (Path(__file__).parent / 'keys').absolute()
 
 # printf 'foobar.com:2461449600' > test.txt
@@ -26,9 +29,8 @@ def get_public_key():
         return f.read()
 
 
-def get_private_key():
-    with (KEY_DIR / 'private.pem').open() as f:
-        return f.read()
+def get_private_key_file():
+    return str(KEY_DIR / 'private.pem')
 
 
 class SimpleAuthenticator(BaseAuthenticator):

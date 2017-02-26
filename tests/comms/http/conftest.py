@@ -2,7 +2,7 @@ import pytest
 
 from em2 import Settings
 from em2.core import Controller
-from tests.fixture_classes.authenicator import get_private_key
+from tests.fixture_classes import get_private_key_file
 from tests.fixture_classes.push import DoubleMockPusher, create_test_app
 
 
@@ -22,7 +22,7 @@ def ctrl_pusher(loop, reset_store):
         settings = Settings(
             R_DATABASE=2,
             LOCAL_DOMAIN='em2.local.com',
-            PRIVATE_DOMAIN_KEY=get_private_key(),
+            PRIVATE_DOMAIN_KEY_FILE=get_private_key_file(),
             DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
             PUSHER_CLS='tests.fixture_classes.push.DoubleMockPusher',
         )

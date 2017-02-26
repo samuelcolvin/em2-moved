@@ -1,5 +1,6 @@
 import os
 from importlib import import_module
+from pathlib import Path
 
 from arq import RedisSettings
 
@@ -54,7 +55,7 @@ class Settings:
     PG_POOL_TIMEOUT = 60.0
 
     LOCAL_DOMAIN = 'no-domain-set'
-    PRIVATE_DOMAIN_KEY = 'no-key-set'
+    PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
 
     TIMEZONE = 'utc'
 
@@ -101,6 +102,10 @@ class Settings:
                     env_var = env_var.encode()
                 # could do floats here and lists etc via json
                 setattr(self, attr_name, env_var)
+
+    @property
+    def private_domain_key(self):
+        return Path(self.PRIVATE_DOMAIN_KEY_FILE).read_text()
 
     @property
     def datastore_cls(self):

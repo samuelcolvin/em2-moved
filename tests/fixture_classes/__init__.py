@@ -2,7 +2,7 @@
 from asyncio import Future
 
 from .authenicator import (SimpleAuthenticator, RedisMockDNSAuthenticator, PLATFORM, TIMESTAMP, VALID_SIGNATURE,
-                           get_private_key)
+                           get_private_key_file)
 from .datastore import SimpleDataStore
 from .push import SimplePusher, Network, FixedSimpleAuthenticator
 
