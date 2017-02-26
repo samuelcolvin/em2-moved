@@ -101,11 +101,16 @@ class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSActor):
             if r.lower().startswith('v=em2key'):
                 # [8:] removes the v=em2key, [2:] remove the p=
                 key = r[8:].strip()[2:]
-                for extra in results:
-                    key += extra.strip()
-                    if extra.endswith('='):
-                        # key finished
-                        return key
+                if key.endswith('='):
+                    return key
+                else:
+                    # https://tools.ietf.org/html/rfc4408#section-3.1.3
+                    # this could be the wrong interpretation, the above case could suffice
+                    for extra in results:
+                        key += extra.strip()
+                        if extra.endswith('='):
+                            # key finished
+                            return key
         raise FailedInboundAuthentication('no "em2key" TXT dns record found')
 
     async def _check_domain_uses_platform(self, domain: str, platform_domain: str):
