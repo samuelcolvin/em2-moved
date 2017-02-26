@@ -12,6 +12,7 @@ def get_pusher(loop, get_redis_pool):
     async def _create_pusher():
         nonlocal pusher
         settings = Settings(
+            DATASTORE_CLS='em2.ds.NullDataStore',
             PUSHER_CLS='tests.fixture_classes.push.HttpMockedDNSPusher',
             PRIVATE_DOMAIN_KEY=get_private_key(),
         )

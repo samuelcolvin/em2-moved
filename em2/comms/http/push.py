@@ -42,14 +42,14 @@ class HttpDNSPusher(Pusher):
         logger.info('posting to %s > %s', domain, path)
         token = await self.authenticate(domain)
         headers = dict(Authorization=token, **JSON_HEADER)
-        url = 'https://{}/{}'.format(domain, path)
+        url = f'{self.settings.COMMS_SCHEMA}://{domain}/{path}'
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
                 raise PushError('{}: {}'.format(r.status, await r.read()))
 
     async def _push_em2(self, nodes, action, data):
         action.item = action.item or ''
-        path = '{a.conv}/{a.component}/{a.verb}/{a.item}'.format(a=action)
+        path = f'{action.conv}/{action.component}/{action.verb}/{action.item}'
         post_data = {
             'address': action.address,
             'timestamp': action.timestamp,
@@ -62,7 +62,7 @@ class HttpDNSPusher(Pusher):
         await asyncio.gather(*cos, loop=self.loop)
 
     async def _authenticate_direct(self, domain):
-        url = 'https://{}/authenticate'.format(domain)
+        url = f'{self.settings.COMMS_SCHEMA}://{domain}/authenticate'
         # TODO more error checks
         auth_data = self.get_auth_data()
         try:
@@ -71,10 +71,10 @@ class HttpDNSPusher(Pusher):
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",
             # the exception is fairly useless at giving specifics
-            raise Em2ConnectionError('cannot connect to "{}"'.format(url)) from e
+            raise Em2ConnectionError(f'cannot connect to "{url}"') from e
         else:
             if r.status != 201:
-                raise FailedOutboundAuthentication('{} response {} != 201, response: {}'.format(url, r.status, body))
+                raise FailedOutboundAuthentication(f'{url} response {r.status} != 201, response: body')
         data = encoding.decode(body)
         return data['key']
 

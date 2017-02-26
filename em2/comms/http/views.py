@@ -11,6 +11,7 @@ from em2.comms import encoding
 from em2.comms.logger import logger
 from em2.core import Action
 from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
+from em2.version import VERSION
 
 from .utils import HTTPBadRequestStr, HTTPForbiddenStr, get_ip
 
@@ -23,7 +24,8 @@ AUTHENTICATION_SCHEMA = {
 
 
 async def index(request):
-    return web.Response(text='hello', content_type='text/plain')
+    domain = request.app['settings'].LOCAL_DOMAIN
+    return web.Response(text=f'em2 v{VERSION} HTTP api, domain: {domain}', content_type='text/plain')
 
 
 async def authenticate(request):

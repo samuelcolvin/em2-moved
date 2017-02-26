@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from em2 import Settings
 from em2.comms import encoding
 from em2.core import Action, Components, Verbs
 from em2.utils import check_server
@@ -32,9 +33,9 @@ async def test_add_message(client):
 
 
 async def test_check_server(client):
-    r = await check_server(client.make_url('/'))
+    r = await check_server(Settings(WEB_PORT=client.server.port))
     assert r == 0
-    r = await check_server(client.make_url('/wrong'))
+    r = await check_server(Settings(WEB_PORT=client.server.port + 1))
     assert r == 1
 
 

@@ -32,6 +32,8 @@ class Settings:
     COMMS_PUSH_TOKEN_EARLY_EXPIRY = 10
     COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
+    # only ever change this during internal network testing!!!
+    COMMS_SCHEMA = 'https'
 
     DATASTORE_CLS = 'em2.ds.pg.PostgresDataStore'
     PUSHER_CLS = 'em2.comms.http.HttpDNSPusher'
