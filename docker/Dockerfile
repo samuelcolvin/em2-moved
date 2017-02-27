@@ -12,12 +12,9 @@ RUN pip install -r /home/root/requirements.txt
 
 ADD ./em2 /home/root/src/em2
 ADD ./setup.py /home/root/src/
-RUN pip install /home/root/src/
-
-ADD ./docker/run.py /home/root/
-ADD ./docker/check.py /home/root/
+RUN pip install -e /home/root/src/
 
 WORKDIR /home/root
 EXPOSE 8000
-HEALTHCHECK --interval=20s --timeout=10s --retries=2 CMD /home/root/check.py
-CMD ["./run.py"]
+HEALTHCHECK --interval=20s --timeout=10s --retries=2 CMD /home/root/check.py  # TODO
+CMD ["./em2/cli.py"]

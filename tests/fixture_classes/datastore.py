@@ -53,7 +53,7 @@ class SimpleDataStore(DataStore):
         results.sort(key=lambda c: (c['timestamp'], c['_id']), reverse=True)
         [r.pop('_id') for r in results]
         for r in results:
-            yield r
+            yield {'conversations_' + k: v for k, v in r.items()}
 
     async def all_conversations(self):
         results = []

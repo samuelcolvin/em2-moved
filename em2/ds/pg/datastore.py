@@ -1,6 +1,6 @@
 import logging
 from aiopg.sa.engine import _create_engine
-from sqlalchemy import column, join, select
+from sqlalchemy import join, select
 
 from em2.core import Components
 from em2.ds import ConversationDataStore, DataStore
@@ -23,8 +23,7 @@ class PostgresDataStore(DataStore):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.engine = None
-        # TODO qualify the columns in case of conflict
-        self._list_columns = [column('conv_id')] + PostgresConversationDataStore.sa_core_property_keys
+        self._list_columns = [sa_conversations.c.conv_id] + PostgresConversationDataStore.sa_core_property_keys
 
     async def startup(self):
         if self.engine is not None:
@@ -56,8 +55,7 @@ class PostgresDataStore(DataStore):
 
     async def all_conversations(self):
         async with self.connection() as conn:
-            q = (select(self._list_columns)
-                 .order_by(sa_conversations.c.timestamp.desc(), sa_conversations.c.id.desc()))
+            q = select(self._list_columns).order_by(sa_conversations.c.timestamp.desc(), sa_conversations.c.id.desc())
             async for row in conn.execute(q):
                 yield dict(row)
 

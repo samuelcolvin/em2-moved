@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import sys
 from datetime import datetime, timedelta
 from enum import Enum as _PyEnum
 from enum import EnumMeta as _PyEnumMeta
@@ -7,7 +8,7 @@ from enum import unique
 
 import pytz
 
-from em2 import Settings
+from em2 import VERSION, Settings
 from .exceptions import StartupException
 
 logger = logging.getLogger('em2.utils')
@@ -92,3 +93,35 @@ async def check_server(settings: Settings, expected_status=200):
     else:
         logger.info('web check successful "%s", response %d', url, expected_status)
         return 0
+
+
+async def _list_conversations(settings, loop):
+    ds = settings.datastore_cls(settings=settings, loop=loop)
+    await ds.startup()
+    v = ['Conversations:']
+    try:
+        async for conv in ds.all_conversations():
+            items = sorted(conv.items())
+            v.append('  ' + ' '.join(f'{k}={v}' for k, v in items))
+        v.append(f'total {len(v) - 1} conversations')
+    finally:
+        await ds.shutdown()
+    return v
+
+
+def info(settings):
+    import aiohttp
+    import arq
+    v = [
+        f'em2',
+        f'Python:   {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}',
+        f'em2:      {VERSION}',
+        f'aiohttp:  {aiohttp.__version__}',
+        f'arq:      {arq.VERSION}\n',
+        f'domain:   {settings.LOCAL_DOMAIN}',
+        f'pg db:    {settings.PG_DATABASE}',
+        f'redis db: {settings.R_DATABASE}\n',
+    ]
+    loop = asyncio.get_event_loop()
+    v += loop.run_until_complete(_list_conversations(settings, loop))
+    return '\n'.join(v)
