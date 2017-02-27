@@ -60,6 +60,7 @@ def shell():
     EXEC_LINES = [
         'import asyncio, os, re, sys',
         'from datetime import datetime, timedelta, timezone',
+        'from pathlib import Path',
         'from pprint import pprint as pp',
         '',
         'from em2 import Settings',
