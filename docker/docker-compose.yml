@@ -19,13 +19,13 @@ services:
 
   web:
     image: em2
-    restart: always
     environment:
+      EM2_COMMAND: web
+      EM2_DEBUG: 'true'
       EM2_PG_HOST: postgres
       EM2_PG_PASSWORD: docker
       EM2_R_HOST: redis
       EM2_LOCAL_DOMAIN: local.com
-      COMMAND: web
     ports:
     - 8000:8000
     depends_on:
@@ -34,13 +34,13 @@ services:
 
   worker:
     image: em2
-    restart: always
     environment:
+      EM2_COMMAND: worker
+      EM2_DEBUG: 'true'
       EM2_PG_HOST: postgres
       EM2_PG_PASSWORD: docker
       EM2_R_HOST: redis
       EM2_LOCAL_DOMAIN: local.com
-      COMMAND: worker
     depends_on:
     - postgres
     - redis

@@ -6,11 +6,11 @@ from em2 import Settings
 from em2.exceptions import ConfigException
 from em2.logging import logger, setup_logging
 
-command_list = []
+command_lookup = {}
 
 
 def command(func):
-    command_list.append(func)
+    command_lookup[func.__name__] = func
     return func
 
 
@@ -28,21 +28,19 @@ def worker_check(settings):
 
 
 def cli(command_):
-    setup_logging()
-    settings = Settings()
+    settings = Settings(COMMAND=command_)
+    setup_logging(settings)
 
-    command_lookup = {c.__name__: c for c in command_list}
-
-    func = command_lookup.get(command_)
+    func = command_lookup.get(settings.COMMAND)
     if func is None:
         options = ', '.join(sorted(command_lookup.keys()))
-        raise ConfigException(f'invalid command "{command_}", options are: {options}')
+        raise ConfigException(f'invalid command "{settings.COMMAND}", options are: {options}')
     logger.info('running %s...', func.__name__)
     func(settings)
 
 
 def main():
-    command_ = os.getenv('COMMAND', 'web')
+    command_ = os.getenv('EM2_COMMAND', 'web')
     # make sure web_check runs here when EM2_COMMAND is "web", also worker_check instead of "worker"
     command_ += '_check'
     cli(command_)

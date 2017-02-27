@@ -25,6 +25,9 @@ def import_string(dotted_path):
 class Settings:
     ENV_PREFIX = 'EM2_'
 
+    DEBUG = False
+    COMMAND = 'info'
+
     COMMS_HEAD_REQUEST_TIMEOUT = 0.8
     COMMS_DOMAIN_CACHE_TIMEOUT = 86400
     COMMS_PLATFORM_TOKEN_TIMEOUT = 86400
@@ -72,11 +75,11 @@ class Settings:
         """
         :param custom_settings: Custom settings to override defaults, only attributes already defined can be set.
         """
+        self.substitute_environ()
         for name, value in custom_settings.items():
             if not hasattr(self, name):
                 raise TypeError('{} is not a valid setting name'.format(name))
             setattr(self, name, value)
-        self.substitute_environ()
 
         self.redis = RedisSettings(
             host=self.R_HOST,
@@ -96,7 +99,9 @@ class Settings:
             orig_value = getattr(self, attr_name)
             env_var = os.getenv(self.ENV_PREFIX + attr_name, None)
             if env_var:
-                if isinstance(orig_value, int):
+                if isinstance(orig_value, bool):
+                    env_var = env_var.upper() in ('1', 'TRUE')
+                elif isinstance(orig_value, int):
                     env_var = int(env_var)
                 elif isinstance(orig_value, bytes):
                     env_var = env_var.encode()

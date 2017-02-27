@@ -38,6 +38,7 @@ async def authenticate(request):
         logger.info('bad request: invalid msgpack data')
         raise HTTPBadRequestStr('error decoding data: {}'.format(e)) from e
 
+    logger.info('authentication data: %s', obj)
     v = Validator(AUTHENTICATION_SCHEMA)
     if not v(obj):
         raise HTTPBadRequestStr(json.dumps(v.errors, sort_keys=True))
@@ -76,6 +77,7 @@ async def _check_token(request):
 
 async def act(request):
     auth, platform = await _check_token(request)
+    logger.info('action from %s', platform)
 
     body_data = await request.read()
 

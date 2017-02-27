@@ -46,8 +46,8 @@ async def test_reprs(reset_store, loop):
 
 
 async def test_logging(reset_store, loop, capsys):
-    setup_logging(log_level='DEBUG')
-    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore')
+    settings = Settings(DATASTORE_CLS='tests.fixture_classes.SimpleDataStore', DEBUG=True)
+    setup_logging(settings)
     controller = Controller(settings, loop=loop)
 
     action = Action('sender@example.com', None, Verbs.ADD)

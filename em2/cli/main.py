@@ -1,8 +1,10 @@
 #!/usr/bin/env python3.6
 import os
+import sys
 
+from em2 import Settings
 from em2.cli.check import cli, command
-from em2.logging import logger
+from em2.logging import logger, setup_logging
 from em2.utils import wait_for_services
 
 
@@ -51,9 +53,54 @@ def info(settings):
     info_(settings, logger)
 
 
+def shell():
+    """
+    Basic replica of django-extensions shell, ugly but very useful in development
+    """
+    EXEC_LINES = [
+        'import asyncio, os, re, sys',
+        'from datetime import datetime, timedelta, timezone',
+        'from pprint import pprint as pp',
+        '',
+        'from em2 import Settings',
+        'from em2.core import Controller',
+        '',
+        'loop = asyncio.get_event_loop()',
+        'await_ = loop.run_until_complete',
+        'settings = Settings()',
+        'ctrl = Controller(settings=settings, loop=loop)',
+        'await_(ctrl.startup())',
+    ]
+    EXEC_LINES += (
+        ['print("\\n    Python {v.major}.{v.minor}.{v.micro}\\n".format(v=sys.version_info))'] +
+        [f'print("    {l}")' for l in EXEC_LINES]
+    )
+
+    from IPython import start_ipython
+    from IPython.terminal.ipapp import load_default_config
+    c = load_default_config()
+
+    c.TerminalIPythonApp.display_banner = False
+    c.TerminalInteractiveShell.confirm_exit = False
+    c.InteractiveShellApp.exec_lines = EXEC_LINES
+    start_ipython(argv=(), config=c)
+
+
 def main():
-    command_ = os.getenv('COMMAND', 'info')
-    cli(command_)
+    # special cases where we use arguments so you don't have to mess with env variables.
+    argument = sys.argv[-1]
+    if argument in ('info', 'shell'):
+        settings = Settings()
+        setup_logging(settings)
+        if argument == 'info':
+            logger.info('running info based on argument...')
+            info(settings)
+        else:
+            logger.info('running shell based on argument...')
+            shell()
+    else:
+        command_ = os.getenv('EM2_COMMAND', 'info')
+        cli(command_)
 
 
 if __name__ == '__main__':

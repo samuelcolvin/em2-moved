@@ -124,6 +124,8 @@ def info(settings, logger):
     logger.info(f'aiohttp:  {aiohttp.__version__}')
     logger.info(f'arq:      {arq.VERSION}\n')
     logger.info(f'domain:   {settings.LOCAL_DOMAIN}')
+    logger.info(f'command:  {settings.COMMAND}')
+    logger.info(f'debug:    {settings.DEBUG}')
     logger.info(f'pg db:    {settings.PG_DATABASE}')
     logger.info(f'redis db: {settings.R_DATABASE}\n')
     try:

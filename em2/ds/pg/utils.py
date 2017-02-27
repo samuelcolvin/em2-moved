@@ -121,4 +121,4 @@ def check_database_exists(settings: Settings, retries=5):  # pragma: no cover
             logger.warning('database "%s" does not exist (%d retries remaining)', db_name, retries)
             sleep(1)
             return check_database_exists(settings, retries - 1)
-    logger.info('database "%s" does exist, connection ok', db_name)
+    logger.info('database "%s" exists, connection ok', db_name)

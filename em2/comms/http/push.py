@@ -29,6 +29,7 @@ class HttpDNSPusher(Pusher):
                     await self.authenticate(host)
                 except Em2ConnectionError:
                     # connection failed domain is probably not em2
+                    logger.info('looking for em2 node for "%s"', domain)
                     pass
                 else:
                     # TODO query host to find associated node
@@ -72,6 +73,7 @@ class HttpDNSPusher(Pusher):
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",
             # the exception is fairly useless at giving specifics
+            logger.info('ClientOSError: %e, url: %s', e, url)
             raise Em2ConnectionError(f'cannot connect to "{url}"') from e
         else:
             if r.status != 201:

@@ -13,8 +13,8 @@ class Worker(BaseWorker):
     shadows = [HttpDNSPusher, RedisDNSAuthenticator]
 
     def __init__(self, **kwargs):
-        setup_logging()
         self.settings = kwargs.pop('settings', None) or Settings()
+        setup_logging(self.settings)
         kwargs['redis_settings'] = self.settings.redis
         super().__init__(**kwargs)
 
