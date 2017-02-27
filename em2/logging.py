@@ -1,5 +1,6 @@
 import logging
 import logging.config
+import os
 
 logger = logging.getLogger('em2.main')
 
@@ -9,21 +10,36 @@ def prepare_log_config(log_level: str) -> dict:
         'version': 1,
         'disable_existing_loggers': False,
         'formatters': {
-            'default': {
+            'em2.default': {
                 'format': '%(name)10s %(asctime)s| %(message)s',
                 'datefmt': '%H:%M:%S',
             },
         },
         'handlers': {
-            'default': {
+            'em2.default': {
                 'level': log_level,
                 'class': 'logging.StreamHandler',
-                'formatter': 'default'
+                'formatter': 'em2.default'
+            },
+            'sentry': {
+                'level': 'WARNING',
+                'class': 'raven.handlers.logging.SentryHandler',
+                'dsn': os.getenv('RAVEN_DSN', None),
+                'release': os.getenv('COMMIT', None),
+                'name': os.getenv('SERVER_NAME', '-')
             },
         },
         'loggers': {
             'em2': {
-                'handlers': ['default'],
+                'handlers': ['em2.default', 'sentry'],
+                'level': log_level,
+            },
+            'gunicorn.error': {
+                'handlers': ['sentry'],
+                'level': 'ERROR',
+            },
+            'arq': {
+                'handlers': ['em2.default', 'sentry'],
                 'level': log_level,
             },
         },

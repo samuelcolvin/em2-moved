@@ -7,6 +7,7 @@ from enum import EnumMeta as _PyEnumMeta
 from enum import unique
 
 import pytz
+from async_timeout import timeout
 
 from em2 import VERSION, Settings
 from .exceptions import StartupException
@@ -56,18 +57,22 @@ def now_unix_ms():
 async def _wait_port_open(host, port, delay, loop):
     step_size = 0.05
     steps = int(delay / step_size)
+    start = loop.time()
     for i in range(steps):
         try:
-            await loop.create_connection(lambda: asyncio.Protocol(), host=host, port=port)
+            with timeout(step_size, loop=loop):
+                await loop.create_connection(lambda: asyncio.Protocol(), host=host, port=port)
+        except TimeoutError:
+            pass
         except OSError:
-            await asyncio.sleep(delay, loop=loop)
+            await asyncio.sleep(step_size, loop=loop)
         else:
-            logger.info('Connected successfully to %s:%s after %0.2fs', host, port, delay * i)
+            logger.info('Connected successfully to %s:%s after %0.2fs', host, port, loop.time() - start)
             return
-    raise StartupException(f'Unable to connect to {host}:{port} after {steps * delay}s')
+    raise StartupException(f'Unable to connect to {host}:{port} after {loop.time() - start:0.2f}s')
 
 
-def wait_for_services(settings, *, delay=10, loop=None):
+def wait_for_services(settings, *, delay=5, loop=None):
     """
     Wait for up to `delay` seconds for postgres and redis ports to be open
     """
@@ -95,33 +100,38 @@ async def check_server(settings: Settings, expected_status=200):
         return 0
 
 
-async def _list_conversations(settings, loop):
+async def _list_conversations(settings, loop, logger):
     ds = settings.datastore_cls(settings=settings, loop=loop)
     await ds.startup()
-    v = ['Conversations:']
+    logger.info('Conversations:')
     try:
+        c = 0
         async for conv in ds.all_conversations():
-            items = sorted(conv.items())
-            v.append('  ' + ' '.join(f'{k}={v}' for k, v in items))
-        v.append(f'total {len(v) - 1} conversations')
+            conv_id = conv.pop('conv_id')
+            logger.info(f'  id={conv_id:.6} ' + ' '.join(f'{k}="{str(v):.40}"' for k, v in sorted(conv.items())))
+            c += 1
+        logger.info(f'total {c} conversations')
     finally:
         await ds.shutdown()
-    return v
 
 
-def info(settings):
+def info(settings, logger):
     import aiohttp
     import arq
-    v = [
-        f'em2',
-        f'Python:   {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}',
-        f'em2:      {VERSION}',
-        f'aiohttp:  {aiohttp.__version__}',
-        f'arq:      {arq.VERSION}\n',
-        f'domain:   {settings.LOCAL_DOMAIN}',
-        f'pg db:    {settings.PG_DATABASE}',
-        f'redis db: {settings.R_DATABASE}\n',
-    ]
-    loop = asyncio.get_event_loop()
-    v += loop.run_until_complete(_list_conversations(settings, loop))
-    return '\n'.join(v)
+    logger.info(f'em2')
+    logger.info(f'Python:   {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')
+    logger.info(f'em2:      {VERSION}')
+    logger.info(f'aiohttp:  {aiohttp.__version__}')
+    logger.info(f'arq:      {arq.VERSION}\n')
+    logger.info(f'domain:   {settings.LOCAL_DOMAIN}')
+    logger.info(f'pg db:    {settings.PG_DATABASE}')
+    logger.info(f'redis db: {settings.R_DATABASE}\n')
+    try:
+        loop = asyncio.get_event_loop()
+        from em2.ds.pg.utils import check_database_exists
+        wait_for_services(settings, loop=loop)
+        check_database_exists(settings)
+
+        loop.run_until_complete(_list_conversations(settings, loop, logger))
+    except Exception as e:
+        logger.warning(f'Error get conversation list {e.__class__.__name__}: {e}')

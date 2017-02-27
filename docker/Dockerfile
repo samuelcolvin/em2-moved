@@ -10,11 +10,14 @@ RUN apk --update --no-cache add postgresql-dev gcc g++ musl-dev libuv make \
 ADD ./docker/requirements.txt /home/root/
 RUN pip install -r /home/root/requirements.txt
 
+# the next two lines are just to make repeat builds quicker, they are completely duplicated by "pip install ..." below
+ADD ./em2/requirements.txt /home/root/em2-requirements.txt
+RUN pip install -r /home/root/em2-requirements.txt
+
 ADD ./em2 /home/root/src/em2
 ADD ./setup.py /home/root/src/
 RUN pip install -e /home/root/src/
 
 WORKDIR /home/root
-EXPOSE 8000
-HEALTHCHECK --interval=20s --timeout=10s --retries=2 CMD /home/root/check.py  # TODO
-CMD ["./em2/cli.py"]
+HEALTHCHECK --interval=20s --timeout=10s --retries=2 CMD em2check
+CMD ["em2"]

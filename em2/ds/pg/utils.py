@@ -109,11 +109,16 @@ def prepare_database(settings: Settings, *, delete_existing: bool) -> bool:  # p
     return True
 
 
-def check_database_exists(settings: Settings):  # pragma: no cover
+def check_database_exists(settings: Settings, retries=5):  # pragma: no cover
     db_name = settings.PG_DATABASE
-    sleep(1)
     with psycopg2_cursor(**pg_connect_kwargs(settings)) as cur:
         cur.execute('SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=%s)', (db_name,))
         db_exists = bool(cur.fetchone()[0])
-        if not db_exists:
-            raise StartupException(f'database {db_name} does not exist')
+    if not db_exists:
+        if retries <= 0:
+            raise StartupException(f'database "{db_name}" does not exist')
+        else:
+            logger.warning('database "%s" does not exist (%d retries remaining)', db_name, retries)
+            sleep(1)
+            return check_database_exists(settings, retries - 1)
+    logger.info('database "%s" does exist, connection ok', db_name)

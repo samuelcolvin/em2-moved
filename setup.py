@@ -19,7 +19,7 @@ setup(
     classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
     keywords='email,em2',
     author='Samuel Colvin',
@@ -27,6 +27,11 @@ setup(
     url='https://github.com/em-2/em2',
     license='MIT',
     packages=find_packages(include=('em2*',)),
+    entry_points="""
+        [console_scripts]
+        em2=em2.cli.main:main
+        em2check=em2.cli.check:main
+    """,
     zip_safe=True,
     package_data={
         'em2': ['requirements.txt'],

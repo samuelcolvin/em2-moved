@@ -1,0 +1,47 @@
+version: '2'
+
+volumes:
+ pg_data: {}
+
+services:
+  postgres:
+    image: postgres:9.6
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: docker
+    volumes:
+    - pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:3.0-alpine
+    restart: always
+
+  web:
+    image: em2
+    restart: always
+    environment:
+      EM2_PG_HOST: postgres
+      EM2_PG_PASSWORD: docker
+      EM2_R_HOST: redis
+      EM2_LOCAL_DOMAIN: local.com
+      COMMAND: web
+    ports:
+    - 8000:8000
+    depends_on:
+    - postgres
+    - redis
+
+  worker:
+    image: em2
+    restart: always
+    environment:
+      EM2_PG_HOST: postgres
+      EM2_PG_PASSWORD: docker
+      EM2_R_HOST: redis
+      EM2_LOCAL_DOMAIN: local.com
+      COMMAND: worker
+    depends_on:
+    - postgres
+    - redis
+    - web
