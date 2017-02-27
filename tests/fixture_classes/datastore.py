@@ -39,7 +39,7 @@ class SimpleDataStore(DataStore):
         )
         return id
 
-    async def list_conversations(self, conn, address, limit=None, offset=None):
+    async def conversations_for_address(self, conn, address, limit=None, offset=None):
         results = []
         for cid, conv in self.data.items():
             p = next((p for p in conv['participants'].values() if p['address'] == address), None)

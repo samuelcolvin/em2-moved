@@ -24,7 +24,7 @@ class DataStore:
     async def terminate(self):
         pass
 
-    async def list_conversations(self, conn, address, limit=None, offset=None):
+    async def conversations_for_address(self, conn, address, limit=None, offset=None):
         raise NotImplementedError()
 
     async def all_conversations(self):
@@ -201,7 +201,7 @@ class NullDataStore(DataStore):
     async def create_conversation(self, conn, **kwargs):
         return 0
 
-    async def list_conversations(self, conn, address, limit=None, offset=None):
+    async def conversations_for_address(self, conn, address, limit=None, offset=None):
         return []
 
     async def all_conversations(self):

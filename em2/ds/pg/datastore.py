@@ -43,7 +43,7 @@ class PostgresDataStore(DataStore):
         # key word arguments to create_conversation exactly match the db.
         return await conn.execute(sa_conversations.insert().values(**kwargs))
 
-    async def list_conversations(self, conn, address, limit=None, offset=None):
+    async def conversations_for_address(self, conn, address, limit=None, offset=None):
         j = join(sa_conversations, sa_participants, sa_conversations.c.id == sa_participants.c.conversation)
         q = (select(self._list_columns, use_labels=True)
              .select_from(j)

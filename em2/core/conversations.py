@@ -153,7 +153,7 @@ class Conversations:
         """
         # TODO to iter and return async generator
         return [c async for c in
-                self.controller.ds.list_conversations(retrieval.conn, retrieval.address, limit, offset)]
+                self.controller.ds.conversations_for_address(retrieval.conn, retrieval.address, limit, offset)]
 
     async def get(self, retrieval):
         """
