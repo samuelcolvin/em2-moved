@@ -27,6 +27,9 @@ class DataStore:
     async def list_conversations(self, conn, address, limit=None, offset=None):
         raise NotImplementedError()
 
+    async def all_conversations(self):
+        raise NotImplementedError()
+
     @property
     def conv_data_store(self):
         raise NotImplementedError()
@@ -199,6 +202,9 @@ class NullDataStore(DataStore):
         return 0
 
     async def list_conversations(self, conn, address, limit=None, offset=None):
+        return []
+
+    async def all_conversations(self):
         return []
 
     @property

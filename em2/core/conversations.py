@@ -151,7 +151,9 @@ class Conversations:
         :param: offset: for pagination, as per sql limit clause
         :returns: list of dicts in reverse timestamp order, see datastore > get_core_properties for fields
         """
-        return await self.controller.ds.list_conversations(retrieval.conn, retrieval.address, limit, offset)
+        # TODO to iter and return async generator
+        return [c async for c in
+                self.controller.ds.list_conversations(retrieval.conn, retrieval.address, limit, offset)]
 
     async def get(self, retrieval):
         """

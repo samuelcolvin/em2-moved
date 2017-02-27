@@ -52,7 +52,21 @@ class SimpleDataStore(DataStore):
             results.append(props)
         results.sort(key=lambda c: (c['timestamp'], c['_id']), reverse=True)
         [r.pop('_id') for r in results]
-        return results
+        for r in results:
+            yield r
+
+    async def all_conversations(self):
+        results = []
+        for cid, conv in self.data.items():
+            cds = self.new_conv_ds(conv['conv_id'], None)
+            props = await cds.get_core_properties()
+            props['conv_id'] = conv['conv_id']
+            props['_id'] = cid
+            results.append(props)
+        results.sort(key=lambda c: (c['timestamp'], c['_id']), reverse=True)
+        [r.pop('_id') for r in results]
+        for r in results:
+            yield r
 
     @property
     def conv_data_store(self):

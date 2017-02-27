@@ -14,10 +14,11 @@ async def test_list_conversations(get_ds, datastore_cls):
         cds2 = await create_conv(conn, ds, '456')
         await cds2.add_component(Components.PARTICIPANTS, address='test2@ex.com', permissions=perms.FULL)
 
-        convs = await ds.list_conversations(conn, 'test1@ex.com')
+        convs = [conv async for conv in ds.list_conversations(conn, 'test1@ex.com')]
         assert len(convs) == 1
-        assert isinstance(convs[0].pop('timestamp'), datetime.datetime)
-        assert convs[0] == {
+        first = {str(k).replace('conversations_', ''): v for k, v in convs[0].items()}
+        assert isinstance(first.pop('timestamp'), datetime.datetime)
+        assert first == {
             'creator': 'test@example.com',
             'ref': 'x',
             'status': 'active',
@@ -34,5 +35,5 @@ async def test_list_lots_of_conversations(get_ds, datastore_cls):
             cds1 = await create_conv(conn, ds, str(i))
             await cds1.add_component(Components.PARTICIPANTS, address='test1@ex.com', permissions=perms.FULL)
 
-        convs = await ds.list_conversations(conn, 'test1@ex.com')
+        convs = [conv async for conv in ds.list_conversations(conn, 'test1@ex.com')]
         assert [c['conv_id'] for c in convs] == ['9', '8', '7', '6', '5', '4', '3', '2', '1', '0']

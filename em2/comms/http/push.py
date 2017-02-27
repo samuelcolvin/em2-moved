@@ -18,6 +18,7 @@ class HttpDNSPusher(Pusher):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_node(self, domain):
+        logger.info('looking for em2 node for "%s"', domain)
         results = await self.mx_query(domain)
         for _, host in results:
             node = None

@@ -1,9 +1,11 @@
 import logging
+from asyncio import CancelledError
 
 import aiodns
 from aiodns.error import DNSError
 from arq import Actor
 from arq.jobs import DatetimeJob
+from async_timeout import timeout
 
 dns_logger = logging.getLogger('em2.dns')
 
@@ -31,8 +33,9 @@ class RedisDNSActor(Actor):
 
     async def dns_query(self, host, qtype):
         try:
-            return await self.resolver.query(host, qtype)
-        except (DNSError, ValueError) as e:
+            with timeout(5, loop=self.loop):
+                return await self.resolver.query(host, qtype)
+        except (DNSError, ValueError, CancelledError) as e:
             dns_logger.warning('%s query error on %s, %s: %s', qtype, host, e.__class__.__name__, e)
             return []
 

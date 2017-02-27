@@ -51,10 +51,15 @@ class PostgresDataStore(DataStore):
              .order_by(sa_conversations.c.timestamp.desc(), sa_conversations.c.id.desc())
              .limit(limit)
              .offset(offset))
-        results = []
         async for row in conn.execute(q):
-            results.append(dict(row))
-        return results
+            yield dict(row)
+
+    async def all_conversations(self):
+        async with self.connection() as conn:
+            q = (select(self._list_columns)
+                 .order_by(sa_conversations.c.timestamp.desc(), sa_conversations.c.id.desc()))
+            async for row in conn.execute(q):
+                yield dict(row)
 
     @property
     def conv_data_store(self):
@@ -91,7 +96,7 @@ class ConnectionContextManager:
 
 
 class PostgresConversationDataStore(ConversationDataStore):
-    sa_core_property_keys = [column(c) for c in ConversationDataStore._core_property_keys]
+    sa_core_property_keys = [sa_conversations.columns[c] for c in ConversationDataStore._core_property_keys]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
