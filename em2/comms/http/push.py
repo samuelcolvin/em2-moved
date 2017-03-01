@@ -7,7 +7,7 @@ from em2.comms import encoding
 from em2.comms.push import Pusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
 
-JSON_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
+CT_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 
 logger = logging.getLogger('em2.push.http')
 
@@ -43,7 +43,7 @@ class HttpDNSPusher(Pusher):
     async def _post(self, domain, path, data):
         logger.info('posting to %s > %s', domain, path)
         token = await self.authenticate(domain)
-        headers = dict(Authorization=token, **JSON_HEADER)
+        headers = dict(Authorization=token, **CT_HEADER)
         url = f'{self.settings.COMMS_SCHEMA}://{domain}/{path}'
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
@@ -68,7 +68,7 @@ class HttpDNSPusher(Pusher):
         # TODO more error checks
         auth_data = self.get_auth_data()
         try:
-            async with self.session.post(url, data=encoding.encode(auth_data), headers=JSON_HEADER) as r:
+            async with self.session.post(url, data=encoding.encode(auth_data), headers=CT_HEADER) as r:
                 body = await r.read()
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",

@@ -30,7 +30,7 @@ def web(settings):
                 self.cfg.set(k, v)
 
         def load(self):
-            return create_app(settings)
+            return create_app(settings=settings)
 
     Application().run()
 

@@ -1,6 +1,7 @@
 import asyncio
 from aiohttp import web
 
+from em2 import Settings
 from em2.core import Controller
 from .push import HttpDNSPusher  # noqa
 from .views import act, authenticate, index
@@ -21,7 +22,8 @@ async def app_cleanup(app):
     await app['authenticator'].shutdown()
 
 
-def create_app(settings, loop=None):
+def create_app(loop=None, *, settings: Settings=None):
+    settings = settings or Settings()
     loop = loop or asyncio.get_event_loop()
     app = web.Application(loop=loop)
     app['settings'] = settings
