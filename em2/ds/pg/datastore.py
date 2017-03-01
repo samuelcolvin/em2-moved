@@ -51,13 +51,13 @@ class PostgresDataStore(DataStore):
              .limit(limit)
              .offset(offset))
         async for row in conn.execute(q):
-            yield dict(row)
+            yield {k.replace('conversations_', ''): v for k, v in row.items()}
 
     async def all_conversations(self):
         async with self.connection() as conn:
             q = select(self._list_columns).order_by(sa_conversations.c.timestamp.desc(), sa_conversations.c.id.desc())
             async for row in conn.execute(q):
-                yield dict(row)
+                yield {k.replace('conversations_', ''): v for k, v in row.items()}
 
     @property
     def conv_data_store(self):

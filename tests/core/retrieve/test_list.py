@@ -13,15 +13,15 @@ async def test_list_single_conversation(conversation):
     conversations = await ctrl.retrieve(retrieval)
     assert len(conversations) == 1
 
-    assert isinstance(conversations[0].pop('conversations_timestamp'), datetime)
-    assert isinstance(conversations[0].pop('conversations_conv_id'), str)
+    assert isinstance(conversations[0].pop('timestamp'), datetime)
+    assert isinstance(conversations[0].pop('conv_id'), str)
 
     assert conversations[0] == {
-        'conversations_ref': 'foo bar',
-        'conversations_status': 'draft',
-        'conversations_creator': 'test@example.com',
-        'conversations_expiration': None,
-        'conversations_subject': 'foo bar'
+        'ref': 'foo bar',
+        'status': 'draft',
+        'creator': 'test@example.com',
+        'expiration': None,
+        'subject': 'foo bar'
     }
 
 

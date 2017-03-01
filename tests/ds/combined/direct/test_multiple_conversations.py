@@ -16,7 +16,7 @@ async def test_conversations_for_address(get_ds, datastore_cls):
 
         convs = [conv async for conv in ds.conversations_for_address(conn, 'test1@ex.com')]
         assert len(convs) == 1
-        first = {str(k).replace('conversations_', ''): v for k, v in convs[0].items()}
+        first = convs[0]
         assert isinstance(first.pop('timestamp'), datetime.datetime)
         assert first == {
             'creator': 'test@example.com',
@@ -36,7 +36,7 @@ async def test_lots_of_conversations(get_ds, datastore_cls):
             await cds1.add_component(Components.PARTICIPANTS, address='test1@ex.com', permissions=perms.FULL)
 
         convs = [conv async for conv in ds.conversations_for_address(conn, 'test1@ex.com')]
-        assert [c['conversations_conv_id'] for c in convs] == ['9', '8', '7', '6', '5', '4', '3', '2', '1', '0']
+        assert [c['conv_id'] for c in convs] == ['9', '8', '7', '6', '5', '4', '3', '2', '1', '0']
 
 
 async def test_all_conversations(get_ds, datastore_cls):
