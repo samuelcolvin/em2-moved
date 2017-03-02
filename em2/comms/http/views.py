@@ -2,18 +2,20 @@
 Views dedicated to propagation of data between platforms.
 """
 import json
+import logging
 
 import pytz
 from aiohttp import web
 from cerberus import Validator
 
 from em2.comms import encoding
-from em2.comms.logger import logger
 from em2.core import Action
 from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
 from em2.version import VERSION
 
 from .utils import HTTPBadRequestStr, HTTPForbiddenStr, get_ip
+
+logger = logging.getLogger('em2.comms.http')
 
 # Note timestamp is an int here while it's a datetime elsewhere as it's an int when used in the signature
 AUTHENTICATION_SCHEMA = {
@@ -47,6 +49,7 @@ async def authenticate(request):
     try:
         key = await auth.authenticate_platform(obj['platform'], obj['timestamp'], obj['signature'])
     except FailedInboundAuthentication as e:
+        logger.info('failed inbound authentication: %s', e)
         raise HTTPBadRequestStr(e.args[0]) from e
     return web.Response(body=encoding.encode({'key': key}), status=201, content_type=encoding.MSGPACK_CONTENT_TYPE)
 

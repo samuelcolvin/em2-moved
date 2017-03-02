@@ -62,7 +62,7 @@ async def _wait_port_open(host, port, delay, loop):
         try:
             with timeout(step_size, loop=loop):
                 await loop.create_connection(lambda: asyncio.Protocol(), host=host, port=port)
-        except TimeoutError:
+        except asyncio.TimeoutError:
             pass
         except OSError:
             await asyncio.sleep(step_size, loop=loop)

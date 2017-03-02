@@ -1,5 +1,5 @@
+import asyncio
 import logging
-from asyncio import CancelledError
 
 import aiodns
 from aiodns.error import DNSError
@@ -35,8 +35,8 @@ class RedisDNSActor(Actor):
         try:
             with timeout(5, loop=self.loop):
                 return await self.resolver.query(host, qtype)
-        except (DNSError, ValueError, CancelledError) as e:
-            dns_logger.warning('%s query error on %s, %s: %s', qtype, host, e.__class__.__name__, e)
+        except (DNSError, ValueError, asyncio.TimeoutError) as e:
+            dns_logger.warning('%s query error on %s, %s %s', qtype, host, e.__class__.__name__, e)
             return []
 
     async def set_exat(self, redis, key: bytes, value: str, expires_at: int):

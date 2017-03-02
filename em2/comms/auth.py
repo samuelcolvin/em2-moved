@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 from textwrap import wrap
 
@@ -11,6 +12,8 @@ from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, 
 from em2.utils import now_unix_secs
 
 from .redis import RedisDNSActor
+
+logger = logging.getLogger('em2.comms.auth')
 
 
 class BaseAuthenticator:
@@ -91,6 +94,7 @@ class BaseAuthenticator:
 class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSActor):
     async def _get_public_key(self, platform: str):
         dns_results = await self.dns_query(platform, 'TXT')
+        logger.info('got %d TXT records for %s', len(dns_results), platform)
         key_data = self._get_public_key_from_dns(dns_results)
         # return the key in a format openssl / RSA.importKey can cope with
         return '-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n'.format('\n'.join(wrap(key_data, width=65)))

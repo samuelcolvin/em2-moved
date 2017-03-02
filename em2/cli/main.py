@@ -18,10 +18,11 @@ def web(settings):
     prepare_database(settings, delete_existing=False)
 
     config = dict(
-        worker_class='aiohttp.worker.GunicornWebWorker',
+        worker_class='aiohttp.worker.GunicornUVLoopWebWorker',
         bind=f'0.0.0.0:{settings.WEB_PORT}',
         max_requests=5000,
         max_requests_jitter=500,
+        keepalive=30,
     )
 
     class Application(BaseApplication):
@@ -48,9 +49,8 @@ def worker(settings):
 
 @command
 def info(settings):
-    from em2.utils import info as info_
-
-    info_(settings, logger)
+    import em2.utils
+    em2.utils.info(settings, logger)
 
 
 def shell():
