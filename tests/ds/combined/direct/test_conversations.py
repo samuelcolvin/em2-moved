@@ -3,6 +3,7 @@ import datetime
 import pytest
 
 from em2.core import Components, Conversations, perms
+from em2.core.components import ConversationsStatus
 from em2.exceptions import ComponentNotFound
 from tests.conftest import datetime_tz
 
@@ -131,3 +132,49 @@ async def test_set_status_ref_subject(get_ds, datastore_cls):
         assert props['status'] == Conversations.Status.ACTIVE
         assert props['ref'] == 'x'
         assert props['subject'] == 'sub'
+
+
+async def test_export(get_ds, datastore_cls):
+    ds = await get_ds(datastore_cls)
+    async with ds.conn_manager() as conn:
+        cds = await create_conv(conn, ds)
+        data = await cds.export()
+        assert data == {
+            'timestamp': datetime.datetime(2015, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
+            'status': ConversationsStatus.ACTIVE,
+            'ref': 'x',
+            'subject': 'sub',
+            'creator': 'test@example.com',
+            'expiration': None,
+            Components.PARTICIPANTS: [],
+            Components.MESSAGES: []
+        }
+        pid = await cds.add_component(Components.PARTICIPANTS, address='test@example.com', permissions=perms.FULL)
+        msg_local_id = await cds.add_component(
+            Components.MESSAGES,
+            id='m123',
+            author=pid,
+            timestamp=datetime.datetime(2016, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
+            body='hello',
+        )
+        data = await cds.export()
+        assert data == {
+            'timestamp': datetime.datetime(2015, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
+            'status': ConversationsStatus.ACTIVE,
+            'ref': 'x',
+            'subject': 'sub',
+            'creator': 'test@example.com',
+            'expiration': None,
+            Components.PARTICIPANTS: [
+                ('test@example.com', perms.FULL)
+            ],
+            Components.MESSAGES: [
+                {
+                    'id': msg_local_id,
+                    'author': 'test@example.com',
+                    'timestamp': datetime.datetime(2016, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
+                    'body': 'hello',
+                    'parent': None,
+                }
+            ]
+        }

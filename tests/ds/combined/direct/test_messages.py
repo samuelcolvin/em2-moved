@@ -19,7 +19,7 @@ async def test_add_component_message(get_ds, datastore_cls, timestamp):
             body='hello',
             parent=None,
         )
-        messages = await cds.get_all_component_items(Components.MESSAGES)
+        messages = [m async for m in cds.get_all_component_items(Components.MESSAGES)]
         assert len(messages) == 1
         message = dict(messages[0])
         assert message['timestamp'].isoformat() == timestamp.isoformat()
@@ -44,7 +44,7 @@ async def test_edit_component_message(get_ds, datastore_cls, timestamp):
             parent=None,
         )
         await cds.add_component(Components.MESSAGES, id='m2', author=pid, timestamp=timestamp, body='hello2')
-        messages = await cds.get_all_component_items(Components.MESSAGES)
+        messages = [m async for m in cds.get_all_component_items(Components.MESSAGES)]
         assert len(messages) == 2
         message1 = next(m for m in messages if m['id'] == 'm1')
         assert message1['timestamp'].isoformat() == timestamp.isoformat()
@@ -58,7 +58,7 @@ async def test_edit_component_message(get_ds, datastore_cls, timestamp):
             body='this is a different body',
         )
 
-        messages = await cds.get_all_component_items(Components.MESSAGES)
+        messages = [m async for m in cds.get_all_component_items(Components.MESSAGES)]
         assert len(messages) == 2
         message1 = next(m for m in messages if m['id'] == 'm1')
         assert message1['timestamp'].isoformat() == timestamp.isoformat()
@@ -101,12 +101,12 @@ async def test_delete_message(get_ds, datastore_cls, timestamp):
         )
         await cds.add_component(Components.MESSAGES, id='m2', author=pid, timestamp=timestamp, body='hello2')
 
-        messages = await cds.get_all_component_items(Components.MESSAGES)
+        messages = [m async for m in cds.get_all_component_items(Components.MESSAGES)]
         assert len(messages) == 2
 
         await cds.delete_component(Components.MESSAGES, item_id=msg_local_id)
 
-        messages = await cds.get_all_component_items(Components.MESSAGES)
+        messages = [m async for m in cds.get_all_component_items(Components.MESSAGES)]
         assert len(messages) == 1
         assert messages[0]['body'] == 'hello2'
 

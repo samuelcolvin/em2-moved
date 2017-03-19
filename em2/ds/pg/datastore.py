@@ -212,11 +212,8 @@ class PostgresConversationDataStore(ConversationDataStore):
         local_id = await self._get_local_id()
         sa_component = sa_component_lookup[component]
         q = select([sa_component]).where(sa_component.c.conversation == local_id)
-        # TODO can we make this into a generator or do something more efficient?
-        data = []
         async for row in self.conn.execute(q):
-            data.append(dict(row))
-        return data
+            yield dict(row)
 
     async def get_item_last_event(self, component, item_id):
         local_id = await self._get_local_id()

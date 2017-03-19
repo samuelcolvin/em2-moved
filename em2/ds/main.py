@@ -3,8 +3,6 @@ Abstract base for data storage in em2.
 
 Database back-ends for em2 should define a child class for DataStore which implements all "NotImplemented" methods.
 """
-from copy import deepcopy
-
 from em2 import Settings
 from em2.core.components import Components
 
@@ -55,22 +53,25 @@ class ConversationDataStore:
 
     async def export(self):
         data = await self.get_core_properties()
-        participants_data = await self.get_all_component_items(Components.PARTICIPANTS)
 
         participants_lookup = {}
         participants = []
-        for p in participants_data:
+        async for p in self.get_all_component_items(Components.PARTICIPANTS):
             participants_lookup[p['id']] = p['address']
             participants.append((p['address'], p['permissions']))
-
-        messages = deepcopy(await self.get_all_component_items(Components.MESSAGES))
-        for m in messages:
-            m['author'] = participants_lookup[m['author']]
 
         data.update({
             # TODO signature
             Components.PARTICIPANTS: participants,
-            Components.MESSAGES: messages,
+            Components.MESSAGES: [
+                dict(
+                    id=m['id'],
+                    author=participants_lookup[m['author']],
+                    timestamp=m['timestamp'],
+                    body=m['body'],
+                    parent=m.get('parent'),
+                ) async for m in self.get_all_component_items(Components.MESSAGES)
+            ],
             # TODO labels
             # TODO attachments
             # TODO extras
@@ -190,7 +191,7 @@ class ConversationDataStore:
         :return: list of key information for each participant in a conversation
         """
         participants = []
-        for p in await self.get_all_component_items(Components.PARTICIPANTS):
+        async for p in self.get_all_component_items(Components.PARTICIPANTS):
             participants.append({
                 'address': p['address'],
                 # 'dn': p['display_name'],  # TODO
@@ -275,7 +276,7 @@ class NullConversationDataStore(ConversationDataStore):  # pragma: no cover
         return False
 
     async def get_all_component_items(self, component):
-        return []
+        return
 
     async def get_item_last_event(self, component, item_id):
         return None, None

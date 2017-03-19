@@ -65,6 +65,7 @@ class Messages(_Component):
         for d in data[1:]:
             if d['id'] in parents:
                 raise BadDataException('message id {id} already exists'.format(**d))
+            # TODO check the message id is correct
             parent = parents.get(d['parent'])
             if parent is None:
                 raise ComponentNotFound('message {parent} not found'.format(**d))
@@ -72,9 +73,9 @@ class Messages(_Component):
                 raise BadDataException('timestamp {timestamp} not after parent'.format(**d))
             parents[d['id']] = d['timestamp']
 
-        participants = await ds.get_all_component_items(Components.PARTICIPANTS)
-        participants = {p['address']: p['id'] for p in participants}
+        participants = {p['address']: p['id'] async for p in ds.get_all_component_items(Components.PARTICIPANTS)}
         for d in data:
+            # TODO deal with author who isn't listed in participants
             d['author'] = participants[d['author']]
 
         await ds.add_multiple_components(self.name, data)

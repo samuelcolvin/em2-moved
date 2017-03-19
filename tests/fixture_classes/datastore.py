@@ -2,6 +2,7 @@ import datetime
 import itertools
 import json
 from collections import OrderedDict
+from copy import deepcopy
 
 from em2.core import Components
 from em2.ds.main import ConversationDataStore, DataStore, VoidContextManager
@@ -174,7 +175,8 @@ class SimpleConversationDataStore(ConversationDataStore):
 
     async def get_all_component_items(self, component):
         data = self.conv_obj.get(component, {})
-        return list(data.values())
+        for v in data.values():
+            yield deepcopy(v)
 
     async def get_item_last_event(self, component, item_id):
         events = [e for e in self.conv_obj['events'] if e['component'] == component and e['item'] == item_id]

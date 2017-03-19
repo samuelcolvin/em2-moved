@@ -35,12 +35,12 @@ async def test_create_conversation_check_participants(get_ctrl, datastore_cls):
         action = Action('sender@example.com', None, Verbs.ADD)
         conv_id = await controller.act(action, subject='the subject')
         cds = controller.ds.new_conv_ds(conv_id, conn)
-        participants = await cds.get_all_component_items(Components.PARTICIPANTS)
+        participants = [p async for p in cds.get_all_component_items(Components.PARTICIPANTS)]
         assert len(participants) == 1
         p = participants[0]
         assert p['permissions'] == perms.FULL
         assert p['address'] == 'sender@example.com'
-        messages = await cds.get_all_component_items(Components.MESSAGES)
+        messages = [m async for m in cds.get_all_component_items(Components.MESSAGES)]
         assert len(messages) == 0
 
 
@@ -50,7 +50,7 @@ async def test_create_conversation_body(get_ctrl, datastore_cls):
         action = Action('sender@example.com', None, Verbs.ADD)
         conv_id = await controller.act(action, subject='the subject', body='the body', ref='conv-ref')
         cds = controller.ds.new_conv_ds(conv_id, conn)
-        messages = await cds.get_all_component_items(Components.MESSAGES)
+        messages = [m async for m in cds.get_all_component_items(Components.MESSAGES)]
         assert len(messages) == 1
         message = messages[0]
         message = dict(message)

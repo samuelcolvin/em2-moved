@@ -27,6 +27,7 @@ class Conversations:
                 'type': 'dict',
                 'required': True,
                 'schema': {
+                    # TODO check field lengths, eg. ID has exact length
                     'id': {'type': 'string', 'required': True},
                     'author': {'type': 'string', 'required': True},
                     'parent': {'type': 'string', 'nullable': True, 'required': True},
