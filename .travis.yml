@@ -18,17 +18,15 @@ matrix:
   - python: 'nightly'
 
 install:
-- pip install -U -r tests/requirements.txt
-- pip install -e .
+- make install
+- pip freeze
 
 script:
-- python setup.py check -rms
-- flake8 em2/ tests/
-- pytest em2 -p no:sugar -q --cache-clear
-- pytest --cov=em2
+- make lint
+- make test
 
 after_success:
-- coverage combine
+- ls -lha
 - bash <(curl -s https://codecov.io/bash)
 
 env:
