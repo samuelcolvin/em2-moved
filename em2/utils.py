@@ -50,10 +50,6 @@ def now_unix_secs():
     return int((datetime.utcnow() - _EPOCH).total_seconds())
 
 
-def now_unix_ms():
-    return to_unix_ms(datetime.utcnow())
-
-
 async def _wait_port_open(host, port, delay, loop):
     step_size = 0.05
     steps = int(delay / step_size)
