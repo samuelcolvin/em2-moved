@@ -49,7 +49,7 @@ class SmtpFallbackHandler(FallbackHandler):
         e_from, to, bcc = self.get_from_to_bcc(action, participants)
         if action.component == Components.CONVERSATIONS and action.verb == Verbs.ADD:
             subject = conv_subject
-            body = '\n'.join(m['body'] for m in data['data'][Components.MESSAGES])
+            body = '\n'.join(m['body'] for m in data[Components.MESSAGES])
         else:
             subject = 'Re: ' + conv_subject
             if action.component == Components.MESSAGES and action.verb == Verbs.ADD:

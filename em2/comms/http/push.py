@@ -56,7 +56,7 @@ class HttpDNSPusher(Pusher):
             'address': action.address,
             'timestamp': action.timestamp,
             'event_id': action.event_id,
-            'kwargs': data,
+            'data': data,
         }
         post_data = encoding.encode(post_data)
         cos = [self._post(node, path, post_data) for node in nodes]
@@ -72,7 +72,7 @@ class HttpDNSPusher(Pusher):
                 body = await r.read()
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",
-            # the exception is fairly useless at giving specifics
+            # the exception is fairly useless at giving specifics # TODO: perhaps changed with aiohttp 2?
             logger.info('ClientOSError: %e, url: %s', e, url)
             raise Em2ConnectionError(f'cannot connect to "{url}"') from e
         else:

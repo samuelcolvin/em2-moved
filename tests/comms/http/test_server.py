@@ -22,7 +22,7 @@ async def test_add_message(client):
         'address': 'test@already-authenticated.com',
         'timestamp': ts,
         'event_id': action2.calc_event_id(),
-        'kwargs': {
+        'data': {
             'parent_id': msg1_id,
             'body': 'reply',
         }
@@ -57,7 +57,7 @@ async def test_domain_miss_match(client):
         'address': 'test@example.com',
         'timestamp': datetime.now(),
         'event_id': '123',
-        'kwargs': {
+        'data': {
             'parent_id': '123',
             'body': 'reply',
         }
@@ -84,7 +84,7 @@ async def test_missing_conversation(client):
         'address': 'test@already-authenticated.com',
         'timestamp': ts,
         'event_id': action2.calc_event_id(),
-        'kwargs': {
+        'data': {
             'parent_id': '123',
             'body': 'reply',
         }
@@ -148,3 +148,19 @@ async def test_authenticate_failed(client):
     r = await client.post('/authenticate', data=encoding.encode(data))
     assert r.status == 400
     assert await r.text() == 'invalid signature\n'
+
+
+async def test_invalid_data_field(client):
+    action = Action('test@already-authenticated.com', None, Verbs.ADD)
+    conv_id = await client.em2_ctrl.act(action, subject='foo bar', body='hi, how are you?')
+    ts = action.timestamp + timedelta(seconds=1)
+    action2 = Action('test@already-authenticated.com', conv_id, Verbs.ADD, Components.MESSAGES, timestamp=ts)
+    data = {
+        'address': 'test@already-authenticated.com',
+        'timestamp': ts,
+        'event_id': action2.calc_event_id(),
+        'data': [1, 2, 3]
+    }
+    r = await client.post('/{}/messages/add/'.format(conv_id), data=encoding.encode(data), headers=AUTH_HEADER)
+    assert r.status == 400
+    assert await r.text() == '{"data": ["must be of dict type"]}\n'

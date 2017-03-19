@@ -32,7 +32,7 @@ async def test_publish_simple_conversation(controller):
     a.event_id = a.calc_event_id()
     ds = controller.ds
     assert len(ds.data) == 0
-    await controller.act(a, data=deepcopy(correct_data))
+    await controller.act(a, **deepcopy(correct_data))
 
     assert len(ds.data) == 1
     assert ds.data[0]['conv_id'] == conv_id
@@ -43,20 +43,11 @@ async def test_publish_simple_conversation(controller):
     assert len(ds.data[0]['participants']) == 2
 
 
-async def test_publish_invalid_args(controller):
-    a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
-    a.event_id = a.calc_event_id()
-    with pytest.raises(BadDataException) as excinfo:
-        await controller.act(a, foo='bar')
-    assert excinfo.value.args[0] == "Conversations.add_remote: missing a required argument: 'data'"
-    assert len(controller.ds.data) == 0
-
-
 async def test_publish_wrong_event_id(controller):
     a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = 'foobar'
     with pytest.raises(BadHash) as excinfo:
-        await controller.act(a, data=deepcopy(correct_data))
+        await controller.act(a, **deepcopy(correct_data))
     assert excinfo.value.args[0] == 'event_id "foobar" incorrect'
 
 
@@ -64,7 +55,7 @@ async def test_publish_no_timestamp(controller):
     a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=None)
     a.event_id = a.calc_event_id()
     with pytest.raises(BadDataException) as excinfo:
-        await controller.act(a, data=deepcopy(correct_data))
+        await controller.act(a, **deepcopy(correct_data))
     assert excinfo.value.args[0] == 'remote actions should always have a timestamp'
     assert len(controller.ds.data) == 0
 
@@ -81,16 +72,6 @@ bad_data = [
         {'creator': 'testing@example.com'},
         '{"participants": ["required field"], "ref": ["required field"], "status": ["required field"], '
         '"subject": ["required field"]}',
-    ),
-    (
-        'None',
-        'None',
-        'data must be a dict',
-    ),
-    (
-        'string',
-        'hello',
-        'data must be a dict',
     ),
     (
         'extra_key',
@@ -141,7 +122,7 @@ async def test_publish_misshaped_data(controller, data, exc):
     a = Action('testing@example.com', conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     with pytest.raises(BadDataException) as excinfo:
-        await controller.act(a, data=data)
+        await controller.act(a, **data)
     assert exc == excinfo.value.args[0]
     assert len(controller.ds.data) == 0
 
@@ -151,7 +132,7 @@ async def test_wrong_hash(controller):
     a = Action('testing@example.com', w_conv_id, Verbs.ADD, timestamp=timestamp)
     a.event_id = a.calc_event_id()
     with pytest.raises(BadHash) as excinfo:
-        await controller.act(a, data=deepcopy(correct_data))
+        await controller.act(a, **deepcopy(correct_data))
     assert excinfo.value.args[0] == 'provided hash {} does not match computed hash {}'.format(w_conv_id, conv_id)
     assert len(controller.ds.data) == 0
 
@@ -171,7 +152,7 @@ async def test_publish_conversation_two_messages(controller):
             'timestamp': datetime.datetime(2016, 1, 2),
         }
     )
-    await controller.act(a, data=data)
+    await controller.act(a, **data)
 
     assert len(ds.data) == 1
     assert ds.data[0]['conv_id'] == conv_id
@@ -192,7 +173,7 @@ async def test_publish_conversation_wrong_message_id(controller):
     data = deepcopy(correct_data)
     data['messages'][0]['parent'] = 'not None'
     with pytest.raises(MisshapedDataException) as excinfo:
-        await controller.act(a, data=data)
+        await controller.act(a, **data)
     assert excinfo.value.args[0] == 'first message parent should be None'
 
 
@@ -220,7 +201,7 @@ async def test_publish_conversation_two_messages_wrong_id(controller):
         }
     ])
     with pytest.raises(ComponentNotFound) as excinfo:
-        await controller.act(a, data=data)
+        await controller.act(a, **data)
     assert excinfo.value.args[0] == 'message foobar not found'
 
 
@@ -240,7 +221,7 @@ async def test_publish_conversation_two_messages_wrong_timestamp(controller):
         },
     ])
     with pytest.raises(BadDataException) as excinfo:
-        await controller.act(a, data=data)
+        await controller.act(a, **data)
     assert excinfo.value.args[0] == 'timestamp 2015-01-01 00:00:00 not after parent'
 
 
@@ -260,5 +241,5 @@ async def test_publish_conversation_two_messages_repeat_id(controller):
         }
     )
     with pytest.raises(BadDataException) as excinfo:
-        await controller.act(a, data=data)
+        await controller.act(a, **data)
     assert excinfo.value.args[0] == 'message id d21625d617b1e8eb8989aa3d57a5aae691f9ed2a already exists'

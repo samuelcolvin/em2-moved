@@ -87,13 +87,10 @@ class Conversations:
         return conv_id
     add_local.verb_name = 'add'
 
-    async def add_remote(self, action, data):
+    async def add_remote(self, action, **data):
         """
         Add a new conversation created on another platform.
         """
-        if not isinstance(data, dict):
-            raise MisshapedDataException('data must be a dict')
-
         v = Validator(self.schema)
         if not v(data):
             raise MisshapedDataException(json.dumps(v.errors, sort_keys=True))

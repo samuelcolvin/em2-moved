@@ -68,7 +68,7 @@ ACT_SCHEMA = {
     'timestamp': {'type': 'datetime', 'required': True},
     'event_id': {'type': 'string', 'required': True, 'empty': False},
     'parent_event_id': {'type': 'string', 'required': False},
-    'kwargs': {'type': 'dict', 'required': False},
+    'data': {'type': 'dict', 'required': False},
 }
 
 
@@ -106,14 +106,11 @@ async def act(request):
     if not isinstance(obj, dict):
         raise HTTPBadRequest(text='request data is not a dictionary\n')
 
-    # print('act')
-    # from pprint import pformat
-    # pprint(obj)
     v = Validator(ACT_SCHEMA)
     if not v(obj):
         raise HTTPBadRequest(text=json.dumps(v.errors, sort_keys=True) + '\n', content_type=CT_JSON)
 
-    address = obj.pop('address')
+    address = obj['address']
     address_domain = address[address.index('@') + 1:]
     try:
         await auth.check_domain_platform(address_domain, platform)
@@ -125,14 +122,11 @@ async def act(request):
     verb = request.match_info['verb']
     item = request.match_info['item'] or None
 
-    timestamp = obj.pop('timestamp')
-
-    kwargs = obj.pop('kwargs', {})
-    action = Action(address, conversation, verb, component, item=item, timestamp=timestamp,
+    action = Action(address, conversation, verb, component, item=item, timestamp=obj['timestamp'],
                     event_id=obj['event_id'], parent_event_id=obj.get('parent_event_id'))
     controller = request.app['controller']
     try:
-        response = await controller.act(action, **kwargs)
+        response = await controller.act(action, **obj.pop('data', {}))
     except Em2Exception as e:
         raise HTTPBadRequest(text='{}: {}\n'.format(e.__class__.__name__, e))
 
