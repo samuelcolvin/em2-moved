@@ -23,4 +23,4 @@ def get_pusher(loop, get_redis_pool):
 
     yield _create_pusher
     if pusher:
-        loop.run_until_complete(pusher.close())
+        loop.run_until_complete(pusher.shutdown())

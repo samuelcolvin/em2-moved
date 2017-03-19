@@ -32,7 +32,7 @@ def fallback_ctrl_pusher(loop, reset_store):
     yield _create
 
     async def close():
-        _ctrl and await _ctrl.pusher.close()
+        _ctrl and await _ctrl.pusher.shutdown()
 
     loop.run_until_complete(close())
 

@@ -125,5 +125,5 @@ class AwsFallbackHandler(SmtpFallbackHandler):
         return msg_id.groups()[0]
 
     async def close(self):
-        logger.warning('closing http session')
+        logger.info('closing http session')
         await self.session.close()

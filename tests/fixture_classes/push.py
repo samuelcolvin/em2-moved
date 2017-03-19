@@ -101,6 +101,7 @@ class DoubleMockPusher(HttpMockedDNSPusher):
         self.session = None
 
     async def create_test_client(self, remote_domain='platform.remote.com'):
+        self.session and await self.session.close()
         self.app = create_test_app(self.loop, remote_domain)
         self.test_client = CustomTestClient(self.app, remote_domain)
         await self.test_client.start_server()

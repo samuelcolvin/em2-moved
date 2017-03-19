@@ -61,3 +61,5 @@ async def test_logging(reset_store, loop, capsys):
     logger = logging.getLogger('em2')
     for h in logger.handlers:
         logger.removeHandler(h)
+    logger.setLevel(logging.WARNING)
+    logging.getLogger('arq').setLevel(logging.WARNING)
