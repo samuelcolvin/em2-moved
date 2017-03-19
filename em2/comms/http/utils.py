@@ -2,9 +2,9 @@ from aiohttp import web
 
 
 class _StringException:
-    def __init__(self, body):
-        body += '\n'
-        super().__init__(body=body.encode())
+    def __init__(self, text):
+        text += '\n'
+        super().__init__(body=text.encode())
 
 
 class HTTPBadRequestStr(_StringException, web.HTTPBadRequest):

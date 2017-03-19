@@ -11,7 +11,7 @@ from em2 import Settings
 from em2.core import Action
 from em2.utils import now_unix_secs
 
-from .redis import RedisDNSActor
+from .redis_dns import RedisDNSActor
 
 logger = logging.getLogger('em2.push')
 
@@ -134,16 +134,18 @@ class Pusher(RedisDNSActor):
         }
 
     async def authenticate(self, node_domain: str) -> str:
-        logger.info('authenticating with %s', node_domain)
+        logger.debug('authenticating with %s', node_domain)
         token_key = self.auth_token_prefix + node_domain.encode()
         async with await self.get_redis_conn() as redis:
             token = await redis.get(token_key)
             if token:
-                return token.decode()
-            token = await self._authenticate_direct(node_domain)
-            _, expires_at, _ = token.split(':', 2)
-            expire_token_at = int(expires_at) - self._early_token_expiry
-            await self.set_exat(redis, token_key, token, expire_token_at)
+                token = token.decode()
+            else:
+                token = await self._authenticate_direct(node_domain)
+                _, expires_at, _ = token.split(':', 2)
+                expire_token_at = int(expires_at) - self._early_token_expiry
+                await self.set_exat(redis, token_key, token, expire_token_at)
+        logger.info('successfully authenticated with %s', node_domain)
         return token
 
     async def _authenticate_direct(self, node_domain):

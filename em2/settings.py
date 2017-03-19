@@ -38,6 +38,7 @@ class Settings:
     COMMS_HTTP_TIMEOUT = 4
     # only ever change this during internal network testing!!!
     COMMS_SCHEMA = 'https'
+    COMMS_DNS_IP = None
 
     DATASTORE_CLS = 'em2.ds.pg.PostgresDataStore'
     PUSHER_CLS = 'em2.comms.http.HttpDNSPusher'

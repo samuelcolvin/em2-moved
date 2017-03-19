@@ -11,7 +11,7 @@ from em2 import Settings
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
 from em2.utils import now_unix_secs
 
-from .redis import RedisDNSActor
+from .redis_dns import RedisDNSActor
 
 logger = logging.getLogger('em2.comms.auth')
 
