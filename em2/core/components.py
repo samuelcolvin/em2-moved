@@ -119,7 +119,7 @@ class Messages(_Component):
         await self._event(action, b_value=body)
 
     async def delta_edit(self, action, body):
-        raise NotImplementedError()
+        raise NotImplemented()
 
     async def delete(self, action):
         await self._check_permissions(action)

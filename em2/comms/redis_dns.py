@@ -27,10 +27,15 @@ class RedisDNSActor(Actor):
         return self._resolver
 
     async def mx_query(self, host):
-        results = await self.dns_query(host, 'MX')
-        results = [(r.priority, r.host) for r in results]
-        results.sort()
-        return results
+        try:
+            results = await self.dns_query(host, 'MX')
+        except DNSError as e:
+            dns_logger.info('DNS error getting MX record for "%s": %s', host, e)
+            return []
+        else:
+            results = [(r.priority, r.host) for r in results]
+            results.sort()
+            return results
 
     async def dns_query(self, host, qtype):
         try:

@@ -123,9 +123,7 @@ class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSActor):
             cache_p = await redis.get(cache_key)
             if cache_p and cache_p.decode() == platform_domain:
                 return True
-            results = await self.resolver.query(domain, 'MX')
-            results = [(r.priority, r.host) for r in results]
-            results.sort()
+            results = await self.mx_query(domain)
             for _, host in results:
                 if host == platform_domain:
                     await redis.setex(cache_key, self._domain_timeout, host.encode())
