@@ -131,7 +131,6 @@ class Conversations:
         await action.cds.set_status(self.Status.ACTIVE)
 
         ref = await action.cds.get_ref()
-
         new_conv_id = self._conv_id_hash(action.address, action.timestamp, ref)
         await action.cds.set_published_id(action.timestamp, new_conv_id)
 

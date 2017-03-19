@@ -90,6 +90,9 @@ class SimpleConversationDataStore(ConversationDataStore):
         super().__init__(*args, **kwargs)
         self._conv_obj = None
 
+    async def commit(self):
+        pass
+
     @property
     def conv_obj(self):
         if self._conv_obj is None:

@@ -67,3 +67,39 @@ async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
         async with ctrl.ds.connection() as conn:
             con_count = await conn.scalar(sa_conversations.count())
             assert con_count == 0
+
+
+async def test_publish_conversation(loop, empty_db, dsn):
+    """
+    Test that the conversation update transaction has completed before the pusher shadow creates a connection
+    and makes db queries.
+    """
+    async with create_engine(dsn, loop=loop, timeout=5) as engine:
+        s = Settings(
+            DATASTORE_CLS='em2.ds.pg.datastore.PostgresDataStore',
+            PUSHER_CLS='tests.fixture_classes.SimpleMockRedisPusher',
+        )
+        ctrl = Controller(s, loop=loop)
+        ctrl.ds.engine = engine
+        ctrl.pusher.ds = ctrl.ds
+        ctrl.pusher.network.add_node('example.com', 'L')
+        try:
+            action = Action('sender@example.com', None, Verbs.ADD)
+            conv_id = await ctrl.act(action, subject='the subject')
+
+            async with ctrl.ds.connection() as conn:
+                cds = ctrl.ds.new_conv_ds(conv_id, conn)
+                props = await cds.get_core_properties()
+                assert props['subject'] == 'the subject'
+                assert props['status'] == 'draft'
+
+            a = Action('sender@example.com', conv_id, Verbs.PUBLISH)
+            conv_id = await ctrl.act(a)
+
+            async with ctrl.ds.connection() as conn:
+                cds = ctrl.ds.new_conv_ds(conv_id, conn)
+                props = await cds.get_core_properties()
+                assert props['subject'] == 'the subject'
+                assert props['status'] == 'active'
+        finally:
+            await ctrl.shutdown()

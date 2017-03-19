@@ -100,6 +100,9 @@ class PostgresConversationDataStore(ConversationDataStore):
         super().__init__(*args, **kwargs)
         self._local_id = None
 
+    async def commit(self):
+        await self.conn._transaction.commit()
+
     async def get_core_properties(self):
         q = (select(self.sa_core_property_keys)
              .where(sa_conversations.c.conv_id == self.conv)

@@ -2,6 +2,7 @@ import re
 from copy import deepcopy
 
 from aiohttp.test_utils import TestClient
+from arq.testing import MockRedisMixin
 
 from em2 import Settings
 from em2.comms import Pusher
@@ -43,6 +44,10 @@ class SimplePusher(Pusher):
 
     async def _authenticate_direct(self, node_domain):
         raise NotImplemented()
+
+
+class SimpleMockRedisPusher(MockRedisMixin, SimplePusher):
+    pass
 
 
 class CustomTestClient(TestClient):

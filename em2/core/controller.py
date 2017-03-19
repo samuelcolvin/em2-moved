@@ -151,6 +151,7 @@ class Controller:
         action.event_id = action.calc_event_id()
         await action.cds.save_event(action)
         # we could change Conversation.remote_add to accept **data and therefore just pass push_data below
+        await action.cds.commit()
         await self.pusher.push(action, {'data': data})
 
     def __repr__(self):

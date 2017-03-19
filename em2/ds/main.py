@@ -50,6 +50,9 @@ class ConversationDataStore:
         self.conv = conv_id
         self.conn = conn
 
+    async def commit(self):
+        raise NotImplementedError()
+
     async def export(self):
         data = await self.get_core_properties()
         participants_data = await self.get_all_component_items(Components.PARTICIPANTS)
@@ -226,6 +229,9 @@ class VoidContextManager:
 class NullConversationDataStore(ConversationDataStore):  # pragma: no cover
     async def get_core_properties(self):
         return {}
+
+    async def commit(self):
+        pass
 
     async def save_event(self, action, **data):
         pass
