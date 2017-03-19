@@ -60,7 +60,7 @@ class Pusher(RedisDNSActor):
     @concurrent
     async def _send(self, action_dict, data):
         action = Action(**action_dict)
-        async with self.ds.connection() as conn:
+        async with self.ds.conn_manager() as conn:
             cds = self.ds.new_conv_ds(action.conv, conn)
 
             participants_data = await cds.receiving_participants()

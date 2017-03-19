@@ -7,7 +7,7 @@ from .test_conversations import create_conv
 
 async def test_conversations_for_address(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         cds1 = await create_conv(conn, ds, '123')
         await cds1.add_component(Components.PARTICIPANTS, address='test1@ex.com', permissions=perms.FULL)
 
@@ -30,7 +30,7 @@ async def test_conversations_for_address(get_ds, datastore_cls):
 
 async def test_lots_of_conversations(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         for i in range(10):
             cds1 = await create_conv(conn, ds, str(i))
             await cds1.add_component(Components.PARTICIPANTS, address='test1@ex.com', permissions=perms.FULL)
@@ -41,7 +41,7 @@ async def test_lots_of_conversations(get_ds, datastore_cls):
 
 async def test_all_conversations(get_ds, datastore_cls):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         for i in range(10):
             cds1 = await create_conv(conn, ds, str(i))
             await cds1.add_component(Components.PARTICIPANTS, address=f'test{i}@ex.com', permissions=perms.FULL)

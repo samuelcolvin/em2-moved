@@ -8,7 +8,7 @@ from .test_conversations import create_conv
 
 async def test_save_event(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(
             Components.PARTICIPANTS,
@@ -36,7 +36,7 @@ async def test_save_event(get_ds, datastore_cls, timestamp):
 
 async def test_get_last_event(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(
             Components.PARTICIPANTS,

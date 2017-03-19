@@ -66,7 +66,7 @@ def empty_db(Session):
 class TestPostgresDataStore(PostgresDataStore):
     _conn_ctx = None
 
-    def connection(self):
+    def conn_manager(self):
         # force the same connection to be used each time
         self._conn_ctx = self._conn_ctx or TestCtx(self.engine)
         return self._conn_ctx

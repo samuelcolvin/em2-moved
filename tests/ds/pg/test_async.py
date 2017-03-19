@@ -38,7 +38,7 @@ async def test_datastore_setup(loop, empty_db, dsn):
     async with create_engine(dsn, loop=loop, timeout=5) as engine:
         ctrl = Controller(Settings(DATASTORE_CLS='em2.ds.pg.datastore.PostgresDataStore'), loop=loop)
         ctrl.ds.engine = engine
-        async with ctrl.ds.connection() as conn:
+        async with ctrl.ds.conn_manager() as conn:
             action = Action('sender@example.com', None, Verbs.ADD)
             conv_id = await ctrl.act(action, subject='the subject')
             cds = ctrl.ds.new_conv_ds(conv_id, conn)
@@ -52,7 +52,7 @@ async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
         ctrl.ds.engine = engine
         line = 0
         with pytest.raises(ConversationNotFound):
-            async with ctrl.ds.connection() as conn:
+            async with ctrl.ds.conn_manager() as conn:
                 conversation = dict(conv_id='x', creator='x', subject='x', ref='x', timestamp=timestamp, status='draft')
                 await conn.execute(sa_conversations.insert().values(**conversation))
                 con_count = await conn.scalar(sa_conversations.count())
@@ -64,7 +64,7 @@ async def test_datastore_rollback(loop, empty_db, dsn, timestamp):
 
         assert line == 1  # check the above snippet gets to the right place
         # connection above should rollback on ConversationNotFound so there should now be no conversations
-        async with ctrl.ds.connection() as conn:
+        async with ctrl.ds.conn_manager() as conn:
             con_count = await conn.scalar(sa_conversations.count())
             assert con_count == 0
 
@@ -87,7 +87,7 @@ async def test_publish_conversation(loop, empty_db, dsn):
             action = Action('sender@example.com', None, Verbs.ADD)
             conv_id = await ctrl.act(action, subject='the subject')
 
-            async with ctrl.ds.connection() as conn:
+            async with ctrl.ds.conn_manager() as conn:
                 cds = ctrl.ds.new_conv_ds(conv_id, conn)
                 props = await cds.get_core_properties()
                 assert props['subject'] == 'the subject'
@@ -96,7 +96,7 @@ async def test_publish_conversation(loop, empty_db, dsn):
             a = Action('sender@example.com', conv_id, Verbs.PUBLISH)
             conv_id = await ctrl.act(a)
 
-            async with ctrl.ds.connection() as conn:
+            async with ctrl.ds.conn_manager() as conn:
                 cds = ctrl.ds.new_conv_ds(conv_id, conn)
                 props = await cds.get_core_properties()
                 assert props['subject'] == 'the subject'

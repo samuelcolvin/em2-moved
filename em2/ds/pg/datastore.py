@@ -54,7 +54,7 @@ class PostgresDataStore(DataStore):
             yield {k.replace('conversations_', ''): v for k, v in row.items()}
 
     async def all_conversations(self):
-        async with self.connection() as conn:
+        async with self.conn_manager() as conn:
             q = select(self._list_columns).order_by(sa_conversations.c.timestamp.desc(), sa_conversations.c.id.desc())
             async for row in conn.execute(q):
                 yield {k.replace('conversations_', ''): v for k, v in row.items()}
@@ -63,7 +63,7 @@ class PostgresDataStore(DataStore):
     def conv_data_store(self):
         return PostgresConversationDataStore
 
-    def connection(self):
+    def conn_manager(self):
         return ConnectionContextManager(self.engine)
 
     async def shutdown(self):

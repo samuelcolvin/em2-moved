@@ -55,7 +55,7 @@ class Controller:
         self._check_arguments(func, 'action', kwargs)
         logger.info('%s action by "%s" %.6s > %s . %s', a.loc_rem, a.address, a.conv or '-', a.component, a.verb)
 
-        async with self.ds.connection() as conn:
+        async with self.ds.conn_manager() as conn:
             if a.known_conversation:
                 a.cds = self.ds.new_conv_ds(a.conv, conn)
                 await a.set_participant()
@@ -76,7 +76,7 @@ class Controller:
         self._check_arguments(func, 'retrieval', kwargs)
         logger.info('%s retrieval by "%s" %.6s > %s . %s', r.loc_rem, r.address, r.conv, r.component, r.verb)
 
-        async with self.ds.connection() as conn:
+        async with self.ds.conn_manager() as conn:
             if r.known_conversation:
                 r.cds = self.ds.new_conv_ds(r.conv, conn)
                 await r.set_participant()

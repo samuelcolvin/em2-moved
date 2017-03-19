@@ -72,7 +72,7 @@ class SimpleDataStore(DataStore):
     def conv_data_store(self):
         return SimpleConversationDataStore
 
-    def connection(self):
+    def conn_manager(self):
         return VoidContextManager()
 
     def get_conv(self, conv_id):

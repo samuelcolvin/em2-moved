@@ -8,7 +8,7 @@ from .test_conversations import create_conv
 
 async def test_add_component_message(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(Components.PARTICIPANTS, address='test@example.com', permissions=perms.FULL)
         await cds.add_component(
@@ -32,7 +32,7 @@ async def test_add_component_message(get_ds, datastore_cls, timestamp):
 
 async def test_edit_component_message(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(Components.PARTICIPANTS, address='test@example.com', permissions=perms.FULL)
         msg_local_id = await cds.add_component(
@@ -70,7 +70,7 @@ async def test_edit_component_message(get_ds, datastore_cls, timestamp):
 
 async def test_message_meta(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(Components.PARTICIPANTS, address='test@example.com', permissions=perms.FULL)
         msg_local_id = await cds.add_component(
@@ -89,7 +89,7 @@ async def test_message_meta(get_ds, datastore_cls, timestamp):
 
 async def test_delete_message(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(Components.PARTICIPANTS, address='test@example.com', permissions=perms.FULL)
         msg_local_id = await cds.add_component(
@@ -113,7 +113,7 @@ async def test_delete_message(get_ds, datastore_cls, timestamp):
 
 async def test_message_locked(get_ds, datastore_cls, timestamp):
     ds = await get_ds(datastore_cls)
-    async with ds.connection() as conn:
+    async with ds.conn_manager() as conn:
         cds = await create_conv(conn, ds)
         pid = await cds.add_component(Components.PARTICIPANTS, address='test@example.com', permissions=perms.FULL)
         msg_local_id = await cds.add_component(

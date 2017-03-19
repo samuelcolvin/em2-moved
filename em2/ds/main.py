@@ -34,7 +34,7 @@ class DataStore:
     def conv_data_store(self):
         raise NotImplementedError()
 
-    def connection(self):
+    def conn_manager(self):
         raise NotImplementedError()
 
     async def shutdown(self):
@@ -214,7 +214,7 @@ class NullDataStore(DataStore):
     def conv_data_store(self):
         return NullConversationDataStore
 
-    def connection(self):
+    def conn_manager(self):
         return VoidContextManager()
 
 
