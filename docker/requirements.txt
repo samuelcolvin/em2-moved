@@ -1,5 +1,4 @@
 # ipython is useful during development and testing, obviously should be removed in prod.
 ipython==5.3.0
 
-gunicorn==19.7.0
-uvloop==0.8.0
+gunicorn==19.7.1
