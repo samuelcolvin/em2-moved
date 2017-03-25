@@ -25,7 +25,7 @@ async def app_cleanup(app):
 def create_app(loop=None, *, settings: Settings=None):
     settings = settings or Settings()
     loop = loop or asyncio.get_event_loop()
-    app = web.Application(loop=loop)
+    app = web.Application()
     app['settings'] = settings
 
     app.on_startup.append(app_startup)

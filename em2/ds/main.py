@@ -200,7 +200,7 @@ class ConversationDataStore:
         return participants
 
 
-class NullDataStore(DataStore):
+class NullDataStore(DataStore):  # pragma: no cover
 
     async def create_conversation(self, conn, **kwargs):
         return 0

@@ -51,10 +51,10 @@ class SimpleMockRedisPusher(MockRedisMixin, SimplePusher):
 
 
 class CustomTestClient(TestClient):
-    def __init__(self, app, domain):
+    def __init__(self, loop, app, domain):
         self.domain = domain
         self.regex = re.compile(r'https://em2\.{}(/.*)'.format(self.domain))
-        super().__init__(app)
+        super().__init__(app, loop=loop)
 
     def make_url(self, path):
         m = self.regex.match(path)
@@ -103,7 +103,7 @@ class DoubleMockPusher(HttpMockedDNSPusher):
     async def create_test_client(self, remote_domain='platform.remote.com'):
         self.session and await self.session.close()
         self.app = create_test_app(self.loop, remote_domain)
-        self.test_client = CustomTestClient(self.app, remote_domain)
+        self.test_client = CustomTestClient(self.loop, self.app, remote_domain)
         await self.test_client.start_server()
         self.session = self.test_client
 

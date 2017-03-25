@@ -82,7 +82,7 @@ async def test_dns_error(get_pusher, mocker):
     pusher = await get_pusher()
     mock_authenticate = mocker.patch('em2.comms.http.push.HttpDNSPusher.authenticate')
 
-    v = await pusher.get_node('error.com')
+    v = await pusher.get_node('value_error.com')
     assert v == HttpDNSPusher.FALLBACK
 
     assert mock_authenticate.called is False

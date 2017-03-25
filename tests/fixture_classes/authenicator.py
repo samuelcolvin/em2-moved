@@ -1,6 +1,8 @@
 from pathlib import Path
 from textwrap import wrap
 
+from aiodns.error import DNSError
+
 from em2.comms.auth import BaseAuthenticator, RedisDNSAuthenticator
 
 # to generate public and private keys
@@ -113,8 +115,10 @@ class MockDNSResolver:
             ]
         elif host == 'nomx.com':
             return []
-        elif host == 'error.com':
+        elif host == 'value_error.com':
             raise ValueError('DNS error with error.com')
+        elif host == 'dns_error.com':
+            raise DNSError('snap')
         if host == 'fallback.com':
             return [
                 MXQueryResult(10, 'mx.local.com'),

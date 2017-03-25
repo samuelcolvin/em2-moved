@@ -3,7 +3,7 @@ import pytest
 from em2 import Settings
 from em2.comms import RedisDNSAuthenticator
 from em2.exceptions import FailedInboundAuthentication
-from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE, RedisMockDNSAuthenticator
+from tests.fixture_classes import INTERNET_CONNECTED, PLATFORM, TIMESTAMP, VALID_SIGNATURE, RedisMockDNSAuthenticator
 
 
 @pytest.fixture
@@ -75,6 +75,7 @@ async def test_check_domain_platform_mx_match(redis_auth):
         await redis.get('pl:whatever.com') == 'em2.platform.whatever.com'
 
 
+@pytest.mark.skipif(not INTERNET_CONNECTED, reason='no internet connection')
 async def test_mx_lookup(redis_auth):
     auth = await redis_auth()
     r = auth.resolver
@@ -82,3 +83,11 @@ async def test_mx_lookup(redis_auth):
     assert results[0].host.endswith('google.com')
     # check we get back the same resolver each time
     assert id(r) == id(auth._resolver)
+
+
+async def test_mx_lookup_dns_error(redis_auth):
+    auth = await redis_auth(RedisMockDNSAuthenticator)
+    results = await auth.mx_query('good.com')
+    assert results == [(5, 'em2.platform.good.com'), (10, 'mx.platform.good.com')]
+    results = await auth.mx_query('dns_error.com')
+    assert results == []
