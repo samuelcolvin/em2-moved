@@ -46,7 +46,11 @@ async def test_check_server(client):
 async def test_no_headers(client):
     r = await client.post('/123/messages/add/')
     assert r.status == 400
-    assert await r.text() == 'Missing Headers: em2-auth, em2-address, em2-timestamp, em2-event-id\n'
+    assert await r.text() == ('Invalid Headers:\n'
+                              'em2-auth: missing\n'
+                              'em2-address: missing\n'
+                              'em2-timestamp: missing\n'
+                              'em2-event-id: missing\n')
 
 
 async def test_bad_auth_token(client):
@@ -81,7 +85,7 @@ async def test_missing_field(client):
     }
     r = await client.post('/123/messages/add/', headers=headers)
     assert r.status == 400
-    assert await r.text() == 'Missing Headers: em2-event-id\n'
+    assert await r.text() == 'Invalid Headers:\nem2-event-id: missing\n'
 
 
 async def test_bad_timezone(client):
@@ -93,7 +97,7 @@ async def test_bad_timezone(client):
         'em2-event-id': '123',
     }
     r = await client.post('/123/messages/add/', headers=headers)
-    assert await r.text() == 'Unknown timezone "invalid"\n'
+    assert await r.text() == 'Invalid Headers:\nem2-timezone: Unknown timezone "invalid"\n'
     assert r.status == 400
 
 
@@ -105,7 +109,7 @@ async def test_bad_timestamp(client):
         'em2-event-id': '123',
     }
     r = await client.post('/123/messages/add/', headers=headers)
-    assert await r.text() == 'Invalid timestamp "foobar"\n'
+    assert await r.text() == "Invalid Headers:\nem2-timestamp: invalid literal for int() with base 10: 'foobar'\n"
     assert r.status == 400
 
 
@@ -142,43 +146,35 @@ async def test_valid_data_list(client):
 
 
 async def test_authenticate(client):
-    data = {
-        'platform': PLATFORM,
-        'timestamp': TIMESTAMP,
-        'signature': VALID_SIGNATURE
+    headers = {
+        'em2-platform': PLATFORM,
+        'em2-timestamp': str(TIMESTAMP),
+        'em2-signature': VALID_SIGNATURE
     }
-    r = await client.post('/authenticate', data=encoding.encode(data))
-    assert r.status == 201
-    r = encoding.decode(await r.read())
-    assert isinstance(r, dict)
-    assert list(r.keys()) == ['key']
-    assert r['key'].startswith('foobar.com:2461536000:')
-    assert len(r['key']) == 86
-
-
-async def test_authenticate_bad_data(client):
-    r = await client.post('/authenticate', data='not data')
-    assert r.status == 400
-    assert await r.text() == 'error decoding data: unpack(b) received extra data.\n'
+    r = await client.post('/authenticate', headers=headers)
+    assert r.status == 201, await r.text()
+    key = r.headers['em2-key']
+    assert key.startswith('foobar.com:2461536000:')
+    assert len(key) == 86
 
 
 async def test_authenticate_wrong_fields(client):
-    data = {
-        'platform': PLATFORM,
-        'timestamp': TIMESTAMP,
+    headers = {
+        'em2-platform': PLATFORM,
+        'em2-timestamp': str(TIMESTAMP),
     }
-    r = await client.post('/authenticate', data=encoding.encode(data))
+    r = await client.post('/authenticate', headers=headers)
     assert r.status == 400
-    assert await r.text() == '{"signature": ["required field"]}\n'
+    assert await r.text() == 'Invalid Headers:\nem2-signature: missing\n'
 
 
 async def test_authenticate_failed(client):
-    data = {
-        'platform': 'wham.com',
-        'timestamp': TIMESTAMP,
-        'signature': VALID_SIGNATURE
+    headers = {
+        'em2-platform': 'wham.com',
+        'em2-timestamp': str(TIMESTAMP),
+        'em2-signature': VALID_SIGNATURE
     }
-    r = await client.post('/authenticate', data=encoding.encode(data))
+    r = await client.post('/authenticate', headers=headers)
     assert r.status == 400
     assert await r.text() == 'invalid signature\n'
 

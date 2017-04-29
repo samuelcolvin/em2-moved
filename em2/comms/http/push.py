@@ -68,19 +68,19 @@ class HttpDNSPusher(Pusher):
         url = f'{self.settings.COMMS_SCHEMA}://{domain}/authenticate'
         # TODO more error checks
         auth_data = self.get_auth_data()
+        headers = {f'em2-{k}': str(v) for k, v in auth_data.items()}
         try:
-            async with self.session.post(url, data=encoding.encode(auth_data), headers=CT_HEADER) as r:
-                body = await r.read()
+            async with self.session.post(url, headers=headers) as r:
+                if r.status != 201:
+                    body = await r.text()
+                    raise FailedOutboundAuthentication(f'{url} response {r.status} != 201, response:\n{body}')
         except aiohttp.ClientOSError as e:
             # generally "could not resolve host" or "connection refused",
             # the exception is fairly useless at giving specifics # TODO: perhaps changed with aiohttp 2?
             logger.info('ClientOSError: %e, url: %s', e, url)
             raise Em2ConnectionError(f'cannot connect to "{url}"') from e
-        else:
-            if r.status != 201:
-                raise FailedOutboundAuthentication(f'{url} response {r.status} != 201, response: body')
-        data = encoding.decode(body)
-        return data['key']
+        key = r.headers['em2-key']
+        return key
 
     async def shutdown(self):
         self.session and await self.session.close()

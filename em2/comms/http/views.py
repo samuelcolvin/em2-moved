@@ -1,13 +1,11 @@
 """
 Views dedicated to propagation of data between platforms.
 """
-import json
 import logging
 
 import pytz
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
-from cerberus import Validator
 
 from em2.comms import encoding
 from em2.core import Action
@@ -16,15 +14,6 @@ from em2.utils import from_unix_ms
 from em2.version import VERSION
 
 logger = logging.getLogger('em2.comms.http')
-
-# Note timestamp is an int here while it's a datetime elsewhere as it's an int when used in the signature
-AUTHENTICATION_SCHEMA = {
-    'platform': {'type': 'string', 'required': True},
-    'timestamp': {'type': 'integer', 'required': True, 'min': 0},
-    'signature': {'type': 'string', 'required': True},
-}
-
-CT_JSON = 'application/json'
 
 
 def get_ip(request):
@@ -40,55 +29,71 @@ async def index(request):
     return web.Response(text=f'em2 v{VERSION} HTTP api, domain: {domain}', content_type='text/plain')
 
 
-async def authenticate(request):
-    logger.info('authentication request from %s', get_ip(request))
+def _get_headers(request_headers, spec):
+    valid_headers = {}
+    errors = []
+    for h, required, *validators in spec:
+        name = 'em2-' + h.replace('_', '-')
+        value = request_headers.get(name, None)
+        if value:
+            if validators:
+                v = validators[0]
+                try:
+                    value = v(value, **valid_headers)
+                except ValueError as e:
+                    errors.append((name, e))
+                    continue
+            valid_headers[h] = value
+        elif required:
+            errors.append((name, 'missing'))
 
-    body_data = await request.read()
-    try:
-        obj = encoding.decode(body_data)
-    except ValueError as e:
-        logger.info('bad request: invalid msgpack data')
-        raise HTTPBadRequest(text='error decoding data: {}\n'.format(e)) from e
-
-    logger.info('authentication data: %s', obj)
-    v = Validator(AUTHENTICATION_SCHEMA)
-    if not v(obj):
-        raise HTTPBadRequest(text=json.dumps(v.errors, sort_keys=True) + '\n', content_type=CT_JSON)
-
-    auth = request.app['authenticator']
-    try:
-        key = await auth.authenticate_platform(obj['platform'], obj['timestamp'], obj['signature'])
-    except FailedInboundAuthentication as e:
-        logger.info('failed inbound authentication: %s', e)
-        raise HTTPBadRequest(text=e.args[0] + '\n') from e
-    return web.Response(body=encoding.encode({'key': key}), status=201, content_type=encoding.MSGPACK_CONTENT_TYPE)
+    if errors:
+        msg = '\n'.join(f'{name}: {error}' for name, error in errors)
+        raise HTTPBadRequest(text=f'Invalid Headers:\n{msg}\n')
+    return valid_headers
 
 
 # headers and whether they're required
-EM2_HEADERS = [
-    ('auth', True),
-    ('address', True),
-    ('timestamp', True),
-    ('event_id', True),
-    ('parent_event_id', False),
-    ('timezone', False),
+AUTH_HEADERS = [
+    ('platform', True),
+    ('timestamp', True, lambda v, **others: int(v)),
+    ('signature', True),
 ]
 
 
-def _get_headers(request_headers):
-    em2_headers = {}
-    errors = []
-    for h, required in EM2_HEADERS:
-        name = 'em2-' + h.replace('_', '-')
-        v = request_headers.get(name, None)
-        if v:
-            em2_headers[h] = v
-        elif required:
-            errors.append(name)
+async def authenticate(request):
+    logger.info('authentication request from %s', get_ip(request))
+    headers = _get_headers(request.headers, AUTH_HEADERS)
+    logger.info('authentication data: %s', headers)
 
-    if errors:
-        raise HTTPBadRequest(text='Missing Headers: {}'.format(', '.join(errors)) + '\n', content_type=CT_JSON)
-    return em2_headers
+    auth = request.app['authenticator']
+    try:
+        key = await auth.authenticate_platform(headers['platform'], headers['timestamp'], headers['signature'])
+    except FailedInboundAuthentication as e:
+        logger.info('failed inbound authentication: %s', e)
+        raise HTTPBadRequest(text=e.args[0] + '\n') from e
+    return web.Response(body=b'ok', status=201, headers={'em2-key': key})
+
+
+def validate_timezone(v, **others):
+    try:
+        return pytz.timezone(v)
+    except pytz.UnknownTimeZoneError as e:
+        raise ValueError(f'Unknown timezone "{v}"') from e
+
+
+def validate_timestamp(v, **others):
+    return from_unix_ms(int(v)).replace(tzinfo=others.get('timezone', pytz.utc))
+
+
+ACT_HEADERS = [
+    ('auth', True),
+    ('address', True),
+    ('timezone', False, validate_timezone),
+    ('timestamp', True, validate_timestamp),
+    ('event_id', True),
+    ('parent_event_id', False),
+]
 
 
 async def _parse_headers(headers, auth):
@@ -106,23 +111,14 @@ async def _parse_headers(headers, auth):
     except DomainPlatformMismatch as e:
         raise HTTPForbidden(text=e.args[0] + '\n') from e
 
-    timezone = headers.pop('timezone', 'utc')
-    try:
-        timezone = pytz.timezone(timezone)
-    except pytz.UnknownTimeZoneError as e:
-        raise HTTPBadRequest(text=f'Unknown timezone "{timezone}"\n') from e
-
-    timestamp = headers.pop('timestamp')
-    try:
-        timestamp = from_unix_ms(int(timestamp)).replace(tzinfo=timezone)
-    except ValueError as e:
-        raise HTTPBadRequest(text=f'Invalid timestamp "{timestamp}"\n') from e
-    return address, timestamp, timezone, headers
+    return address, headers
 
 
 async def act(request):
-    headers = _get_headers(request.headers)
-    address, timestamp, timezone, extra_headers = await _parse_headers(headers, request.app['authenticator'])
+    headers = _get_headers(request.headers, ACT_HEADERS)
+    address, extra_headers = await _parse_headers(headers, request.app['authenticator'])
+
+    timezone = headers.pop('timezone', pytz.utc)
 
     # TODO support json as well as msgpack
     body_data = await request.read()
@@ -139,7 +135,7 @@ async def act(request):
     verb = request.match_info['verb']
     item = request.match_info['item'] or None
 
-    action = Action(address, conversation, verb, component, item=item, timestamp=timestamp, **extra_headers)
+    action = Action(address, conversation, verb, component, item=item, **extra_headers)
     controller = request.app['controller']
     try:
         response = await controller.act(action, **obj)
