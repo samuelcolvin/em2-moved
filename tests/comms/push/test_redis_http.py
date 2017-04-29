@@ -1,5 +1,5 @@
 from aiohttp import ClientOSError
-from em2.comms.web.push import HttpDNSPusher
+from em2.comms.web.push import WebDNSPusher
 from tests.fixture_classes import future_result
 
 
@@ -24,12 +24,12 @@ async def test_save_nodes_existing(get_pusher):
 
 async def test_no_mx(get_pusher, loop, mocker):
     pusher = await get_pusher()
-    mock_mx_query = mocker.patch('em2.comms.web.push.HttpDNSPusher.mx_query')
+    mock_mx_query = mocker.patch('em2.comms.web.push.WebDNSPusher.mx_query')
     mock_mx_query.return_value = future_result(loop, [])
-    mock_authenticate = mocker.patch('em2.comms.web.push.HttpDNSPusher.authenticate')
+    mock_authenticate = mocker.patch('em2.comms.web.push.WebDNSPusher.authenticate')
 
     v = await pusher.get_node('example.com')
-    assert v == HttpDNSPusher.FALLBACK
+    assert v == WebDNSPusher.FALLBACK
 
     mock_mx_query.assert_called_with('example.com')
     assert mock_authenticate.called is False
@@ -37,9 +37,9 @@ async def test_no_mx(get_pusher, loop, mocker):
 
 async def test_mx_em2(get_pusher, loop, mocker):
     pusher = await get_pusher()
-    mock_mx_query = mocker.patch('em2.comms.web.push.HttpDNSPusher.mx_query')
+    mock_mx_query = mocker.patch('em2.comms.web.push.WebDNSPusher.mx_query')
     mock_mx_query.return_value = future_result(loop, [(0, 'em2.example.com')])
-    mock_authenticate = mocker.patch('em2.comms.web.push.HttpDNSPusher.authenticate')
+    mock_authenticate = mocker.patch('em2.comms.web.push.WebDNSPusher.authenticate')
     mock_authenticate.return_value = future_result(loop, 'the_key')
 
     v = await pusher.get_node('example.com')
@@ -51,14 +51,14 @@ async def test_mx_em2(get_pusher, loop, mocker):
 
 async def test_mx_not_em2(get_pusher, loop, mocker):
     pusher = await get_pusher()
-    mock_mx_query = mocker.patch('em2.comms.web.push.HttpDNSPusher.mx_query')
+    mock_mx_query = mocker.patch('em2.comms.web.push.WebDNSPusher.mx_query')
     mock_mx_query.return_value = future_result(loop, [(0, 'notem2.example.com')])
 
-    mock_authenticate = mocker.patch('em2.comms.web.push.HttpDNSPusher.authenticate')
+    mock_authenticate = mocker.patch('em2.comms.web.push.WebDNSPusher.authenticate')
     mock_authenticate.return_value = future_result(loop, 'the_key')
 
     v = await pusher.get_node('example.com')
-    assert v == HttpDNSPusher.FALLBACK
+    assert v == WebDNSPusher.FALLBACK
 
     mock_mx_query.assert_called_with('example.com')
     assert mock_authenticate.called is False
@@ -66,13 +66,13 @@ async def test_mx_not_em2(get_pusher, loop, mocker):
 
 async def test_client_os_error(get_pusher, loop, mocker):
     pusher = await get_pusher()
-    mock_mx_query = mocker.patch('em2.comms.web.push.HttpDNSPusher.mx_query')
+    mock_mx_query = mocker.patch('em2.comms.web.push.WebDNSPusher.mx_query')
     mock_mx_query.return_value = future_result(loop, [(0, 'em2.example.com')])
     mock_post = mocker.patch('em2.comms.web.push.aiohttp.ClientSession.post')
     mock_post.side_effect = ClientOSError('foobar')
 
     v = await pusher.get_node('example.com')
-    assert v == HttpDNSPusher.FALLBACK
+    assert v == WebDNSPusher.FALLBACK
 
     mock_mx_query.assert_called_with('example.com')
     assert mock_post.call_args[0] == ('https://em2.example.com/authenticate',)
@@ -80,9 +80,9 @@ async def test_client_os_error(get_pusher, loop, mocker):
 
 async def test_dns_error(get_pusher, mocker):
     pusher = await get_pusher()
-    mock_authenticate = mocker.patch('em2.comms.web.push.HttpDNSPusher.authenticate')
+    mock_authenticate = mocker.patch('em2.comms.web.push.WebDNSPusher.authenticate')
 
     v = await pusher.get_node('value_error.com')
-    assert v == HttpDNSPusher.FALLBACK
+    assert v == WebDNSPusher.FALLBACK
 
     assert mock_authenticate.called is False

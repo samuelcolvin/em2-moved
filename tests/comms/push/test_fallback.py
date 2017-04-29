@@ -38,7 +38,7 @@ def fallback_ctrl_pusher(loop, reset_store):
 
 
 async def test_no_mx(fallback_ctrl_pusher, mocker, caplog):
-    mock_authenticate = mocker.patch('em2.comms.web.push.HttpDNSPusher.authenticate')
+    mock_authenticate = mocker.patch('em2.comms.web.push.WebDNSPusher.authenticate')
 
     ctrl = await fallback_ctrl_pusher()
     action = Action('sender@local.com', None, Verbs.ADD)
@@ -53,7 +53,7 @@ async def test_no_mx(fallback_ctrl_pusher, mocker, caplog):
 
 
 async def test_smtp_fallback(fallback_ctrl_pusher, mocker, loop):
-    mock_authenticate = mocker.patch('em2.comms.web.push.HttpDNSPusher.authenticate')
+    mock_authenticate = mocker.patch('em2.comms.web.push.WebDNSPusher.authenticate')
     mock_send_message = mocker.patch('em2.comms.fallback.SmtpFallbackHandler.send_message')
     mock_send_message.return_value = future_result(loop, '123')
 

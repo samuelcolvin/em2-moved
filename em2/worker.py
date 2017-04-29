@@ -1,7 +1,7 @@
 from arq import BaseWorker
 from em2 import setup_logging
 from em2.comms import RedisDNSAuthenticator
-from em2.comms.web.push import HttpDNSPusher
+from em2.comms.web.push import WebDNSPusher
 
 from em2.settings import Settings
 
@@ -10,7 +10,7 @@ class Worker(BaseWorker):
     """
     arq worker used to execute jobs
     """
-    shadows = [HttpDNSPusher, RedisDNSAuthenticator]
+    shadows = [WebDNSPusher, RedisDNSAuthenticator]
 
     def __init__(self, **kwargs):
         self.settings = kwargs.pop('settings', None) or Settings()

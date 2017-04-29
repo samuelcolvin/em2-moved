@@ -11,7 +11,6 @@ from em2.comms import encoding
 from em2.core import Action
 from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
 from em2.utils import from_unix_ms
-from em2.version import VERSION
 
 logger = logging.getLogger('em2.comms.web')
 
@@ -22,11 +21,6 @@ def get_ip(request):
     if peername is not None:
         ip, _ = peername
     return ip
-
-
-async def index(request):
-    domain = request.app['settings'].LOCAL_DOMAIN
-    return web.Response(text=f'em2 v{VERSION} HTTP api, domain: {domain}\n')
 
 
 def _get_headers(request_headers, spec):

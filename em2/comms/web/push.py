@@ -13,7 +13,7 @@ CT_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 logger = logging.getLogger('em2.push.web')
 
 
-class HttpDNSPusher(Pusher):
+class WebDNSPusher(Pusher):
     async def startup(self):
         await super().startup()
         self.session = aiohttp.ClientSession(loop=self.loop)

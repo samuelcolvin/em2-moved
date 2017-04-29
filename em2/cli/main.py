@@ -11,7 +11,7 @@ from em2.utils import wait_for_services
 @command
 def web(settings):
     from gunicorn.app.base import BaseApplication
-    from em2.comms.web import create_app
+    from em2 import create_app
     from em2.ds.pg.utils import prepare_database
 
     wait_for_services(settings)

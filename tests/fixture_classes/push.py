@@ -4,10 +4,9 @@ from copy import deepcopy
 from aiohttp.test_utils import TestClient
 from arq.testing import MockRedisMixin
 
-from em2 import Settings
+from em2 import Settings, create_app
 from em2.comms import Pusher
-from em2.comms.web import create_app
-from em2.comms.web.push import HttpDNSPusher
+from em2.comms.web.push import WebDNSPusher
 from tests.conftest import test_store
 
 from .authenicator import MockDNSResolver, SimpleAuthenticator
@@ -77,7 +76,7 @@ def create_test_app(loop, domain='testapp.com'):
     return create_app(settings=settings)
 
 
-class HttpMockedDNSPusher(HttpDNSPusher):
+class HttpMockedDNSPusher(WebDNSPusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._mx_query_count = 0
@@ -93,7 +92,7 @@ class HttpMockedDNSPusher(HttpDNSPusher):
 
 class DoubleMockPusher(HttpMockedDNSPusher):
     """
-    HttpDNSPusher with both dns and http mocked
+    WebDNSPusher with both dns and http mocked
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
