@@ -74,7 +74,7 @@ def create_test_app(loop, domain='testapp.com'):
         LOCAL_DOMAIN=domain,
         AUTHENTICATOR_CLS='tests.fixture_classes.FixedSimpleAuthenticator',
     )
-    return create_app(settings=settings, loop=loop)
+    return create_app(settings=settings)
 
 
 class HttpMockedDNSPusher(HttpDNSPusher):

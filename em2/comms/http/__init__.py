@@ -1,4 +1,3 @@
-import asyncio
 from aiohttp import web
 
 from em2 import Settings
@@ -22,9 +21,8 @@ async def app_cleanup(app):
     await app['authenticator'].shutdown()
 
 
-def create_app(loop=None, *, settings: Settings=None):
+def create_app(*, settings: Settings=None):
     settings = settings or Settings()
-    loop = loop or asyncio.get_event_loop()
     app = web.Application()
     app['settings'] = settings
 
