@@ -3,11 +3,14 @@ from datetime import datetime, timedelta
 from em2 import Settings
 from em2.comms import encoding
 from em2.core import Action, Components, Verbs
-from em2.utils import check_server
+from em2.utils import check_server, to_unix_ms
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
-AUTH_HEADER = {
-    'Authorization': 'Token already-authenticated.com:123:whatever',
+EXAMPLE_HEADERS = {
+    'em2-auth': 'already-authenticated.com:123:whatever',
+    'em2-address': 'test@already-authenticated.com',
+    'em2-timestamp': '1',
+    'em2-event-id': '123',
 }
 
 
@@ -18,17 +21,18 @@ async def test_add_message(client):
     msg1_id = list(conv_ds.conv_obj['messages'])[0]
     ts = action.timestamp + timedelta(seconds=1)
     action2 = Action('test@already-authenticated.com', conv_id, Verbs.ADD, Components.MESSAGES, timestamp=ts)
-    data = {
-        'address': 'test@already-authenticated.com',
-        'timestamp': ts,
-        'event_id': action2.calc_event_id(),
-        'data': {
-            'parent_id': msg1_id,
-            'body': 'reply',
-        }
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-address': 'test@already-authenticated.com',
+        'em2-timestamp': str(to_unix_ms(ts)),
+        'em2-event-id': action2.calc_event_id(),
     }
-    r = await client.post('/{}/messages/add/'.format(conv_id), data=encoding.encode(data), headers=AUTH_HEADER)
-    assert r.status == 201
+    data = {
+        'parent_id': msg1_id,
+        'body': 'reply',
+    }
+    r = await client.post('/{}/messages/add/'.format(conv_id), data=encoding.encode(data), headers=headers)
+    assert r.status == 201, await r.text()
     assert await r.text() == '\n'
 
 
@@ -39,57 +43,65 @@ async def test_check_server(client):
     assert r == 1
 
 
-async def test_no_auth_header(client):
+async def test_no_headers(client):
     r = await client.post('/123/messages/add/')
     assert r.status == 400
-    assert await r.text() == 'No "Authorization" header found\n'
+    assert await r.text() == 'Missing Headers: em2-auth, em2-address, em2-timestamp, em2-event-id\n'
 
 
 async def test_bad_token(client):
-    headers = {'Authorization': 'Token 321', 'Actor': 'test@example.com'}
+    headers = {
+        'em2-auth': '123',
+        'em2-address': 'test@example.com',
+        'em2-timestamp': '123',
+        'em2-event-id': '123',
+    }
     r = await client.post('/123/messages/add/', headers=headers)
     assert r.status == 403
-    assert await r.text() == 'Invalid Authorization token\n'
+    assert await r.text() == 'Invalid auth header\n'
 
 
 async def test_domain_miss_match(client):
-    data = {
-        'address': 'test@example.com',
-        'timestamp': datetime.now(),
-        'event_id': '123',
-        'data': {
-            'parent_id': '123',
-            'body': 'reply',
-        }
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-address': 'test@example.com',
+        'em2-timestamp': str(to_unix_ms(datetime.now())),
+        'em2-event-id': '123',
     }
-    r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=AUTH_HEADER)
+    data = {
+        'parent_id': '123',
+        'body': 'reply',
+    }
+    r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=headers)
     assert await r.text() == '"example.com" does not use "already-authenticated.com"\n'
     assert r.status == 403
 
 
 async def test_missing_field(client):
-    data = {
-        'address': 'test@already-authenticated.com',
-        'timestamp': datetime.now(),
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-address': 'test@already-authenticated.com',
+        'em2-timestamp': str(to_unix_ms(datetime.now())),
     }
-    r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=AUTH_HEADER)
+    r = await client.post('/123/messages/add/', data=encoding.encode({}), headers=headers)
     assert r.status == 400
-    assert await r.text() == '{"event_id": ["required field"]}\n'
+    assert await r.text() == 'Missing Headers: em2-event-id\n'
 
 
 async def test_missing_conversation(client):
     ts = datetime.now()
     action2 = Action('test@already-authenticated.com', '123', Verbs.ADD, Components.MESSAGES, timestamp=ts)
-    data = {
-        'address': 'test@already-authenticated.com',
-        'timestamp': ts,
-        'event_id': action2.calc_event_id(),
-        'data': {
-            'parent_id': '123',
-            'body': 'reply',
-        }
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-address': 'test@already-authenticated.com',
+        'em2-timestamp': str(to_unix_ms(ts)),
+        'em2-event-id': action2.calc_event_id(),
     }
-    r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=AUTH_HEADER)
+    data = {
+        'parent_id': '123',
+        'body': 'reply',
+    }
+    r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=headers)
     assert r.status == 400
     content = await r.read()
     assert content == b'ConversationNotFound: conversation 123 not found\n'
@@ -97,13 +109,13 @@ async def test_missing_conversation(client):
 
 async def test_invalid_data(client):
     data = 'foobar'
-    r = await client.post('/123/messages/add/', data=data, headers=AUTH_HEADER)
+    r = await client.post('/123/messages/add/', data=data, headers=EXAMPLE_HEADERS)
     assert r.status == 400
     assert await r.text() == 'Error Decoding msgpack: unpack(b) received extra data.\n'
 
 
 async def test_valid_data_list(client):
-    r = await client.post('/123/messages/add/', data=encoding.encode([1, 2, 3]), headers=AUTH_HEADER)
+    r = await client.post('/123/messages/add/', data=encoding.encode([1, 2, 3]), headers=EXAMPLE_HEADERS)
     assert r.status == 400
     assert await r.text() == 'request data is not a dictionary\n'
 
@@ -154,13 +166,13 @@ async def test_invalid_data_field(client):
     action = Action('test@already-authenticated.com', None, Verbs.ADD)
     conv_id = await client.em2_ctrl.act(action, subject='foo bar', body='hi, how are you?')
     ts = action.timestamp + timedelta(seconds=1)
-    action2 = Action('test@already-authenticated.com', conv_id, Verbs.ADD, Components.MESSAGES, timestamp=ts)
-    data = {
-        'address': 'test@already-authenticated.com',
-        'timestamp': ts,
-        'event_id': action2.calc_event_id(),
-        'data': [1, 2, 3]
+    Action('test@already-authenticated.com', conv_id, Verbs.ADD, Components.MESSAGES, timestamp=ts)
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-address': 'test@already-authenticated.com',
+        'em2-timestamp': '1',
+        'em2-event-id': '123',
     }
-    r = await client.post('/{}/messages/add/'.format(conv_id), data=encoding.encode(data), headers=AUTH_HEADER)
-    assert r.status == 400
-    assert await r.text() == '{"data": ["must be of dict type"]}\n'
+    r = await client.post('/{}/messages/add/'.format(conv_id), data=encoding.encode([1, 2, 3]), headers=headers)
+    assert r.status == 400, await r.text()
+    assert await r.text() == 'request data is not a dictionary\n'

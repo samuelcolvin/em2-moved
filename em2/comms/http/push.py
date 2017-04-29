@@ -6,6 +6,7 @@ import aiohttp
 from em2.comms import encoding
 from em2.comms.push import Pusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
+from em2.utils import to_unix_ms
 
 CT_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 
@@ -40,10 +41,10 @@ class HttpDNSPusher(Pusher):
         logger.info('no em2 node found for %s, falling back', domain)
         return self.FALLBACK
 
-    async def _post(self, domain, path, data):
+    async def _post(self, domain, path, headers, data):
         logger.info('posting to %s > %s', domain, path)
         token = await self.authenticate(domain)
-        headers = dict(Authorization=token, **CT_HEADER)
+        headers['em2-auth'] = token
         url = f'{self.settings.COMMS_SCHEMA}://{domain}/{path}'
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
@@ -52,14 +53,14 @@ class HttpDNSPusher(Pusher):
     async def _push_em2(self, nodes, action, data):
         action.item = action.item or ''
         path = f'{action.conv}/{action.component}/{action.verb}/{action.item}'
-        post_data = {
-            'address': action.address,
-            'timestamp': action.timestamp,
-            'event_id': action.event_id,
-            'data': data,
+        headers = {
+            'content-type': encoding.MSGPACK_CONTENT_TYPE,
+            'em2-address': action.address,
+            'em2-timestamp': str(to_unix_ms(action.timestamp)),
+            'em2-event-id': action.event_id,
         }
-        post_data = encoding.encode(post_data)
-        cos = [self._post(node, path, post_data) for node in nodes]
+        post_data = encoding.encode(data)
+        cos = [self._post(node, path, headers, post_data) for node in nodes]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 
