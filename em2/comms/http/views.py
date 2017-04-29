@@ -110,13 +110,13 @@ async def _parse_headers(headers, auth):
     try:
         timezone = pytz.timezone(timezone)
     except pytz.UnknownTimeZoneError as e:
-        raise HTTPBadRequest(text=f'unknown timezone "{timezone}"') from e
+        raise HTTPBadRequest(text=f'Unknown timezone "{timezone}"\n') from e
 
     timestamp = headers.pop('timestamp')
     try:
         timestamp = from_unix_ms(int(timestamp)).replace(tzinfo=timezone)
     except ValueError as e:
-        raise HTTPBadRequest(text=f'Invalid timestamp "{timestamp}\n') from e
+        raise HTTPBadRequest(text=f'Invalid timestamp "{timestamp}"\n') from e
     return address, timestamp, timezone, headers
 
 

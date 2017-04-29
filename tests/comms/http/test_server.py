@@ -49,7 +49,7 @@ async def test_no_headers(client):
     assert await r.text() == 'Missing Headers: em2-auth, em2-address, em2-timestamp, em2-event-id\n'
 
 
-async def test_bad_token(client):
+async def test_bad_auth_token(client):
     headers = {
         'em2-auth': '123',
         'em2-address': 'test@example.com',
@@ -68,11 +68,7 @@ async def test_domain_miss_match(client):
         'em2-timestamp': str(to_unix_ms(datetime.now())),
         'em2-event-id': '123',
     }
-    data = {
-        'parent_id': '123',
-        'body': 'reply',
-    }
-    r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=headers)
+    r = await client.post('/123/messages/add/', headers=headers)
     assert await r.text() == '"example.com" does not use "already-authenticated.com"\n'
     assert r.status == 403
 
@@ -83,9 +79,34 @@ async def test_missing_field(client):
         'em2-address': 'test@already-authenticated.com',
         'em2-timestamp': str(to_unix_ms(datetime.now())),
     }
-    r = await client.post('/123/messages/add/', data=encoding.encode({}), headers=headers)
+    r = await client.post('/123/messages/add/', headers=headers)
     assert r.status == 400
     assert await r.text() == 'Missing Headers: em2-event-id\n'
+
+
+async def test_bad_timezone(client):
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-address': 'test@already-authenticated.com',
+        'em2-timezone': 'invalid',
+        'em2-timestamp': str(to_unix_ms(datetime.now())),
+        'em2-event-id': '123',
+    }
+    r = await client.post('/123/messages/add/', headers=headers)
+    assert await r.text() == 'Unknown timezone "invalid"\n'
+    assert r.status == 400
+
+
+async def test_bad_timestamp(client):
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-address': 'test@already-authenticated.com',
+        'em2-timestamp': 'foobar',
+        'em2-event-id': '123',
+    }
+    r = await client.post('/123/messages/add/', headers=headers)
+    assert await r.text() == 'Invalid timestamp "foobar"\n'
+    assert r.status == 400
 
 
 async def test_missing_conversation(client):
