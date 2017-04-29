@@ -13,7 +13,7 @@ from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAu
 from em2.utils import from_unix_ms
 from em2.version import VERSION
 
-logger = logging.getLogger('em2.comms.http')
+logger = logging.getLogger('em2.comms.web')
 
 
 def get_ip(request):
@@ -26,7 +26,7 @@ def get_ip(request):
 
 async def index(request):
     domain = request.app['settings'].LOCAL_DOMAIN
-    return web.Response(text=f'em2 v{VERSION} HTTP api, domain: {domain}', content_type='text/plain')
+    return web.Response(text=f'em2 v{VERSION} HTTP api, domain: {domain}\n')
 
 
 def _get_headers(request_headers, spec):
@@ -72,7 +72,7 @@ async def authenticate(request):
     except FailedInboundAuthentication as e:
         logger.info('failed inbound authentication: %s', e)
         raise HTTPBadRequest(text=e.args[0] + '\n') from e
-    return web.Response(body=b'ok', status=201, headers={'em2-key': key})
+    return web.Response(text='ok\n', status=201, headers={'em2-key': key})
 
 
 def validate_timezone(v, **others):

@@ -41,7 +41,7 @@ class Settings:
     COMMS_DNS_IP = None
 
     DATASTORE_CLS = 'em2.ds.pg.PostgresDataStore'
-    PUSHER_CLS = 'em2.comms.http.HttpDNSPusher'
+    PUSHER_CLS = 'em2.comms.web.HttpDNSPusher'
     FALLBACK_CLS = 'em2.comms.fallback.FallbackHandler'
     AUTHENTICATOR_CLS = 'em2.comms.auth.RedisDNSAuthenticator'
 

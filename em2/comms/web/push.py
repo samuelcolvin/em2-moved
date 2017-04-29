@@ -10,7 +10,7 @@ from em2.utils import to_unix_ms
 
 CT_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
 
-logger = logging.getLogger('em2.push.http')
+logger = logging.getLogger('em2.push.web')
 
 
 class HttpDNSPusher(Pusher):

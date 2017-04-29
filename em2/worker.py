@@ -1,7 +1,7 @@
 from arq import BaseWorker
 from em2 import setup_logging
 from em2.comms import RedisDNSAuthenticator
-from em2.comms.http.push import HttpDNSPusher
+from em2.comms.web.push import HttpDNSPusher
 
 from em2.settings import Settings
 

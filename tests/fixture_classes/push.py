@@ -6,8 +6,8 @@ from arq.testing import MockRedisMixin
 
 from em2 import Settings
 from em2.comms import Pusher
-from em2.comms.http import create_app
-from em2.comms.http.push import HttpDNSPusher
+from em2.comms.web import create_app
+from em2.comms.web.push import HttpDNSPusher
 from tests.conftest import test_store
 
 from .authenicator import MockDNSResolver, SimpleAuthenticator
