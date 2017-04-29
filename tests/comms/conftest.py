@@ -2,7 +2,7 @@ import pytest
 
 from em2 import Settings
 from tests.fixture_classes import get_private_key_file
-from tests.fixture_classes.push import HttpMockedDNSPusher
+from tests.fixture_classes.push import WebMockedDNSPusher
 
 
 @pytest.yield_fixture
@@ -13,10 +13,10 @@ def get_pusher(loop, get_redis_pool):
         nonlocal pusher
         settings = Settings(
             DATASTORE_CLS='em2.ds.NullDataStore',
-            PUSHER_CLS='tests.fixture_classes.push.HttpMockedDNSPusher',
+            PUSHER_CLS='tests.fixture_classes.push.WebMockedDNSPusher',
             PRIVATE_DOMAIN_KEY_FILE=get_private_key_file(),
         )
-        pusher = HttpMockedDNSPusher(settings, loop=loop, is_shadow=True)
+        pusher = WebMockedDNSPusher(settings, loop=loop, is_shadow=True)
         pusher._redis_pool = await get_redis_pool()
         await pusher.startup()
         return pusher

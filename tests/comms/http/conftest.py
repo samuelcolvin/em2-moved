@@ -37,7 +37,7 @@ def ctrl_pusher(loop, reset_store):
     yield _create
 
     async def close():
-        await _pusher.test_client.close()
+        _pusher.test_client and await _pusher.test_client.close()
         await _pusher.shutdown()
         await _ctrl.pusher.shutdown()
 

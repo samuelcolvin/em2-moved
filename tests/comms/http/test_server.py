@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
 
 from em2 import Settings
-from em2.comms import encoding
 from em2.core import Action, Components, Verbs
-from em2.utils import check_server, to_unix_ms
+from em2.utils import check_server, msg_encode, to_unix_ms
 from tests.fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 EXAMPLE_HEADERS = {
@@ -31,7 +30,7 @@ async def test_add_message(client):
         'parent_id': msg1_id,
         'body': 'reply',
     }
-    r = await client.post('/{}/messages/add/'.format(conv_id), data=encoding.encode(data), headers=headers)
+    r = await client.post('/{}/messages/add/'.format(conv_id), data=msg_encode(data), headers=headers)
     assert r.status == 201, await r.text()
     assert await r.text() == '\n'
 
@@ -126,7 +125,7 @@ async def test_missing_conversation(client):
         'parent_id': '123',
         'body': 'reply',
     }
-    r = await client.post('/123/messages/add/', data=encoding.encode(data), headers=headers)
+    r = await client.post('/123/messages/add/', data=msg_encode(data), headers=headers)
     assert r.status == 400
     content = await r.read()
     assert content == b'ConversationNotFound: conversation 123 not found\n'
@@ -140,7 +139,7 @@ async def test_invalid_data(client):
 
 
 async def test_valid_data_list(client):
-    r = await client.post('/123/messages/add/', data=encoding.encode([1, 2, 3]), headers=EXAMPLE_HEADERS)
+    r = await client.post('/123/messages/add/', data=msg_encode([1, 2, 3]), headers=EXAMPLE_HEADERS)
     assert r.status == 400
     assert await r.text() == 'request data is not a dictionary\n'
 
@@ -190,6 +189,6 @@ async def test_invalid_data_field(client):
         'em2-timestamp': '1',
         'em2-event-id': '123',
     }
-    r = await client.post('/{}/messages/add/'.format(conv_id), data=encoding.encode([1, 2, 3]), headers=headers)
+    r = await client.post('/{}/messages/add/'.format(conv_id), data=msg_encode([1, 2, 3]), headers=headers)
     assert r.status == 400, await r.text()
     assert await r.text() == 'request data is not a dictionary\n'

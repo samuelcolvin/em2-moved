@@ -67,7 +67,7 @@ class FixedSimpleAuthenticator(SimpleAuthenticator):
         return 2461449600
 
 
-def create_test_app(loop, domain='testapp.com'):
+def create_test_app(domain='testapp.com'):
     settings = Settings(
         DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
         LOCAL_DOMAIN=domain,
@@ -76,7 +76,7 @@ def create_test_app(loop, domain='testapp.com'):
     return create_app(settings=settings)
 
 
-class HttpMockedDNSPusher(WebDNSPusher):
+class WebMockedDNSPusher(WebDNSPusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._mx_query_count = 0
@@ -90,7 +90,7 @@ class HttpMockedDNSPusher(WebDNSPusher):
         return super().mx_query(host)
 
 
-class DoubleMockPusher(HttpMockedDNSPusher):
+class DoubleMockPusher(WebMockedDNSPusher):
     """
     WebDNSPusher with both dns and http mocked
     """
@@ -101,7 +101,7 @@ class DoubleMockPusher(HttpMockedDNSPusher):
 
     async def create_test_client(self, remote_domain='platform.remote.com'):
         self.session and await self.session.close()
-        self.app = create_test_app(self.loop, remote_domain)
+        self.app = create_test_app(remote_domain)
         self.test_client = CustomTestClient(self.loop, self.app, remote_domain)
         await self.test_client.start_server()
         self.session = self.test_client

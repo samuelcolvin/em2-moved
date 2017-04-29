@@ -3,12 +3,11 @@ import logging
 
 import aiohttp
 
-from em2.comms import encoding
 from em2.comms.push import Pusher
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
-from em2.utils import to_unix_ms
+from em2.utils import MSGPACK_CONTENT_TYPE, msg_encode, to_unix_ms
 
-CT_HEADER = {'content-type': encoding.MSGPACK_CONTENT_TYPE}
+CT_HEADER = {'content-type': MSGPACK_CONTENT_TYPE}
 
 logger = logging.getLogger('em2.push.web')
 
@@ -54,12 +53,12 @@ class WebDNSPusher(Pusher):
         action.item = action.item or ''
         path = f'{action.conv}/{action.component}/{action.verb}/{action.item}'
         headers = {
-            'content-type': encoding.MSGPACK_CONTENT_TYPE,
+            'content-type': MSGPACK_CONTENT_TYPE,
             'em2-address': action.address,
             'em2-timestamp': str(to_unix_ms(action.timestamp)),
             'em2-event-id': action.event_id,
         }
-        post_data = encoding.encode(data)
+        post_data = msg_encode(data)
         cos = [self._post(node, path, headers, post_data) for node in nodes]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)

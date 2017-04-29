@@ -7,10 +7,9 @@ import pytz
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 
-from em2.comms import encoding
 from em2.core import Action
 from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
-from em2.utils import from_unix_ms
+from em2.utils import MSGPACK_CONTENT_TYPE, from_unix_ms, msg_decode, msg_encode
 
 logger = logging.getLogger('em2.comms.web')
 
@@ -117,7 +116,7 @@ async def act(request):
     # TODO support json as well as msgpack
     body_data = await request.read()
     try:
-        obj = encoding.decode(body_data, tz=timezone)
+        obj = msg_decode(body_data, tz=timezone)
     except ValueError as e:
         raise HTTPBadRequest(text='Error Decoding msgpack: {}\n'.format(e)) from e
 
@@ -136,5 +135,5 @@ async def act(request):
     except Em2Exception as e:
         raise HTTPBadRequest(text='{}: {}\n'.format(e.__class__.__name__, e))
 
-    body = encoding.encode(response) if response else b'\n'
-    return web.Response(body=body, status=201, content_type=encoding.MSGPACK_CONTENT_TYPE)
+    body = msg_encode(response) if response else b'\n'
+    return web.Response(body=body, status=201, content_type=MSGPACK_CONTENT_TYPE)

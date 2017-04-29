@@ -1,11 +1,12 @@
 import asyncio
 import logging
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum as _PyEnum
 from enum import EnumMeta as _PyEnumMeta
 from enum import unique
 
+import msgpack
 import pytz
 from async_timeout import timeout
 
@@ -28,6 +29,7 @@ class Enum(str, _PyEnum, metaclass=EnumMeta):
     pass
 
 
+# TODO replace with arq methods
 _EPOCH = datetime(1970, 1, 1)
 _EPOCH_TZ = datetime(1970, 1, 1, tzinfo=pytz.utc)
 
@@ -133,3 +135,35 @@ def info(settings, logger):
         loop.run_until_complete(_list_conversations(settings, loop, logger))
     except Exception as e:
         logger.warning(f'Error get conversation list {e.__class__.__name__}: {e}')
+
+
+# unicode clock is small to encode and should be fairly unlikely to clash with another dict key
+_DT = '⌚'
+
+MSGPACK_CONTENT_TYPE = 'application/msgpack'
+
+
+def _encoder(obj):
+    if isinstance(obj, datetime):
+        return {_DT: to_unix_ms(obj)}
+    return obj
+
+
+class ObjectHook:
+    def __init__(self, tz):
+        self._tz = tz
+
+    def __call__(self, obj):
+        if _DT in obj and len(obj) == 1:
+            dt = from_unix_ms(obj[_DT])
+            # TODO fix to support ptz dst timezones which don't work with replace()
+            return dt.replace(tzinfo=self._tz)
+        return obj
+
+
+def msg_encode(data):
+    return msgpack.packb(data, default=_encoder, use_bin_type=True)
+
+
+def msg_decode(data, tz=timezone.utc):
+    return msgpack.unpackb(data, object_hook=ObjectHook(tz), encoding='utf8')

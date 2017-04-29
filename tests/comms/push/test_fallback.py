@@ -19,7 +19,7 @@ def fallback_ctrl_pusher(loop, reset_store):
             LOCAL_DOMAIN='em2.local.com',
             PRIVATE_DOMAIN_KEY_FILE=get_private_key_file(),
             DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
-            PUSHER_CLS='tests.fixture_classes.push.HttpMockedDNSPusher',
+            PUSHER_CLS='tests.fixture_classes.push.WebMockedDNSPusher',
             FALLBACK_CLS=fallback_cls,
         )
         _ctrl = Controller(settings, loop=loop)

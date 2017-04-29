@@ -72,6 +72,9 @@ class Settings:
     R_DATABASE = 0
     R_PASSWORD = None
 
+    COOKIE_NAME = 'em2session'
+    SECRET_KEY = b'i am not secure but 32 bits long'
+
     def __init__(self, **custom_settings):
         """
         :param custom_settings: Custom settings to override defaults, only attributes already defined can be set.
