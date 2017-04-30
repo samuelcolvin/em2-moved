@@ -40,6 +40,7 @@ def create_app(settings: Settings=None):
     add_comms_routes(app)
 
     # ui is implemented as a separate app as it needs it's own middleware and isn't served from "/"
-    app.add_subapp('/ui/', create_ui_app(app))
-
+    ui_app = create_ui_app(app)
+    app.add_subapp('/ui/', ui_app)
+    app['uiapp'] = ui_app
     return app

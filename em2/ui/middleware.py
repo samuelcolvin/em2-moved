@@ -6,9 +6,9 @@ from em2.utils import msg_decode
 
 async def user_middleware(app, handler):
     async def user_middleware_handler(request):
-        token = request.cookies.get(app['settings'].COOKIE_NAME)
+        token = request.cookies.get(app['settings'].COOKIE_NAME, '')
         try:
-            data = app['fernet'].decrypt(token.encode() if token else b'')
+            data = app['fernet'].decrypt(token.encode())
         except InvalidToken:
             raise HTTPForbidden(text='Invalid token')
 

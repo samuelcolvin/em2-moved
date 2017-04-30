@@ -116,6 +116,7 @@ class Retrieval(_Interaction):
     Define a request from someone to get data.
     """
     _attr_names = ['address', 'participant_id', 'conv', 'verb', 'component', 'is_remote']
+    # TODO slots
 
     def __init__(self, address, conversation=None, verb=RVerbs.GET, component=Components.CONVERSATIONS,
                  is_remote=False):
