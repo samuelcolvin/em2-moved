@@ -1,4 +1,5 @@
--- TODO: indexes.
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
 
 CREATE TABLE platforms
 (
@@ -7,44 +8,45 @@ CREATE TABLE platforms
   -- TODO check ttl
 );
 CREATE INDEX platform_name ON platforms USING btree (name);
-INSERT INTO platforms (name) VALUES ('F');
+INSERT INTO platforms (name) VALUES ('f');
 
 CREATE TABLE recipients
 (
   id SERIAL PRIMARY KEY,
   address CHARACTER VARYING(255) NOT NULL UNIQUE,
-  platform INTEGER REFERENCES platforms ON DELETE RESTRICT
+  platform INT REFERENCES platforms ON DELETE RESTRICT
   -- TODO check ttl
 );
+CREATE INDEX recipient_address ON recipients USING btree (address);
 
 CREATE TABLE conversations
 (
-  id serial primary key,
+  id SERIAL PRIMARY KEY,
   hash CHARACTER VARYING(64) UNIQUE,
   draft_hash CHARACTER VARYING(64) UNIQUE,
-  creator INTEGER NOT NULL REFERENCES recipients ON DELETE RESTRICT,
+  creator INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   timestamp TIMESTAMP,
   subject CHARACTER VARYING(255) NOT NULL,
   -- TODO expiry
-  last_event INTEGER REFERENCES events,
   ref CHARACTER VARYING (255)
 );
 
 CREATE TABLE participants
 (
-  conversation INTEGER NOT NULL REFERENCES conversations ON DELETE CASCADE,
-  recipient INTEGER NOT NULL REFERENCES recipients ON DELETE RESTRICT,
+  id SERIAL PRIMARY KEY,
+  conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
+  recipient INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   readall BOOLEAN DEFAULT FALSE,
   -- TODO permissions, hidden, status
-  primary key (conversation, recipient)
+  UNIQUE (conversation, recipient)
 );
 
 CREATE TABLE messages
 (
-  id serial primary key,
-  hash CHARACTER VARYING(20),
-  conversation INTEGER NOT NULL REFERENCES conversations ON DELETE CASCADE,
-  parent INTEGER REFERENCES messages,
+  id SERIAL PRIMARY KEY,
+  hash CHARACTER VARYING(20) UNIQUE,
+  conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
+  parent INT REFERENCES messages,
   body TEXT
   -- TODO deleted
 );
@@ -54,15 +56,16 @@ CREATE TYPE target_type AS ENUM ('participant', 'message');  -- TODO attachments
 
 CREATE TABLE events
 (
-  id serial primary key,
-  conversation INTEGER NOT NULL REFERENCES conversations ON DELETE CASCADE,
-  actor INTEGER NOT NULL REFERENCES participants ON DELETE RESTRICT,
+  id SERIAL PRIMARY KEY,
+  hash CHARACTER VARYING(20) UNIQUE,
+  conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
+  actor INT NOT NULL REFERENCES participants ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  parent INTEGER REFERENCES events,
+  parent INT REFERENCES events,
   action action_type NOT NULL,
   target target_type NOT NULL,
-  participant INTEGER REFERENCES participants,
-  message INTEGER REFERENCES messages,
+  participant INT REFERENCES participants,
+  message INT REFERENCES messages,
   body TEXT
 );
 
@@ -70,11 +73,11 @@ CREATE TYPE event_status_type AS ENUM ('pending', 'temporary_failure', 'failed',
 
 CREATE TABLE events_status
 (
-  event INTEGER NOT NULL REFERENCES events ON DELETE CASCADE,
+  event INT NOT NULL REFERENCES events ON DELETE CASCADE,
 
   status event_status_type NOT NULL DEFAULT 'pending',
-  platform INTEGER REFERENCES platforms,
-  participant INTEGER REFERENCES participants,
+  platform INT REFERENCES platforms,
+  participant INT REFERENCES participants,
   errors JSONB[]
 );
 

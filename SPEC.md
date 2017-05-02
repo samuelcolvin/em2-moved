@@ -28,6 +28,8 @@ also: cryptographic signature, status?
 
 Also: display name, permissions, hidden, status: active, archived, muted, left?
 
+Also: notes & personal labels.
+
 ### Event
 
 * conversation
@@ -169,9 +171,11 @@ IDs and subjects of conversations matching search
 * `GET:  /d/l/?offset=50` - list conversations
 * `GET:  /d/s/?q=...` - search conversations
 * `GET:  /d/{hash}/` - get kitchen sink on a conversation
-* `GET:  /d/draft/{hash}/` - get kitchen sink on a draft conversation
 * `WS:   /d/ws/` - connect to websocket to retrieve events
 * `POST: /d/evt/.../` - send event
+* `POST: /d/new/` - start draft
+* `GET:  /d/draft/{draft-hash}/` - get kitchen sink on a draft conversation
+* `POST: /d/publish/{draft-hash}/` - publish conversation
 
 ----------------------------------
 

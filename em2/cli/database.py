@@ -36,8 +36,6 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
 
     conn = await asyncpg.connect(dsn=settings.pg_dsn)
     try:
-        print('dropping and recreating scheme...')
-        await conn.execute('DROP SCHEMA public CASCADE; CREATE SCHEMA public;')
         print('creating tables from model definition...')
         await conn.execute(settings.models_sql)
     finally:

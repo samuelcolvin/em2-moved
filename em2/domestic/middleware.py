@@ -1,7 +1,7 @@
 from aiohttp.web_exceptions import HTTPForbidden
 from cryptography.fernet import InvalidToken
 
-from em2.utils import msg_decode
+from em2.utils.encoding import msg_decode
 
 
 async def user_middleware(app, handler):
