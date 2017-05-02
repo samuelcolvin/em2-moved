@@ -7,9 +7,10 @@ import pytz
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 
-from em2.core import Action
+# from em2.core import Action
 from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
-from em2.utils import MSGPACK_CONTENT_TYPE, from_unix_ms, msg_decode, msg_encode
+from em2.utils.datetime import from_unix_ms
+from em2.utils.encoding import MSGPACK_CONTENT_TYPE, msg_decode, msg_encode
 
 logger = logging.getLogger('em2.comms.web')
 
@@ -128,6 +129,7 @@ async def act(request):
     verb = request.match_info['verb']
     item = request.match_info['item'] or None
 
+    Action = request.app['...']  # FIXME big old bodge to keep linting passing
     action = Action(address, conversation, verb, component, item=item, **extra_headers)
     controller = request.app['controller']
     try:

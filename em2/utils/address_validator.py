@@ -11,7 +11,7 @@ ADDRESS_REGEX = re.compile(r'^[^\s@\u0000-\u0020"\'`,]+@'
 
 def validate_address(value):
     """
-    Brutally simple email address validation. Note unlike most email address validation
+    Brutally simple email address validation. Note unlike most email address validation, except:
     * raw ip address (literal) domain_parts are not allowed.
     * "John Doe <local_part@domain.com>" style "pretty" email addresses are processed, and the raw address returned
     * the local part check is extremely basic. This raises the possibility of unicode spoofing, but no better

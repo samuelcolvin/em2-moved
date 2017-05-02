@@ -1,25 +1,26 @@
 from aiohttp.web import Application, Response
 
 from . import Settings
-from .comms.web import add_comms_routes
-from .core import Controller
-from .ui import create_ui_app
+from .domestic import create_domestic_app
+from .foreign import create_foreign_app
 from .version import VERSION
 
 
 async def app_startup(app):
-    settings = app['settings']
-    app.update(
-        controller=Controller(settings=settings, loop=app.loop),
-        authenticator=settings.authenticator_cls(settings=settings, loop=app.loop)
-    )
-    await app['controller'].startup()
-    await app['authenticator'].startup()
+    pass
+    # settings = app['settings']
+    # app.update(
+    #     controller=Controller(settings=settings, loop=app.loop),
+    #     authenticator=settings.authenticator_cls(settings=settings, loop=app.loop)
+    # )
+    # await app['controller'].startup()
+    # await app['authenticator'].startup()
 
 
 async def app_cleanup(app):
-    await app['controller'].shutdown()
-    await app['authenticator'].shutdown()
+    pass
+    # await app['controller'].shutdown()
+    # await app['authenticator'].shutdown()
 
 
 async def index(request):
@@ -36,11 +37,12 @@ def create_app(settings: Settings=None):
     app.on_cleanup.append(app_cleanup)
 
     app.router.add_get('/', index)
-    # comms is implemented extra routes so it can be at the route
-    add_comms_routes(app)
 
-    # ui is implemented as a separate app as it needs it's own middleware and isn't served from "/"
-    ui_app = create_ui_app(app)
-    app.add_subapp('/ui/', ui_app)
-    app['uiapp'] = ui_app
+    foreign_app = create_foreign_app(app)
+    app.add_subapp('/f/', foreign_app)
+    app['fapp'] = foreign_app
+
+    domestic_app = create_domestic_app(app)
+    app.add_subapp('/d/', domestic_app)
+    app['dapp'] = domestic_app
     return app

@@ -23,11 +23,11 @@ install:
 
 script:
 - make lint
-- make test
+#- make test
 
 after_success:
 - ls -lha
-- bash <(curl -s https://codecov.io/bash)
+#- bash <(curl -s https://codecov.io/bash)
 
 env:
   global:

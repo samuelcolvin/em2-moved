@@ -52,7 +52,7 @@ class Settings:
     PG_PORT = '5432'
     PG_USER = 'postgres'
     PG_PASSWORD = ''
-    PG_DATABASE = 'em2'
+    PG_NAME = 'em2'
 
     PG_POOL_MINSIZE = 1
     PG_POOL_MAXSIZE = 10
@@ -84,6 +84,7 @@ class Settings:
             if not hasattr(self, name):
                 raise TypeError('{} is not a valid setting name'.format(name))
             setattr(self, name, value)
+        self.THIS_DIR = Path(__file__).resolve().parent
 
         self.redis = RedisSettings(
             host=self.R_HOST,
@@ -115,6 +116,24 @@ class Settings:
     @property
     def private_domain_key(self):
         return Path(self.PRIVATE_DOMAIN_KEY_FILE).read_text()
+
+    @property
+    def pg_dsn_kwargs(self):
+        kwargs = {
+            f: getattr(self, f'PG_{f.upper()}')
+            for f in ('name', 'password', 'host', 'port', 'user')
+        }
+        kwargs['driver'] = 'postgres'
+        return kwargs
+
+    @property
+    def pg_dsn(self):
+        from .utils.dsn import make_dsn
+        return make_dsn(**self.pg_dsn_kwargs)
+
+    @property
+    def models_sql(self):
+        return (self.THIS_DIR / 'models.sql').read_text()
 
     @property
     def datastore_cls(self):

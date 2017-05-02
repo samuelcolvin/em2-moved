@@ -1,11 +1,13 @@
 #!/usr/bin/env python3.6
+import asyncio
 import os
 import sys
 
-from em2 import Settings
+from em2 import VERSION, Settings
 from em2.cli.check import cli, command
+from em2.cli.database import prepare_database as _prepare_database
 from em2.logging import logger, setup_logging
-from em2.utils import wait_for_services
+from em2.utils.network import wait_for_services
 
 
 @command
@@ -37,6 +39,12 @@ def web(settings):
 
 
 @command
+def prepare_database(settings):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(_prepare_database(settings, True))  # TODO require argument for force
+
+
+@command
 def worker(settings):
     from arq import RunWorkerProcess
     from em2.ds.pg.utils import check_database_exists
@@ -49,10 +57,30 @@ def worker(settings):
 
 @command
 def info(settings):
-    import em2.utils
-    em2.utils.info(settings, logger)
+    import aiohttp
+    import arq
+    logger.info(f'em2')
+    logger.info(f'Python:   {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')
+    logger.info(f'em2:      {VERSION}')
+    logger.info(f'aiohttp:  {aiohttp.__version__}')
+    logger.info(f'arq:      {arq.VERSION}\n')
+    logger.info(f'domain:   {settings.LOCAL_DOMAIN}')
+    logger.info(f'command:  {settings.COMMAND}')
+    logger.info(f'debug:    {settings.DEBUG}')
+    logger.info(f'pg db:    {settings.PG_NAME}')
+    logger.info(f'redis db: {settings.R_DATABASE}\n')
+    # try:
+    #     loop = asyncio.get_event_loop()
+    #     from em2.ds.pg.utils import check_database_exists
+    #     wait_for_services(settings, loop=loop)
+    #     check_database_exists(settings)
+    #
+    #     loop.run_until_complete(_list_conversations(settings, loop, logger))
+    # except Exception as e:
+    #     logger.warning(f'Error get conversation list {e.__class__.__name__}: {e}')
 
 
+@command
 def shell():
     """
     Basic replica of django-extensions shell, ugly but very useful in development

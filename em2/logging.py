@@ -45,11 +45,6 @@ def prepare_log_config(settings) -> dict:
             },
         },
     }
-    if settings.DEBUG:
-        v['loggers']['gunicorn.access'] = {
-            'handlers': ['em2.default'],
-            'level': 'INFO' if settings.DEBUG else 'CRITICAL',
-        }
     return v
 
 
