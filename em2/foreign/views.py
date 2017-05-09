@@ -12,7 +12,7 @@ from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAu
 from em2.utils.datetime import from_unix_ms
 from em2.utils.encoding import MSGPACK_CONTENT_TYPE, msg_decode, msg_encode
 
-logger = logging.getLogger('em2.comms.web')
+logger = logging.getLogger('em2.foreign.views')
 
 
 def get_ip(request):

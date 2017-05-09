@@ -1,26 +1,36 @@
+import asyncio
 import base64
 import logging
 import os
 from textwrap import wrap
 
+import aiodns
+from aiodns.error import DNSError
+from arq import Actor
+from arq.jobs import DatetimeJob
+from async_timeout import timeout
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
+
 from em2 import Settings
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
-from em2.utils import now_unix_secs
+from em2.utils.datetime import now_unix_secs
 
-from .redis_dns import RedisDNSActor
-
-logger = logging.getLogger('em2.comms.auth')
+logger = logging.getLogger('em2.foreign.auth')
 
 
-class BaseAuthenticator:
+class Authenticator(Actor):
+    job_class = DatetimeJob
+    _dft_value = b'1'
+
     def __init__(self, settings: Settings, *, loop=None, **kwargs):
         self.settings = settings
         self.loop = loop
+        self.redis_settings = self.settings.redis
         super().__init__(**kwargs)
+        self._resolver = None
         self._head_request_timeout = self.settings.COMMS_HEAD_REQUEST_TIMEOUT
         self._domain_timeout = self.settings.COMMS_DOMAIN_CACHE_TIMEOUT
         self._platform_token_timeout = self.settings.COMMS_PLATFORM_TOKEN_TIMEOUT
@@ -63,36 +73,6 @@ class BaseAuthenticator:
             raise DomainPlatformMismatch('"{}" does not use "{}"'.format(domain, platform))
 
     async def _get_public_key(self, platform: str):
-        raise NotImplementedError
-
-    async def _store_platform_token(self, token, expires_at):
-        raise NotImplementedError
-
-    async def _check_domain_uses_platform(self, domain, platform_domain):
-        raise NotImplementedError
-
-    def _valid_signature(self, signed_message, signature, public_key):
-        try:
-            key = RSA.importKey(public_key)
-        except ValueError as e:
-            raise FailedInboundAuthentication(*e.args) from e
-
-        # signature needs to be decoded from base64
-        signature = base64.urlsafe_b64decode(signature)
-
-        h = SHA256.new(signed_message.encode())
-        cipher = PKCS1_v1_5.new(key)
-        return cipher.verify(h, signature)
-
-    def _now_unix(self):
-        return now_unix_secs()
-
-    def _generate_random(self):
-        return base64.urlsafe_b64encode(os.urandom(self._token_length))[:self._token_length].decode()
-
-
-class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSActor):
-    async def _get_public_key(self, platform: str):
         dns_results = await self.dns_query(platform, 'TXT')
         logger.info('got %d TXT records for %s', len(dns_results), platform)
         key_data = self._get_public_key_from_dns(dns_results)
@@ -117,6 +97,10 @@ class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSActor):
                             return key
         raise FailedInboundAuthentication('no "em2key" TXT dns record found')
 
+    async def _store_platform_token(self, token: str, expires_at: int):
+        async with await self.get_redis_conn() as redis:
+            await self.set_exat(redis, token.encode(), self._dft_value, expires_at)
+
     async def _check_domain_uses_platform(self, domain: str, platform_domain: str):
         cache_key = b'pl:%s' % domain.encode()
         async with await self.get_redis_conn() as redis:
@@ -129,6 +113,52 @@ class RedisDNSAuthenticator(BaseAuthenticator, RedisDNSActor):
                     await redis.setex(cache_key, self._domain_timeout, host.encode())
                     return True
 
-    async def _store_platform_token(self, token: str, expires_at: int):
+    def _valid_signature(self, signed_message, signature, public_key):
+        try:
+            key = RSA.importKey(public_key)
+        except ValueError as e:
+            raise FailedInboundAuthentication(*e.args) from e
+
+        # signature needs to be decoded from base64
+        signature = base64.urlsafe_b64decode(signature)
+
+        h = SHA256.new(signed_message.encode())
+        cipher = PKCS1_v1_5.new(key)
+        return cipher.verify(h, signature)
+
+    def _now_unix(self):
+        return now_unix_secs()
+
+    def _generate_random(self):
+        return base64.urlsafe_b64encode(os.urandom(self._token_length))[:self._token_length].decode()
+
+    @property
+    def resolver(self):
+        if self._resolver is None:
+            nameservers = [self.settings.COMMS_DNS_IP] if self.settings.COMMS_DNS_IP else None
+            self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=nameservers)
+        return self._resolver
+
+    async def mx_query(self, host):
+        results = await self.dns_query(host, 'MX')
+        results = [(r.priority, r.host) for r in results]
+        results.sort()
+        return results
+
+    async def dns_query(self, host, qtype):
+        try:
+            with timeout(5, loop=self.loop):
+                return await self.resolver.query(host, qtype)
+        except (DNSError, ValueError, asyncio.TimeoutError) as e:
+            logger.warning('%s query error on %s, %s %s', qtype, host, e.__class__.__name__, e)
+            return []
+
+    async def set_exat(self, redis, key: bytes, value: str, expires_at: int):
+        pipe = redis.pipeline()
+        pipe.set(key, value)
+        pipe.expireat(key, expires_at)
+        await pipe.execute()
+
+    async def key_exists(self, platform_token: str):
         async with await self.get_redis_conn() as redis:
-            await self.set_exat(redis, token.encode(), self._dft_value, expires_at)
+            return bool(await redis.exists(platform_token.encode()))

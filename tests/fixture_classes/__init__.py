@@ -2,10 +2,10 @@
 from asyncio import Future, TimeoutError, new_event_loop
 import aiohttp
 
-from .authenicator import (SimpleAuthenticator, RedisMockDNSAuthenticator, PLATFORM, TIMESTAMP, VALID_SIGNATURE,
+from .authenicator import (SimpleAuthenticator, FixedSimpleAuthenticator, PLATFORM, TIMESTAMP, VALID_SIGNATURE,
                            get_private_key_file)
-from .datastore import SimpleDataStore
-from .push import SimplePusher, SimpleMockRedisPusher, Network, FixedSimpleAuthenticator
+# from .datastore import SimpleDataStore
+# from .push import SimplePusher, SimpleMockRedisPusher, Network, FixedSimpleAuthenticator
 
 
 def future_result(loop, result):

@@ -2,7 +2,7 @@ import pytest
 
 from em2 import Settings
 from em2.exceptions import StartupException
-from em2.utils import _wait_port_open, wait_for_services
+from em2.utils.network import _wait_port_open, wait_for_services
 
 
 def test_wait_for_services(loop):

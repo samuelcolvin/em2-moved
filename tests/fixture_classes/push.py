@@ -9,7 +9,7 @@ from em2.comms import Pusher
 from em2.comms.web.push import WebDNSPusher
 from tests.conftest import test_store
 
-from .authenicator import MockDNSResolver, SimpleAuthenticator
+from .authenicator import MockDNSResolver
 
 
 class Network:
@@ -60,11 +60,6 @@ class CustomTestClient(TestClient):
         assert m, (path, self.regex)
         sub_path = m.groups()[0]
         return self._server.make_url(sub_path)
-
-
-class FixedSimpleAuthenticator(SimpleAuthenticator):
-    def _now_unix(self):
-        return 2461449600
 
 
 def create_test_app(domain='testapp.com'):

@@ -3,11 +3,13 @@ from textwrap import wrap
 
 from aiodns.error import DNSError
 
-from em2.comms.auth import BaseAuthenticator, RedisDNSAuthenticator
+# from em2.comms.auth import BaseAuthenticator, RedisDNSAuthenticator
+from em2.foreign.auth import Authenticator
 
 # to generate public and private keys
 # openssl genrsa -out private.pem 4096
 # openssl rsa -in private.pem -pubout > public.pem
+
 KEY_DIR = (Path(__file__).parent / 'keys').absolute()
 
 # printf 'foobar.com:2461449600' > test.txt
@@ -35,7 +37,7 @@ def get_private_key_file():
     return str(KEY_DIR / 'private.pem')
 
 
-class SimpleAuthenticator(BaseAuthenticator):
+class SimpleAuthenticator(Authenticator):
     def __init__(self, settings, **kwargs):
         super().__init__(settings, **kwargs)
         self._cache = {
@@ -133,7 +135,6 @@ class MockDNSResolver:
         raise NotImplemented()
 
 
-class RedisMockDNSAuthenticator(RedisDNSAuthenticator):
-    @property
-    def resolver(self):
-        return MockDNSResolver()
+class FixedSimpleAuthenticator(SimpleAuthenticator):
+    def _now_unix(self):
+        return 2461449600
