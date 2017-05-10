@@ -68,6 +68,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_prefix = 'EM2_'
+        ignore_extra = False
 
     @property
     def private_domain_key(self):

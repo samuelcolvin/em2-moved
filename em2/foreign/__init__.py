@@ -1,3 +1,4 @@
+# import asyncpg
 from aiohttp.web import Application
 
 from .views import act, authenticate
@@ -6,15 +7,14 @@ from .views import act, authenticate
 async def app_startup(app):
     settings = app['settings']
     app.update(
-        # controller=Controller(settings=settings, loop=app.loop),
-        authenticator=settings.authenticator_cls(settings=settings, loop=app.loop)
+        # pg=await asyncpg.create_pool(dsn=settings.pg_dsn),
+        authenticator=settings.authenticator_cls(settings=settings, loop=app.loop),
     )
-    # await app['controller'].startup()
     await app['authenticator'].startup()
 
 
 async def app_cleanup(app):
-    # await app['controller'].shutdown()
+    # await app['pg'].close()
     await app['authenticator'].close()
 
 
@@ -27,6 +27,6 @@ def create_foreign_app(settings):
 
     # TODO deal with domain routing
     # TODO add trailing slashes
-    app.router.add_post('/authenticate', authenticate)
-    app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}', act)
+    app.router.add_post('/authenticate', authenticate, name='authenticate')
+    app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}', act, name='act')
     return app

@@ -8,6 +8,7 @@ from .datetime import from_unix_ms, to_unix_ms
 _DT = '⌚'
 
 MSGPACK_CONTENT_TYPE = 'application/msgpack'
+JSON_CONTENT_TYPE = 'application/json'
 
 
 def _encoder(obj):

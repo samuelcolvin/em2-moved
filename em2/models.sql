@@ -1,8 +1,7 @@
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 
-CREATE TABLE platforms
-(
+CREATE TABLE platforms (
   id SERIAL PRIMARY KEY,
   name CHARACTER VARYING(255) NOT NULL UNIQUE
   -- TODO check ttl
@@ -10,8 +9,7 @@ CREATE TABLE platforms
 CREATE INDEX platform_name ON platforms USING btree (name);
 INSERT INTO platforms (name) VALUES ('f');
 
-CREATE TABLE recipients
-(
+CREATE TABLE recipients (
   id SERIAL PRIMARY KEY,
   address CHARACTER VARYING(255) NOT NULL UNIQUE,
   platform INT REFERENCES platforms ON DELETE RESTRICT
@@ -19,20 +17,18 @@ CREATE TABLE recipients
 );
 CREATE INDEX recipient_address ON recipients USING btree (address);
 
-CREATE TABLE conversations
-(
+CREATE TABLE conversations (
   id SERIAL PRIMARY KEY,
   hash CHARACTER VARYING(64) UNIQUE,
   draft_hash CHARACTER VARYING(64) UNIQUE,
   creator INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
-  timestamp TIMESTAMP,
+  timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   subject CHARACTER VARYING(255) NOT NULL,
   -- TODO expiry
   ref CHARACTER VARYING (255)
 );
 
-CREATE TABLE participants
-(
+CREATE TABLE participants (
   id SERIAL PRIMARY KEY,
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   recipient INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
@@ -41,8 +37,7 @@ CREATE TABLE participants
   UNIQUE (conversation, recipient)
 );
 
-CREATE TABLE messages
-(
+CREATE TABLE messages (
   id SERIAL PRIMARY KEY,
   hash CHARACTER VARYING(20) UNIQUE,
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
@@ -54,8 +49,7 @@ CREATE TABLE messages
 CREATE TYPE action_type AS ENUM ('add', 'modify', 'delete', 'lock', 'release lock');
 CREATE TYPE target_type AS ENUM ('participant', 'message');  -- TODO attachments, subject, expiry, labels
 
-CREATE TABLE events
-(
+CREATE TABLE events (
   id SERIAL PRIMARY KEY,
   hash CHARACTER VARYING(20) UNIQUE,
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
@@ -71,8 +65,7 @@ CREATE TABLE events
 
 CREATE TYPE event_status_type AS ENUM ('pending', 'temporary_failure', 'failed', 'successful');
 
-CREATE TABLE events_status
-(
+CREATE TABLE events_status (
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
 
   status event_status_type NOT NULL DEFAULT 'pending',

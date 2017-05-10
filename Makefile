@@ -21,7 +21,7 @@ test:
 	pytest --cov=em2 && coverage combine
 
 .PHONY: testcov
-testcov: lint
+testcov:
 	pytest --cov=em2 --fast && (echo "building coverage html"; coverage combine; coverage html)
 
 .PHONY: all
