@@ -45,10 +45,10 @@ async def set_recipient(request):
 LIST_CONVS = """
 SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
 FROM (
-  SELECT c.hash as hash, c.draft_hash as draft_hash, c.subject as subject, c.timestamp as ts
+  SELECT c.hash as conv_id, c.draft_hash as draft_conv_id, c.subject as subject, c.timestamp as ts
   FROM conversations AS c
   LEFT OUTER JOIN participants ON c.id = participants.conversation
-  WHERE c.creator = $1 OR participants.recipient = $1
+  WHERE participants.recipient = $1
   ORDER BY c.id DESC LIMIT 50
 ) t;
 """
@@ -56,3 +56,18 @@ FROM (
 
 async def conversations_json(request):
     return await request['conn'].fetchval(LIST_CONVS, request['recipient_id'])
+
+
+CONV_DETAILS = """
+SELECT row_to_json(t)
+FROM (
+  SELECT c.hash as conv_id, c.draft_hash as draft_conv_id, c.subject as subject, c.timestamp as ts
+  FROM conversations AS c
+  LEFT OUTER JOIN participants ON c.id = participants.conversation
+  WHERE participants.recipient = $1 AND c.hash = $2
+) t;
+"""
+
+
+async def conversation_details(request, conv_id):
+    return await request['conn'].fetchval(CONV_DETAILS, request['recipient_id'], conv_id)

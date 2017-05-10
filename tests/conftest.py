@@ -32,22 +32,14 @@ def clean_db(settings):
 @pytest.yield_fixture
 def db_conn(loop, settings, clean_db):
     await_ = loop.run_until_complete
-    pool = await_(asyncpg.create_pool(
-        dsn=settings.pg_dsn,
-        min_size=1,
-        max_size=4,
-        loop=loop,
-    ))
+    conn = await_(asyncpg.connect(dsn=settings.pg_dsn, loop=loop))
 
-    conn = await_(pool.acquire())
     tr = conn.transaction()
     await_(tr.start())
 
     yield conn
 
     await_(tr.rollback())
-    await_(pool.release(conn))
-    await_(pool.close())
 
 
 def _set_connection(app):
@@ -62,10 +54,13 @@ def fclient(loop, settings, db_conn, test_client):
     return loop.run_until_complete(test_client(app))
 
 
+test_addr = 'testing@example.com'
+
+
 @pytest.fixture
 def dclient(loop, settings, db_conn, test_client):
     data = {
-        'address': 'testing@example.com'
+        'address': test_addr
     }
     data = msg_encode(data)
     fernet = Fernet(base64.urlsafe_b64encode(settings.SECRET_KEY))
@@ -91,3 +86,18 @@ def url(request):
     def _url(name, **parts):
         return client.server.app.router[name].url_for(**parts)
     return _url
+
+
+async def create_conversation(db_conn):
+    recipient_id = await db_conn.fetchval('INSERT INTO recipients (address) VALUES ($1) RETURNING id', test_addr)
+    hash = 'hash123'
+    args = hash, recipient_id, 'Test Conversation', 'test-conv'
+    conv_id = await db_conn.fetchval('INSERT INTO conversations (hash, creator, subject, ref) '
+                                     'VALUES ($1, $2, $3, $4) RETURNING id', *args)
+    await db_conn.execute('INSERT INTO participants (conversation, recipient) VALUES ($1, $2)', conv_id, recipient_id)
+    return hash
+
+
+@pytest.fixture
+def conv_id(loop, db_conn):
+    return loop.run_until_complete(create_conversation(db_conn))

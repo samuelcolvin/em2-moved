@@ -1,7 +1,7 @@
-# from aiohttp.web_exceptions import HTTPNotFound
+from aiohttp.web_exceptions import HTTPNotFound
 from aiohttp.web_response import Response
 
-from em2.db import conversations_json
+from em2.db import conversation_details, conversations_json
 from em2.utils.encoding import JSON_CONTENT_TYPE
 
 
@@ -10,14 +10,9 @@ async def retrieve_list(request):
 
 
 async def retrieve_conv(request):
-    return Response(text='', content_type=JSON_CONTENT_TYPE)
-    # conv_id = request.match_info['conv']
-    # retrieval = Retrieval(request['address'], conversation=conv_id)
-    # try:
-    #     conversation = await request.app['controller'].retrieve(retrieval)
-    # except ConversationNotFound as e:
-    #     raise HTTPNotFound(reason=e)
-    # return json_response(
-    #     request,
-    #     **conversation,
-    # )
+    conv_id = request.match_info['conv']
+    details = await conversation_details(request, conv_id)
+    if details is None:
+        raise HTTPNotFound(reason=f'conversation {conv_id} not found')
+    # TODO get rest
+    return Response(text=details, content_type=JSON_CONTENT_TYPE)
