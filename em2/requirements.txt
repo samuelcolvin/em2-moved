@@ -5,7 +5,7 @@
 aiodns==1.1.1
 aioredis==0.3.0
 async-timeout==1.2.1
-arq==0.6
+arq==0.6.1
 Cerberus==1.1
 msgpack-python==0.4.8
 pycrypto==2.6.1
