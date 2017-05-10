@@ -6,9 +6,8 @@ from em2.foreign import create_foreign_app as _create_foreign_app
 
 def create_test_app(*args):
     settings = Settings(
-        DATASTORE_CLS='tests.fixture_classes.SimpleDataStore',
         LOCAL_DOMAIN='testapp.com',
-        AUTHENTICATOR_CLS='tests.fixture_classes.FixedSimpleAuthenticator',
+        authenticator_cls='tests.fixture_classes.FixedSimpleAuthenticator',
     )
     return _create_foreign_app(settings)
 

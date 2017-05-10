@@ -14,7 +14,7 @@ lint:
 	python setup.py check -rms
 	flake8 --version
 	flake8 em2/ tests/
-	pytest em2 -p no:sugar -q --cache-clear
+	pytest em2 -p no:sugar -q
 
 .PHONY: test
 test:
@@ -23,6 +23,9 @@ test:
 .PHONY: testcov
 testcov: lint
 	pytest --cov=em2 --fast && (echo "building coverage html"; coverage combine; coverage html)
+
+.PHONY: all
+all: testcov lint
 
 .PHONY: clean
 clean:

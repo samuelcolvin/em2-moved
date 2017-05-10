@@ -16,7 +16,7 @@
 * expiration
 * subject
 * last event
-* reference slugified nitial subject used for hash 
+* reference slugified initial subject used for hash 
 
 also: cryptographic signature, status?
 
@@ -133,14 +133,13 @@ Event statuses are saved for each event going to each platform and each local pa
 
 Used to record failures and reschedule re-sends.
 
-Events which are "complete" can be deleted to avoid bloat.
+Events statuses which are "complete" can be deleted to avoid bloat.
 
 ### Pull: Get kitchen sink on a conversation
 
 Contains everything about the conversation. 
 
 I guess includes all events in the case of platform requests.
-
 
 # Client Only Communications
 

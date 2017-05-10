@@ -9,6 +9,7 @@ arq==0.6
 Cerberus==1.1
 msgpack-python==0.4.8
 pycrypto==2.6.1
+pydantic==0.0.4
 pytz==2017.2
 
 # optionally used in logging

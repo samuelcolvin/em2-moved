@@ -1,7 +1,7 @@
 import asyncpg
+from pydantic.utils import make_dsn
 
 from em2.settings import Settings
-from em2.utils.dsn import make_dsn
 
 DB_EXISTS = 'SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=$1)'
 
