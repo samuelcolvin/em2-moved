@@ -5,12 +5,12 @@ import pytest
 from cryptography.fernet import Fernet
 from pydantic.datetime_parse import parse_datetime
 
-from em2.domestic.middleware import SET_RECIPIENT_ID
+from em2.db import SET_RECIPIENT_ID
 from em2.utils.encoding import msg_encode
 
 
-async def test_valid_cookie(clean_db, dclient, url):
-    async with dclient.server.app['pg'].acquire() as conn:
+async def test_valid_cookie(dclient, url):
+    async with dclient.server.app['db'].acquire() as conn:
         recipient_id = await conn.fetchval(SET_RECIPIENT_ID, 'testing@example.com')
         args = 'hash-1', recipient_id, 'Test Conversation', 'test'
         await conn.execute('INSERT INTO conversations (hash, creator, subject, ref) VALUES ($1, $2, $3, $4)', *args)
@@ -20,7 +20,6 @@ async def test_valid_cookie(clean_db, dclient, url):
     ts = parse_datetime(obj[0].pop('ts'))
     assert 0 < (datetime.now() - ts).total_seconds() < 1
     assert [{'hash': 'hash-1', 'draft_hash': None, 'subject': 'Test Conversation'}] == obj
-    # assert 'Invalid token' in await r.text()
 
 
 async def test_no_cookie(dclient, url):

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # datastore_cls: Module = 'em2.ds.pg.PostgresDataStore'
     # pusher_cls: Module = 'em2.comms.web.push.WebDNSPusher'
     # fallback_cls: Module = 'em2.comms.fallback.FallbackHandler'
+    db_cls: Module = 'em2.db.Database'
     authenticator_cls: Module = 'em2.foreign.auth.Authenticator'
 
     # default address for webservers eg. gunicorn to bind to
@@ -37,7 +38,6 @@ class Settings(BaseSettings):
 
     PG_POOL_MINSIZE = 1
     PG_POOL_MAXSIZE = 10
-    PG_POOL_TIMEOUT = 60.0
 
     LOCAL_DOMAIN = 'no-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'

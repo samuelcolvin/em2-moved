@@ -1,6 +1,5 @@
 import base64
 
-import asyncpg
 from aiohttp.web import Application
 from cryptography.fernet import Fernet
 
@@ -11,12 +10,13 @@ from .middleware import middleware
 async def app_startup(app):
     settings = app['settings']
     app.update(
-        pg=await asyncpg.create_pool(dsn=settings.pg_dsn),
+        db=settings.db_cls(app.loop, settings),
     )
+    await app['db'].startup()
 
 
 async def app_cleanup(app):
-    await app['pg'].close()
+    await app['db'].close()
 
 
 def create_domestic_app(settings):
