@@ -24,6 +24,4 @@ uvloop==0.8.0
 cryptography==1.8.1
 
 # postgres
-SQLAlchemy==1.1.9
-aiopg==0.13.0
-psycopg2==2.7.1
+asyncpg==0.10.1
