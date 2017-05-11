@@ -14,5 +14,5 @@ async def retrieve_conv(request):
     details = await conversation_details(request, conv_id)
     if details is None:
         raise HTTPNotFound(reason=f'conversation {conv_id} not found')
-    # TODO get rest
+    # TODO get the rest
     return Response(text=details, content_type=JSON_CONTENT_TYPE)

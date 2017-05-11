@@ -23,16 +23,34 @@ async def test_no_cookie(dclient, url):
     assert 'Invalid token' in await r.text()
 
 
-async def test_invalid_cookie(dclient, url):
+async def test_invalid_cookie(dclient, url, settings):
     data = {'address': 'testing@example.com'}
     data = msg_encode(data)
     fernet = Fernet(base64.urlsafe_b64encode(b'i am different and 32 bits long!'))
     settings = dclient.server.app['settings']
     cookies = {settings.COOKIE_NAME: fernet.encrypt(data).decode()}
     dclient.session.cookie_jar.update_cookies(cookies)
+
     r = await dclient.get(url('retrieve-list'))
     assert r.status == 403, await r.text()
     assert 'Invalid token' in await r.text()
+
+
+async def test_session_update(dclient, url):
+    assert len(dclient.session.cookie_jar) == 1
+    c1 = list(dclient.session.cookie_jar)[-1]
+
+    r = await dclient.get(url('retrieve-list'))
+    assert r.status == 200, await r.text()
+    assert len(dclient.session.cookie_jar) == 2
+    c2 = list(dclient.session.cookie_jar)[-1]
+
+    r = await dclient.get(url('retrieve-list'))
+    assert r.status == 200, await r.text()
+    assert len(dclient.session.cookie_jar) == 2
+    c3 = list(dclient.session.cookie_jar)[-1]
+    assert c1 != c2
+    assert c2 == c3
 
 
 async def test_list_details_conv(dclient, conv_id, url):

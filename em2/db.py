@@ -34,12 +34,15 @@ ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id
 
 
 async def set_recipient(request):
-    if request.get('recipient_id'):
+    if request['session'].recipient_id:
         return
-    recipient_id = await request['conn'].fetchval(GET_RECIPIENT_ID, request['address'])
+    recipient_id = await request['conn'].fetchval(GET_RECIPIENT_ID, request['session'].address)
     if recipient_id is None:
-        recipient_id = await request['conn'].fetchval(SET_RECIPIENT_ID, request['address'])
-    request['recipient_id'] = recipient_id
+        recipient_id = await request['conn'].fetchval(SET_RECIPIENT_ID, request['session'].address)
+    request['session'].recipient_id = recipient_id
+    # until samuelcolvin/pydantic#14 is fixed
+    request['session'].__values__['recipient_id'] = recipient_id
+    request['session_change'] = True
 
 
 LIST_CONVS = """
@@ -55,7 +58,7 @@ FROM (
 
 
 async def conversations_json(request):
-    return await request['conn'].fetchval(LIST_CONVS, request['recipient_id'])
+    return await request['conn'].fetchval(LIST_CONVS, request['session'].recipient_id)
 
 
 CONV_DETAILS = """
@@ -70,4 +73,4 @@ FROM (
 
 
 async def conversation_details(request, conv_id):
-    return await request['conn'].fetchval(CONV_DETAILS, request['recipient_id'], conv_id)
+    return await request['conn'].fetchval(CONV_DETAILS, request['session'].recipient_id, conv_id)

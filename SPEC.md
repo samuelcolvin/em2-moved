@@ -116,6 +116,42 @@ Obviously read notifications are not sent for read notifications.
 
 ----------------------------------
 
+# User
+
+In directory:
+* email address
+* public key
+* full name - "the name you use on documents"
+* common name - "what people call you in conversation"
+* status: - active, out of office, dormant
+* type:
+  * user
+  * alias
+  * bot
+  * shared account, eg. info@ - address monitored by numerous people
+* organisations / teams
+* photo
+* short description
+* description - markdown
+* other trusted profiles
+* platform
+
+Perhaps way of giving more info to people who have received a message from the user:
+* phone
+* more info
+
+To log in:
+* email address
+* password & mfa
+* backup email address
+* phone number
+* password reset details
+
+Used in em2 server:
+* address
+* name?
+
+----------------------------------
 
 # Platform and Client Communications
 
