@@ -4,8 +4,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from em2 import Settings
-from em2.utils.datetime import to_unix_ms
-from em2.utils.encoding import msg_encode
+from em2.utils.encoding import msg_encode, to_unix_ms
 from em2.utils.network import check_server
 # from em2.core import Action, Components, Verbs
 from .fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
@@ -91,19 +90,6 @@ async def test_missing_field(fclient, url):
     r = await fclient.post(url('act', conv='123', component='message', verb='add', item=''), headers=headers)
     assert r.status == 400
     assert await r.text() == 'Invalid Headers:\nem2-event-id: missing\n'
-
-
-async def test_bad_timezone(fclient, url):
-    headers = {
-        'em2-auth': 'already-authenticated.com:123:whatever',
-        'em2-address': 'test@already-authenticated.com',
-        'em2-timezone': 'invalid',
-        'em2-timestamp': str(to_unix_ms(datetime.now())),
-        'em2-event-id': '123',
-    }
-    r = await fclient.post(url('act', conv='123', component='message', verb='add', item=''), headers=headers)
-    assert await r.text() == 'Invalid Headers:\nem2-timezone: Unknown timezone "invalid"\n'
-    assert r.status == 400
 
 
 async def test_bad_timestamp(fclient, url):

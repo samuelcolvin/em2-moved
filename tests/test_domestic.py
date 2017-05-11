@@ -7,13 +7,14 @@ from pydantic.datetime_parse import parse_datetime
 from em2.utils.encoding import msg_encode
 
 
-async def test_valid_cookie(dclient, conv_id, url):
+async def test_valid_cookie(dclient, conv_hash, url):
     r = await dclient.get(url('retrieve-list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
     ts = parse_datetime(obj[0].pop('ts'))
     assert 0 < (datetime.now() - ts).total_seconds() < 1
-    assert [{'conv_id': conv_id, 'draft_conv_id': None, 'subject': 'Test Conversation'}] == obj
+    obj[0].pop('id')
+    assert [{'hash': conv_hash, 'subject': 'Test Conversation'}] == obj
 
 
 async def test_no_cookie(dclient, url):
@@ -53,20 +54,34 @@ async def test_session_update(dclient, url):
     assert c2 == c3
 
 
-async def test_list_details_conv(dclient, conv_id, url):
+async def test_list_details_conv(dclient, conv_hash, url):
     r = await dclient.get(url('retrieve-list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
-    assert obj[0]['conv_id'] == conv_id
-    r = await dclient.get(url('retrieve-conv', conv=conv_id))
+    assert obj[0]['hash'] == conv_hash
+    r = await dclient.get(url('retrieve-conv', conv=conv_hash))
     assert r.status == 200, await r.text()
     obj = await r.json()
     assert obj['subject'] == 'Test Conversation'
     # TODO assert obj['messages'][0]['body'] == 'hello'
 
 
-async def test_missing_conv(dclient, conv_id, url):
-    r = await dclient.get(url('retrieve-conv', conv=conv_id + 'x'))
+async def test_missing_conv(dclient, conv_hash, url):
+    r = await dclient.get(url('retrieve-conv', conv=conv_hash + 'x'))
     assert r.status == 404, await r.text()
     text = await r.text()
     assert text.endswith('x not found')
+
+
+async def test_create_conv(dclient, url):
+    data = {
+        'subject': 'Test Subject',
+        'message': 'this is a message',
+        'participants': [
+            'other@example.com',
+        ],
+    }
+    r = await dclient.post(url('new-conv'), json=data)
+    assert r.status == 201, await r.text()
+    # obj = await r.json()
+    # print(obj)

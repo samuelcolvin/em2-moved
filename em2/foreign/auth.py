@@ -2,6 +2,7 @@ import asyncio
 import base64
 import logging
 import os
+from datetime import datetime
 from textwrap import wrap
 
 import aiodns
@@ -13,10 +14,9 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-
 from em2 import Settings
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
-from em2.utils.datetime import now_unix_secs
+from em2.utils.encoding import to_unix_ms
 
 logger = logging.getLogger('em2.foreign.auth')
 
@@ -127,7 +127,7 @@ class Authenticator(Actor):
         return cipher.verify(h, signature)
 
     def _now_unix(self):
-        return now_unix_secs()
+        return to_unix_ms(datetime.utcnow())
 
     def _generate_random(self):
         return base64.urlsafe_b64encode(os.urandom(self._token_length))[:self._token_length].decode()

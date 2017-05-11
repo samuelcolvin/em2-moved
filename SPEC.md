@@ -10,7 +10,6 @@
 ### Conversations
 
 * hash - of conversation basics
-* draft hash - used until published
 * creator - recipient
 * timestamp
 * expiration
@@ -209,8 +208,8 @@ IDs and subjects of conversations matching search
 * `WS:   /d/ws/` - connect to websocket to retrieve events
 * `POST: /d/evt/.../` - send event
 * `POST: /d/new/` - start draft
-* `GET:  /d/draft/{draft-hash}/` - get kitchen sink on a draft conversation
-* `POST: /d/publish/{draft-hash}/` - publish conversation
+* `GET:  /d/draft/{draft-id}/` - get kitchen sink on a draft conversation
+* `POST: /d/publish/{draft-id}/` - publish conversation
 
 ----------------------------------
 

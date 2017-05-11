@@ -2,7 +2,7 @@ from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, EmailStr
 
-from em2.db import set_recipient
+from em2.core import set_recipient
 from em2.utils.encoding import msg_decode, msg_encode
 
 

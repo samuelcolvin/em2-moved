@@ -99,5 +99,5 @@ async def create_conversation(db_conn):
 
 
 @pytest.fixture
-def conv_id(loop, db_conn):
+def conv_hash(loop, db_conn):
     return loop.run_until_complete(create_conversation(db_conn))

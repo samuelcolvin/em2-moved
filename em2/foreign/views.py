@@ -6,10 +6,10 @@ import logging
 import pytz
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
+from arq.utils import from_unix_ms
 
 # from em2.core import Action
 from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
-from em2.utils.datetime import from_unix_ms
 from em2.utils.encoding import MSGPACK_CONTENT_TYPE, msg_decode, msg_encode
 
 logger = logging.getLogger('em2.foreign.views')
@@ -69,13 +69,6 @@ async def authenticate(request):
     return web.Response(text='ok\n', status=201, headers={'em2-key': key})
 
 
-def validate_timezone(v, **others):
-    try:
-        return pytz.timezone(v)
-    except pytz.UnknownTimeZoneError as e:
-        raise ValueError(f'Unknown timezone "{v}"') from e
-
-
 def validate_timestamp(v, **others):
     return from_unix_ms(int(v)).replace(tzinfo=others.get('timezone', pytz.utc))
 
@@ -83,7 +76,6 @@ def validate_timestamp(v, **others):
 ACT_HEADERS = [
     ('auth', True),
     ('address', True),
-    ('timezone', False, validate_timezone),
     ('timestamp', True, validate_timestamp),
     ('event_id', True),
     ('parent_event_id', False),
@@ -112,12 +104,10 @@ async def act(request):
     headers = _get_headers(request.headers, ACT_HEADERS)
     address, extra_headers = await _parse_headers(headers, request.app['authenticator'])
 
-    timezone = headers.pop('timezone', pytz.utc)
-
     # TODO support json as well as msgpack
     body_data = await request.read()
     try:
-        obj = msg_decode(body_data, tz=timezone)
+        obj = msg_decode(body_data)
     except ValueError as e:
         raise HTTPBadRequest(text='Error Decoding msgpack: {}\n'.format(e)) from e
 

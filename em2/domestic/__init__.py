@@ -3,7 +3,7 @@ import base64
 from aiohttp.web import Application
 from cryptography.fernet import Fernet
 
-from .views import retrieve_conv, retrieve_list
+from .views import new_conv, retrieve_conv, retrieve_list
 from .middleware import middleware
 
 
@@ -32,5 +32,6 @@ def create_domestic_app(settings):
     )
 
     app.router.add_get('/l/', retrieve_list, name='retrieve-list')
-    app.router.add_get('/d/{conv:[a-z0-9]+}/', retrieve_conv, name='retrieve-conv')
+    app.router.add_get('/g/{conv:[a-z0-9]+}/', retrieve_conv, name='retrieve-conv')
+    app.router.add_post('/new/', new_conv, name='new-conv')
     return app
