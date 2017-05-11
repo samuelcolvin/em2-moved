@@ -22,4 +22,4 @@ uvloop==0.8.0
 cryptography==1.8.1
 
 # postgres
-asyncpg==0.10.1
+asyncpg==0.11.0
