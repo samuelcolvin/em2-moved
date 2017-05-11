@@ -2,7 +2,6 @@ from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, EmailStr
 
-from em2.core import set_recipient
 from em2.utils.encoding import msg_decode, msg_encode
 
 
@@ -33,6 +32,26 @@ async def db_conn_middleware(app, handler):
             request['conn'] = conn
             return await handler(request)
     return _handler
+
+
+GET_RECIPIENT_ID = 'SELECT id FROM recipients WHERE address = $1'
+# pointless update is slightly ugly, but should happen vary rarely.
+SET_RECIPIENT_ID = """
+INSERT INTO recipients (address) VALUES ($1)
+ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id
+"""
+
+
+async def set_recipient(request):
+    if request['session'].recipient_id:
+        return
+    recipient_id = await request['conn'].fetchval(GET_RECIPIENT_ID, request['session'].address)
+    if recipient_id is None:
+        recipient_id = await request['conn'].fetchval(SET_RECIPIENT_ID, request['session'].address)
+    request['session'].recipient_id = recipient_id
+    # until samuelcolvin/pydantic#14 is fixed
+    request['session'].__values__['recipient_id'] = recipient_id
+    request['session_change'] = True
 
 
 async def update_session_middleware(app, handler):

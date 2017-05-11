@@ -1,21 +1,88 @@
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPNotFound
-from pydantic import BaseModel, ValidationError
+from typing import List
 
-from em2.core import Components, CreateConvModel, Verbs, conv_details, convs_json, create_conv
+from aiohttp.web_exceptions import HTTPBadRequest, HTTPNotFound
+from pydantic import BaseModel, EmailStr, ValidationError, constr
+
+from em2.core import Components, Verbs, hash_id
 from em2.utils.web import json_response, raw_json_response
 
 
+LIST_CONVS = """
+SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
+FROM (
+  SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
+  FROM conversations AS c
+  LEFT OUTER JOIN participants ON c.id = participants.conversation
+  WHERE participants.recipient = $1
+  ORDER BY c.id DESC LIMIT 50
+) t;
+"""
+
+
 async def vlist(request):
-    return raw_json_response(await convs_json(request))
+    raw_json = await request['conn'].fetchval(LIST_CONVS, request['session'].recipient_id)
+    return raw_json_response(raw_json)
+
+
+CONV_DETAILS = """
+SELECT row_to_json(t)
+FROM (
+  SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
+  FROM conversations AS c
+  JOIN participants ON c.id = participants.conversation
+  WHERE participants.recipient = $1 AND c.hash = $2
+) t;
+"""
 
 
 async def get(request):
     conv_hash = request.match_info['conv']
-    details = await conv_details(request, conv_hash)
+    details = await request['conn'].fetchval(CONV_DETAILS, request['session'].recipient_id, conv_hash)
     if details is None:
         raise HTTPNotFound(reason=f'conversation {conv_hash} not found')
     # TODO get the rest
     return raw_json_response(details)
+
+
+class CreateConvModel(BaseModel):
+    subject: constr(max_length=255) = ...
+    message: str = ...
+    participants: List[EmailStr] = []
+
+
+GET_EXISTING_RECIPIENTS = 'SELECT id, address FROM recipients WHERE address = any($1)'
+SET_MISSING_RECIPIENTS = """
+INSERT INTO recipients (address) (SELECT unnest ($1::VARCHAR(255)[]))
+ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address
+RETURNING id
+"""
+CREATE_CONV = """
+INSERT INTO conversations (creator, subject)
+VALUES ($1, $2) RETURNING id
+"""
+ADD_PARTICIPANT = 'INSERT INTO participants (conversation, recipient) VALUES ($1, $2)'
+ADD_MESSAGE = 'INSERT INTO messages (hash, conversation, body) VALUES ($1, $2, $3)'
+
+
+async def create_conv(request, conv: CreateConvModel):
+    conn = request['conn']
+    participant_addresses = set(conv.participants)
+    participant_ids = set()
+    if participant_addresses:
+        for r in await conn.fetch(GET_EXISTING_RECIPIENTS, participant_addresses):
+            participant_ids.add(r['id'])
+            participant_addresses.remove(r['address'])
+
+        if participant_addresses:
+            extra_ids = {r['id'] for r in await conn.fetch(SET_MISSING_RECIPIENTS, participant_addresses)}
+            participant_ids.update(extra_ids)
+
+    conv_id = await conn.fetchval(CREATE_CONV, request['session'].recipient_id, conv.subject)
+    if participant_ids:
+        await conn.executemany(ADD_PARTICIPANT, {(conv_id, pid) for pid in participant_ids})
+    message_hash = hash_id(request['session'].address, conv.message)
+    await conn.execute(ADD_MESSAGE, message_hash, conv_id, conv.message)
+    return conv_id
 
 
 async def create(request):
@@ -26,7 +93,25 @@ async def create(request):
         raise HTTPBadRequest(text=e.json())
     except (ValueError, TypeError):
         raise HTTPBadRequest(text='invalid request data')
-    conv_id = await create_conv(request, conv)
+
+    conn = request['conn']
+    participant_addresses = set(conv.participants)
+    participant_ids = set()
+    if participant_addresses:
+        for r in await conn.fetch(GET_EXISTING_RECIPIENTS, participant_addresses):
+            participant_ids.add(r['id'])
+            participant_addresses.remove(r['address'])
+
+        if participant_addresses:
+            extra_ids = {r['id'] for r in await conn.fetch(SET_MISSING_RECIPIENTS, participant_addresses)}
+            participant_ids.update(extra_ids)
+
+    conv_id = await conn.fetchval(CREATE_CONV, request['session'].recipient_id, conv.subject)
+    if participant_ids:
+        await conn.executemany(ADD_PARTICIPANT, {(conv_id, pid) for pid in participant_ids})
+    message_hash = hash_id(request['session'].address, conv.message)
+    await conn.execute(ADD_MESSAGE, message_hash, conv_id, conv.message)
+
     # url = request.app.router['draft-conv'].url_for(id=conv_id)
     return json_response(id=conv_id, status_=201)
 
