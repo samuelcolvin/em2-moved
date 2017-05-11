@@ -113,6 +113,10 @@ Obviously read notifications are not sent for read notifications.
 * add
 * remove
 
+### Extras
+
+eg. maps, calendar appointments
+
 ----------------------------------
 
 # User

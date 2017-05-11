@@ -1,4 +1,5 @@
 import hashlib
+from enum import Enum, unique
 from typing import List
 
 from pydantic import BaseModel, EmailStr, constr
@@ -10,6 +11,31 @@ def hash_id(*args, sha256=False):
         return hashlib.sha256(to_hash).hexdigest()
     else:
         return hashlib.sha1(to_hash).hexdigest()
+
+
+@unique
+class Components(str, Enum):
+    """
+    Component types, used for both urls and in db ENUM see models.sql
+    """
+    SUBJECT = 'sbj'
+    EXPIRY = 'xpr'
+    LABEL = 'lbl'
+    MESSAGE = 'msg'
+    PARTICIPANT = 'prt'
+    ATTACHMENT = 'atc'
+
+
+@unique
+class Verbs(str, Enum):
+    """
+    Verb types, used for both urls and in db ENUM see models.sql
+    """
+    ADD = 'add'
+    MODIFY = 'mod'
+    DELETE = 'del'
+    LOCK = 'lck'
+    UNLOCK = 'ulk'
 
 
 GET_RECIPIENT_ID = 'SELECT id FROM recipients WHERE address = $1'
@@ -53,7 +79,7 @@ SELECT row_to_json(t)
 FROM (
   SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
   FROM conversations AS c
-  LEFT OUTER JOIN participants ON c.id = participants.conversation
+  JOIN participants ON c.id = participants.conversation
   WHERE participants.recipient = $1 AND c.hash = $2
 ) t;
 """

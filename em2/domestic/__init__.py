@@ -3,7 +3,8 @@ import base64
 from aiohttp.web import Application
 from cryptography.fernet import Fernet
 
-from .views import new_conv, retrieve_conv, retrieve_list
+from em2.core import Components, Verbs
+from .views import act, create, get, vlist
 from .middleware import middleware
 
 
@@ -31,7 +32,12 @@ def create_domestic_app(settings):
         fernet=Fernet(secret_key),
     )
 
-    app.router.add_get('/l/', retrieve_list, name='retrieve-list')
-    app.router.add_get('/g/{conv:[a-z0-9]+}/', retrieve_conv, name='retrieve-conv')
-    app.router.add_post('/new/', new_conv, name='new-conv')
+    app.router.add_get('/', vlist, name='list')
+    app.router.add_post('/new/', create, name='create')
+
+    components = '|'.join(m.value for m in Components)
+    verbs = '|'.join(m.value for m in Verbs)
+    app.router.add_post('/act/{conv:[a-z0-9]+}/{component:%s}/{verb:%s+}/' % (components, verbs), act, name='act')
+
+    app.router.add_get('/c/{conv:[a-z0-9]+}/', get, name='get')
     return app

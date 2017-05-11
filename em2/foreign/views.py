@@ -3,7 +3,6 @@ Views dedicated to propagation of data between platforms.
 """
 import logging
 
-import pytz
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 from arq.utils import from_unix_ms
@@ -70,7 +69,7 @@ async def authenticate(request):
 
 
 def validate_timestamp(v, **others):
-    return from_unix_ms(int(v)).replace(tzinfo=others.get('timezone', pytz.utc))
+    return from_unix_ms(int(v))
 
 
 ACT_HEADERS = [

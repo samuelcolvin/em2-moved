@@ -6,8 +6,8 @@ install:
 
 .PHONY: isort
 isort:
-	isort -rc -w 120 em2
-	isort -rc -w 120 tests
+	isort -rc em2
+	isort -rc tests
 
 .PHONY: lint
 lint:

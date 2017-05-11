@@ -46,31 +46,33 @@ CREATE TABLE messages (
   -- TODO deleted
 );
 
-CREATE TYPE action_type AS ENUM ('add', 'modify', 'delete', 'lock', 'release lock');
-CREATE TYPE target_type AS ENUM ('participant', 'message');  -- TODO attachments, subject, expiry, labels
+-- see Verbs enum which matches this
+CREATE TYPE VERB AS ENUM ('add', 'mod', 'del', 'lck', 'ulk');
+-- see Components enum which matches this
+CREATE TYPE COMPONENT AS ENUM ('sbj', 'xpy', 'lbl', 'msg', 'prt', 'atc');
 
-CREATE TABLE events (
+CREATE TABLE actions (
   id SERIAL PRIMARY KEY,
   hash VARCHAR(40) NOT NULL,
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
+  verb VERB NOT NULL,
+  component COMPONENT NOT NULL,
   actor INT NOT NULL REFERENCES participants ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  parent INT REFERENCES events,
-  action action_type NOT NULL,
-  target target_type NOT NULL,
 
+  parent INT REFERENCES actions,
   participant INT REFERENCES participants,
   message INT REFERENCES messages,
   body TEXT,
   UNIQUE (conversation, hash)
 );
 
-CREATE TYPE event_status_type AS ENUM ('pending', 'temporary_failure', 'failed', 'successful');
+CREATE TYPE ACTION_STATUS AS ENUM ('pending', 'temporary_failure', 'failed', 'successful');
 
-CREATE TABLE events_status (
-  event INT NOT NULL REFERENCES events ON DELETE CASCADE,
+CREATE TABLE actions_status (
+  action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
 
-  status event_status_type NOT NULL DEFAULT 'pending',
+  status ACTION_STATUS NOT NULL DEFAULT 'pending',
   platform INT REFERENCES platforms,
   participant INT REFERENCES participants,
   errors JSONB[]
