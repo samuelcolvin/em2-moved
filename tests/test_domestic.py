@@ -1,21 +1,22 @@
 import base64
-from datetime import datetime
 
 from cryptography.fernet import Fernet
-from pydantic.datetime_parse import parse_datetime
 
 from em2.core import Components, Verbs
 from em2.utils.encoding import msg_encode
+from .conftest import AnyInt, CloseToNow, python_dict  # noqa
 
 
-async def test_valid_cookie(dclient, conv_key, url):
+async def test_valid_cookie(dclient, conv_key, url, db_conn):
     r = await dclient.get(url('list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
-    ts = parse_datetime(obj[0].pop('ts'))
-    assert 0.0 < (datetime.now() - ts).total_seconds() < 1
-    obj[0].pop('id')
-    assert [{'key': conv_key, 'subject': 'Test Conversation'}] == obj
+    assert [{
+        'id': await db_conn.fetchval('SELECT id FROM recipients'),
+        'key': conv_key,
+        'subject': 'Test Conversation',
+        'ts': CloseToNow()
+    }] == obj
 
 
 async def test_no_cookie(dclient, url):
@@ -101,14 +102,13 @@ async def test_add_message(dclient, conv_key, url, db_conn):
     obj = await r.json()
     action_key = obj['key']
     action = dict(await db_conn.fetchrow('SELECT * FROM actions WHERE key = $1', action_key))
-    action.pop('id')
-    action.pop('conversation')
-    ts = action.pop('timestamp')
-    assert 0.0 < (datetime.now() - ts).total_seconds() < 1
     assert {
+        'id': AnyInt(),
+        'conversation': AnyInt(),
         'key': action_key,
         'verb': 'add',
         'component': 'message',
+        'timestamp': CloseToNow(),
         'actor': await db_conn.fetchval("SELECT id FROM participants"),
         'parent': None,
         'participant': None,
@@ -159,8 +159,96 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
     url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 201, await r.text()
+
     r = await dclient.get(url('get', conv=conv_key))
     assert r.status == 200, await r.text()
-    # obj = await r.json()
-    # import json
-    # print(json.dumps(obj, indent=2, sort_keys=True))
+    obj = await r.json()
+    new_msg_id = await db_conn.fetchval("SELECT key FROM messages WHERE body = 'reply'")
+    assert {
+        'actions': [
+            {
+                'actor': 'testing@example.com',
+                'body': 'reply',
+                'component': 'message',
+                'key': await db_conn.fetchval('SELECT key FROM actions'),
+                'message': new_msg_id,
+                'parent': None,
+                'participant': None,
+                'timestamp': CloseToNow(),
+                'verb': 'add'
+            }
+        ],
+        'details': {
+            'creator': 'testing@example.com',
+            'key': 'key123',
+            'subject': 'Test Conversation',
+            'ts': CloseToNow()
+        },
+        'messages': [
+            {
+                'active': True,
+                'after': None,
+                'body': 'this is the message',
+                'child': False,
+                'key': 'msg-firstmessage_key'
+            },
+            {
+                'active': True,
+                'after': 'msg-firstmessage_key',
+                'body': 'reply',
+                'child': False,
+                'key': new_msg_id
+            }
+        ],
+        'participants': [
+            {
+                'address': 'testing@example.com',
+                'readall': False
+            }
+        ]
+    } == obj
+
+
+async def test_add_part_get(dclient, conv_key, url, db_conn):
+    data = {'item': 'other@example.com'}
+    url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await dclient.post(url_, json=data)
+    assert r.status == 201, await r.text()
+
+    r = await dclient.get(url('get', conv=conv_key))
+    assert r.status == 200, await r.text()
+    obj = await r.json()
+    assert {
+        'actions': [
+            {
+                'actor': 'testing@example.com',
+                'body': None,
+                'component': 'participant',
+                'key': await db_conn.fetchval("SELECT key FROM actions"),
+                'message': None,
+                'parent': None,
+                'participant': 'other@example.com',
+                'timestamp': CloseToNow(),
+                'verb': 'add'
+            }
+        ],
+        'details': {
+            'creator': 'testing@example.com',
+            'key': 'key123',
+            'subject': 'Test Conversation',
+            'ts': CloseToNow()
+        },
+        'messages': [
+            {
+                'active': True,
+                'after': None,
+                'body': 'this is the message',
+                'child': False,
+                'key': 'msg-firstmessage_key'
+            }
+        ],
+        'participants': [
+            {'address': 'testing@example.com', 'readall': False},
+            {'address': 'other@example.com', 'readall': False}
+        ]
+    } == obj

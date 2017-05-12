@@ -32,7 +32,7 @@ CREATE TABLE participants (
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   recipient INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   readall BOOLEAN DEFAULT FALSE,
-  deleted BOOLEAN DEFAULT FALSE,
+  active BOOLEAN DEFAULT TRUE,
   -- TODO permissions, hidden, status
   UNIQUE (conversation, recipient)
 );
@@ -43,7 +43,7 @@ CREATE TABLE messages (
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   after INT REFERENCES messages,
   child BOOLEAN DEFAULT FALSE, -- TODO perhaps record depth to limit child replies
-  deleted BOOLEAN DEFAULT FALSE,
+  active BOOLEAN DEFAULT TRUE,
   body TEXT,
   UNIQUE (conversation, key)
   -- TODO deleted

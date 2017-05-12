@@ -35,6 +35,8 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
             logger.info('database "%s" does not yet exist', settings.PG_NAME)
             logger.info('creating database "%s"...', settings.PG_NAME)
             await conn.execute('CREATE DATABASE {}'.format(settings.PG_NAME))
+        logging.info('settings db timezone to utc...')
+        await conn.execute("ALTER DATABASE {} SET TIMEZONE TO 'UTC';".format(settings.PG_NAME))
     finally:
         await conn.close()
 

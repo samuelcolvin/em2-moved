@@ -1,9 +1,12 @@
 import asyncio
 import base64
+import json
+from datetime import datetime
 
 import asyncpg
 import pytest
 from cryptography.fernet import Fernet
+from pydantic.datetime_parse import parse_datetime
 
 from em2 import Settings
 from em2.cli.database import prepare_database
@@ -104,3 +107,57 @@ async def create_conversation(db_conn):
 @pytest.fixture
 def conv_key(loop, db_conn):
     return loop.run_until_complete(create_conversation(db_conn))
+
+
+class CloseToNow:
+    def __init__(self, delta=2):
+        self.delta: float = delta
+        self.now = datetime.utcnow()
+        self.match = False
+        self.other = None
+
+    def __eq__(self, other):
+        self.other = other
+        if isinstance(other, str):
+            other = parse_datetime(other)
+        self.match = -self.delta < (self.now - other).total_seconds() < self.delta
+        return self.match
+
+    def __repr__(self):
+        if self.match:
+            # if we've got the correct value return it to aid in diffs
+            return repr(self.other)
+        else:
+            # else return something which explains what's going on.
+            return f'<CloseToNow({self.delta})>'
+
+
+class AnyInt:
+    def __init__(self, delta=2):
+        self.v = None
+
+    def __eq__(self, other):
+        if type(other) == int:
+            self.v = other
+            return True
+
+    def __repr__(self):
+        if self.v is None:
+            return '<AnyInt>'
+        else:
+            return repr(self.v)
+
+
+CHANGES = [
+    ('"', "'"),
+    (' false', ' False'),
+    (' true', ' True'),
+    (' null', ' None'),
+]
+
+
+def python_dict(v):
+    s = json.dumps(v, indent=4, sort_keys=True)
+    for pattern, repl in CHANGES:
+        s = s.replace(pattern, repl)
+    return s
