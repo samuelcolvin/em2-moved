@@ -8,14 +8,14 @@ from em2.core import Components, Verbs
 from em2.utils.encoding import msg_encode
 
 
-async def test_valid_cookie(dclient, conv_hash, url):
+async def test_valid_cookie(dclient, conv_key, url):
     r = await dclient.get(url('list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
     ts = parse_datetime(obj[0].pop('ts'))
     assert 0.0 < (datetime.now() - ts).total_seconds() < 1
     obj[0].pop('id')
-    assert [{'hash': conv_hash, 'subject': 'Test Conversation'}] == obj
+    assert [{'key': conv_key, 'subject': 'Test Conversation'}] == obj
 
 
 async def test_no_cookie(dclient, url):
@@ -55,22 +55,22 @@ async def test_session_update(dclient, url):
     assert c2 == c3
 
 
-async def test_list_details_conv(dclient, conv_hash, url):
+async def test_list_details_conv(dclient, conv_key, url):
     r = await dclient.get(url('list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
-    assert obj[0]['hash'] == conv_hash
-    r = await dclient.get(url('get', conv=conv_hash))
+    assert obj[0]['key'] == conv_key
+    r = await dclient.get(url('get', conv=conv_key))
     assert r.status == 200, await r.text()
     obj = await r.json()
     assert obj['subject'] == 'Test Conversation'
     # TODO assert obj['messages'][0]['body'] == 'hello'
 
 
-async def test_missing_conv(dclient, conv_hash, url):
-    r = await dclient.get(url('get', conv=conv_hash + 'x'))
+async def test_missing_conv(dclient, conv_key, url):
+    r = await dclient.get(url('get', conv=conv_key + 'x'))
     assert r.status == 404, await r.text()
-    assert 'hash123x not found' in await r.text()
+    assert 'key123x not found' in await r.text()
 
 
 async def test_create_conv(dclient, url):
@@ -87,12 +87,12 @@ async def test_create_conv(dclient, url):
     # print(obj)
 
 
-async def test_add_message(dclient, conv_hash, url, db_conn):
+async def test_add_message(dclient, conv_key, url, db_conn):
     data = {
         'item': 'first_msg_key',
         'body': 'hello',
     }
-    url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
+    url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 201, await r.text()
     obj = await r.json()
@@ -122,21 +122,21 @@ async def test_add_message_missing(dclient, url):
     assert text.startswith('conversation xxx not found')
 
 
-async def test_add_message_invalid_data_list(dclient, conv_hash, url):
+async def test_add_message_invalid_data_list(dclient, conv_key, url):
     data = [
         'subject',
         'item',
     ]
-    url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
+    url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 400, await r.text()
     text = await r.text()
     assert 'request json should be a dictionary' == text
 
 
-async def test_add_message_invalid_data_model_error(dclient, conv_hash, url):
+async def test_add_message_invalid_data_model_error(dclient, conv_key, url):
     data = {'parent': 'X' * 21}
-    url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
+    url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 400, await r.text()
     text = await r.text()

@@ -90,16 +90,16 @@ def url(request):
 
 async def create_conversation(db_conn):
     recipient_id = await db_conn.fetchval('INSERT INTO recipients (address) VALUES ($1) RETURNING id', test_addr)
-    hash = 'hash123'
-    args = hash, recipient_id, 'Test Conversation', 'test-conv'
-    conv_id = await db_conn.fetchval('INSERT INTO conversations (hash, creator, subject, ref) '
+    key = 'key123'
+    args = key, recipient_id, 'Test Conversation', 'test-conv'
+    conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref) '
                                      'VALUES ($1, $2, $3, $4) RETURNING id', *args)
     await db_conn.execute('INSERT INTO participants (conversation, recipient) VALUES ($1, $2)', conv_id, recipient_id)
     args = 'first_msg_key', conv_id, 'this is the message'
     await db_conn.execute('INSERT INTO messages (key, conversation, body) VALUES ($1, $2, $3)', *args)
-    return hash
+    return key
 
 
 @pytest.fixture
-def conv_hash(loop, db_conn):
+def conv_key(loop, db_conn):
     return loop.run_until_complete(create_conversation(db_conn))

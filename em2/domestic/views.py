@@ -12,7 +12,7 @@ class VList(View):
     sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
+      SELECT c.id as id, c.key as key, c.subject as subject, c.timestamp as ts
       FROM conversations AS c
       LEFT OUTER JOIN participants ON c.id = participants.conversation
       WHERE participants.recipient = $1
@@ -29,20 +29,20 @@ class Get(View):
     conv_details = """
     SELECT row_to_json(t)
     FROM (
-      SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
+      SELECT c.id as id, c.key as key, c.subject as subject, c.timestamp as ts
       FROM conversations AS c
       JOIN participants ON c.id = participants.conversation
-      WHERE participants.recipient = $1 AND c.hash = $2
+      WHERE participants.recipient = $1 AND c.key = $2
     ) t;
     """
 
     async def call(self, request):
-        conv_hash = request.match_info['conv']
+        conv_key = request.match_info['conv']
         details = await self.fetchval404(
             self.conv_details,
             self.session.recipient_id,
-            conv_hash,
-            msg=f'conversation {conv_hash} not found'
+            conv_key,
+            msg=f'conversation {conv_key} not found'
         )
         return raw_json_response(details)
 
@@ -107,16 +107,16 @@ class Act(View):
     SELECT c.id as conv_id, p.id as participant
     FROM conversations AS c
     JOIN participants as p ON c.id = p.conversation
-    WHERE c.hash = $1 AND p.recipient = $2
+    WHERE c.key = $1 AND p.recipient = $2
     """
 
     async def call(self, request):
-        conv_hash = request.match_info['conv']
+        conv_key = request.match_info['conv']
         conv_id, actor_id = await self.fetchrow404(
             self.get_conv_part,
-            conv_hash,
+            conv_key,
             self.session.recipient_id,
-            msg=f'conversation {conv_hash} not found'
+            msg=f'conversation {conv_key} not found'
         )
 
         data = self.Data(

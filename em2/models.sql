@@ -17,10 +17,9 @@ CREATE TABLE recipients (
 );
 CREATE INDEX recipient_address ON recipients USING btree (address);
 
--- TODO rename hash to key
 CREATE TABLE conversations (
   id SERIAL PRIMARY KEY,
-  hash VARCHAR(64) UNIQUE,
+  key VARCHAR(64) UNIQUE,
   creator INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   subject VARCHAR(255) NOT NULL,
