@@ -1,6 +1,6 @@
 from functools import update_wrapper
 
-from aiohttp.web import Application, Request  # noqa
+from aiohttp.web import Application, HTTPBadRequest, HTTPNotFound, Request  # noqa
 from asyncpg.connection import Connection  # noqa
 from pydantic import BaseModel, EmailStr
 
@@ -35,3 +35,28 @@ class View:
 
     async def call(self, request):
         raise NotImplementedError()
+
+    async def fetchval404(self, sql, *args, text=None):
+        return await _fetch404(self.conn.fetchval, sql, *args, text=text)
+
+    async def fetchrow404(self, sql, *args, text=None):
+        return await _fetch404(self.conn.fetchrow, sql, *args, text=text)
+
+    async def request_json(self):
+        try:
+            data = await self.request.json()
+        except ValueError as e:
+            raise HTTPBadRequest(text=f'invalid request json: {e}')
+        if not isinstance(data, dict):
+            raise HTTPBadRequest(text='request json should be a dictionary')
+        return data
+
+
+async def _fetch404(func, sql, *args, text=None):
+    """
+    fetch from the db, raise not found if the value is doesn't exist
+    """
+    val = await func(sql, *args)
+    if not val:
+        raise HTTPNotFound(text=text or 'unable to find value in db')
+    return val

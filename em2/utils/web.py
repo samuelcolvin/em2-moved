@@ -1,6 +1,8 @@
 import json
 
-from aiohttp.web_response import Response
+from aiohttp.web import HTTPBadRequest, Response
+from pydantic import BaseModel, ValidationError
+
 
 JSON_CONTENT_TYPE = 'application/json'
 
@@ -19,3 +21,11 @@ def raw_json_response(text, *, status_=200):
         status=status_,
         content_type=JSON_CONTENT_TYPE,
     )
+
+
+class WebModel(BaseModel):
+    def _process_values(self, values):
+        try:
+            return super()._process_values(values)
+        except ValidationError as e:
+            raise HTTPBadRequest(text=e.json(), content_type=JSON_CONTENT_TYPE)

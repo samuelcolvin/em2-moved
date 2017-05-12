@@ -1,48 +1,50 @@
 from typing import List
 
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPNotFound
-from pydantic import BaseModel, EmailStr, ValidationError, constr
+from aiohttp.web_exceptions import HTTPBadRequest
+from pydantic import EmailStr, constr
 
 from em2.core import Components, Verbs, gen_message_key
-from em2.utils.web import json_response, raw_json_response
+from em2.utils.web import WebModel, json_response, raw_json_response
 from .common import View
 
 
-LIST_CONVS = """
-SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
-FROM (
-  SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
-  FROM conversations AS c
-  LEFT OUTER JOIN participants ON c.id = participants.conversation
-  WHERE participants.recipient = $1
-  ORDER BY c.id DESC LIMIT 50
-) t;
-"""
+class VList(View):
+    sql = """
+    SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
+    FROM (
+      SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
+      FROM conversations AS c
+      LEFT OUTER JOIN participants ON c.id = participants.conversation
+      WHERE participants.recipient = $1
+      ORDER BY c.id DESC LIMIT 50
+    ) t;
+    """
+
+    async def call(self, request):
+        raw_json = await self.conn.fetchval(self.sql, request['session'].recipient_id)
+        return raw_json_response(raw_json)
 
 
-async def vlist(request):
-    raw_json = await request['conn'].fetchval(LIST_CONVS, request['session'].recipient_id)
-    return raw_json_response(raw_json)
+class Get(View):
+    conv_details = """
+    SELECT row_to_json(t)
+    FROM (
+      SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
+      FROM conversations AS c
+      JOIN participants ON c.id = participants.conversation
+      WHERE participants.recipient = $1 AND c.hash = $2
+    ) t;
+    """
 
-
-CONV_DETAILS = """
-SELECT row_to_json(t)
-FROM (
-  SELECT c.id as id, c.hash as hash, c.subject as subject, c.timestamp as ts
-  FROM conversations AS c
-  JOIN participants ON c.id = participants.conversation
-  WHERE participants.recipient = $1 AND c.hash = $2
-) t;
-"""
-
-
-async def get(request):
-    conv_hash = request.match_info['conv']
-    details = await request['conn'].fetchval(CONV_DETAILS, request['session'].recipient_id, conv_hash)
-    if details is None:
-        raise HTTPNotFound(reason=f'conversation {conv_hash} not found')
-    # TODO get the rest
-    return raw_json_response(details)
+    async def call(self, request):
+        conv_hash = request.match_info['conv']
+        details = await self.fetchval404(
+            self.conv_details,
+            self.session.recipient_id,
+            conv_hash,
+            text=f'conversation {conv_hash} not found'
+        )
+        return raw_json_response(details)
 
 
 class Create(View):
@@ -59,7 +61,7 @@ class Create(View):
     add_participants = 'INSERT INTO participants (conversation, recipient) VALUES ($1, $2)'
     add_message = 'INSERT INTO messages (key, conversation, body) VALUES ($1, $2, $3)'
 
-    class ConvModel(BaseModel):
+    class ConvModel(WebModel):
         subject: constr(max_length=255) = ...
         message: str = ...
         participants: List[EmailStr] = []
@@ -83,13 +85,7 @@ class Create(View):
         return conv_id
 
     async def call(self, request):
-        try:
-            data = await request.json()
-            conv = self.ConvModel(**data)
-        except ValidationError as e:
-            raise HTTPBadRequest(text=e.json())
-        except (ValueError, TypeError):
-            raise HTTPBadRequest(text='invalid request data')
+        conv = self.ConvModel(**await self.request_json())
         # url = request.app.router['draft-conv'].url_for(id=conv_id)
         conv_id = await self.get_conv_id(conv)
         return json_response(id=conv_id, status_=201)
@@ -102,24 +98,29 @@ class Act(View):
     JOIN participants as p ON c.id = p.conversation
     WHERE c.hash = $1 AND p.recipient = $2
     """
-    message_follows = """
+    find_message = """
     SELECT m.id FROM messages AS m
     WHERE m.conversation = $1 AND m.key = $2
     """
-    add_message = """
+    add_message_sql = """
     INSERT INTO messages (key, conversation, follows, child, body) VALUES ($1, $2, $3, $4, $5)
     RETURNING id
     """
+    latest_message_action = """
+    SELECT id, verb, actor FROM actions
+    WHERE conversation = $1 AND message = $2
+    ORDER BY id DESC
+    LIMIT 1
+    """
 
-    class Action(BaseModel):
+    class Data(WebModel):
         conv: int = ...
         verb: Verbs = ...
         component: Components = ...
         actor: int = ...
         item: str = None
-        parent: constr(min_length=16, max_length=16) = None
+        parent: constr(min_length=40, max_length=40) = None
         body: str = None
-        message_follows: constr(min_length=16, max_length=16) = None
         message_child: bool = False
         # TODO: participant permissions and more exotic types
 
@@ -130,51 +131,50 @@ class Act(View):
     * subject, expiry etc. parent be the most recent on that meta property.
     """
 
-    async def modify_message(self, action: Action):
-        if action.verb is Verbs.ADD:
-            if not action.message_follows:
-                # TODO replace with method validation on Action
-                raise HTTPBadRequest(text='message_follows may not be null when adding a message')
+    async def add_message(self, data: Data):
+        follows_id = await self.fetchval404(self.find_message, data.conv, data.item)
+        args = gen_message_key(), data.conv, follows_id, data.message_child, data.body
+        message_id = await self.conn.fetchval(self.add_message_sql, *args)
+        return message_id
 
-            follows_id = await self.conn.fetchval(self.message_follows, action.conv, action.message_follows)
-            if not follows_id:
-                raise HTTPBadRequest(text='message follower not found on conversation')
-            args = gen_message_key(), action.conv, follows_id, action.message_child, action.body
-            message_id = await self.conn.fetchval(self.add_message, *args)
-            return message_id  # is this required?
-        raise NotImplementedError()
+    async def modify_message(self, data: Data):
+        message_id = await self.fetchval404(self.find_message, data.conv, data.item)
 
-    async def _apply_action(self, action: Action):
-        # TODO in transaction
+        return message_id
+
+    async def _apply_action(self, action: Data):
+        # TODO: in transaction
         if action.component is Components.MESSAGE:
+            if not action.item:
+                # TODO replace with method validation on Data
+                raise HTTPBadRequest(text='item may not be null for message actions')
+            if action.verb is Verbs.ADD:
+                message_id = self.add_message(action)
+            else:
+                message_id = self.modify_message(action)
             await self.modify_message(action)
         elif action.component is Components.PARTICIPANT:
             pass
         else:
             raise NotImplementedError()
+        return message_id
 
     async def call(self, request):
-        conn = request['conn']
         conv_hash = request.match_info['conv']
-        try:
-            conv_id, actor_id = await conn.fetchrow(self.get_conv_part, conv_hash, request['session'].recipient_id)
-        except TypeError:
-            # TypeError if conv_actor is None because query returned nothing
-            raise HTTPNotFound(reason=f'conversation {conv_hash} not found')
+        conv_id, actor_id = await self.fetchrow404(
+            self.get_conv_part,
+            conv_hash,
+            self.session.recipient_id,
+            text=f'conversation {conv_hash} not found'
+        )
 
-        try:
-            data = await request.json()
-            action = self.Action(
-                conv=conv_id,
-                actor=actor_id,
-                component=request.match_info['component'],
-                verb=request.match_info['verb'],
-                **data
-            )
-        except ValidationError as e:
-            raise HTTPBadRequest(text=e.json())
-        except (ValueError, TypeError):
-            raise HTTPBadRequest(text='invalid request data')
+        data = self.Data(
+            conv=conv_id,
+            actor=actor_id,
+            component=request.match_info['component'],
+            verb=request.match_info['verb'],
+            **await self.request_json()
+        )
 
-        await self._apply_action(action)
+        await self._apply_action(data)
         return json_response(id=None, status_=201)

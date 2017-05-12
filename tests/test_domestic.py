@@ -89,12 +89,45 @@ async def test_create_conv(dclient, url):
 
 
 async def test_add_message(dclient, conv_hash, url):
-    data = {
-        'subject': 'Test Subject',
-        'message_follows': 'testkey_length16'
-    }
+    data = {'item': 'testkey_length16'}
     url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 201, await r.text()
     obj = await r.json()
-    print(obj)
+    print(obj)  # TODO
+
+
+async def test_add_message_missing(dclient, url):
+    url_ = url('act', conv='xxx', component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await dclient.post(url_)
+    assert r.status == 404, await r.text()
+    assert 'conversation xxx not found' == await r.text()
+
+
+async def test_add_message_invalid_data_list(dclient, conv_hash, url):
+    data = [
+        'subject',
+        'item',
+    ]
+    url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await dclient.post(url_, json=data)
+    assert r.status == 400, await r.text()
+    text = await r.text()
+    assert 'request json should be a dictionary' == text
+
+
+async def test_add_message_invalid_data_model_error(dclient, conv_hash, url):
+    data = {'parent': 'X' * 50}
+    url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await dclient.post(url_, json=data)
+    assert r.status == 400, await r.text()
+    text = await r.text()
+    assert """\
+{
+  "parent": {
+    "error_msg": "length greater than maximum allowed: 40",
+    "error_type": "ValueError",
+    "index": null,
+    "track": "ConstrainedStrValue"
+  }
+}""" == text
