@@ -12,8 +12,8 @@ def hash_id(*args, sha256=False):
         return hashlib.sha1(to_hash).hexdigest()
 
 
-def gen_message_key():
-    return base64.b32encode(os.urandom(10))[:16].decode().lower()
+def gen_public_key():
+    return base64.b32encode(os.urandom(12))[:20].decode().lower()
 
 
 @unique
@@ -21,12 +21,12 @@ class Components(str, Enum):
     """
     Component types, used for both urls and in db ENUM see models.sql
     """
-    SUBJECT = 'sbj'
-    EXPIRY = 'xpr'
-    LABEL = 'lbl'
-    MESSAGE = 'msg'
-    PARTICIPANT = 'prt'
-    ATTACHMENT = 'atc'
+    SUBJECT = 'subject'
+    EXPIRY = 'expiry'
+    LABEL = 'label'
+    MESSAGE = 'message'
+    PARTICIPANT = 'participant'
+    ATTACHMENT = 'attachment'
 
 
 @unique
@@ -35,7 +35,8 @@ class Verbs(str, Enum):
     Verb types, used for both urls and in db ENUM see models.sql
     """
     ADD = 'add'
-    MODIFY = 'mod'
-    DELETE = 'del'
-    LOCK = 'lck'
-    UNLOCK = 'ulk'
+    MODIFY = 'modify'
+    DELETE = 'delete'
+    RECOVER = 'recover'
+    LOCK = 'lock'
+    UNLOCK = 'unlock'

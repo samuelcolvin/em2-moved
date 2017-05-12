@@ -13,7 +13,7 @@ async def test_valid_cookie(dclient, conv_hash, url):
     assert r.status == 200, await r.text()
     obj = await r.json()
     ts = parse_datetime(obj[0].pop('ts'))
-    assert 0 < (datetime.now() - ts).total_seconds() < 1
+    assert 0.0 < (datetime.now() - ts).total_seconds() < 1
     obj[0].pop('id')
     assert [{'hash': conv_hash, 'subject': 'Test Conversation'}] == obj
 
@@ -70,8 +70,7 @@ async def test_list_details_conv(dclient, conv_hash, url):
 async def test_missing_conv(dclient, conv_hash, url):
     r = await dclient.get(url('get', conv=conv_hash + 'x'))
     assert r.status == 404, await r.text()
-    text = await r.text()
-    assert text.endswith('x not found')
+    assert 'hash123x not found' in await r.text()
 
 
 async def test_create_conv(dclient, url):
@@ -88,20 +87,39 @@ async def test_create_conv(dclient, url):
     # print(obj)
 
 
-async def test_add_message(dclient, conv_hash, url):
-    data = {'item': 'testkey_length16'}
+async def test_add_message(dclient, conv_hash, url, db_conn):
+    data = {
+        'item': 'first_msg_key',
+        'body': 'hello',
+    }
     url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 201, await r.text()
     obj = await r.json()
-    print(obj)  # TODO
+    action_key = obj['key']
+    action = dict(await db_conn.fetchrow('SELECT * FROM actions WHERE key = $1', action_key))
+    action.pop('id')
+    action.pop('conversation')
+    ts = action.pop('timestamp')
+    assert 0.0 < (datetime.now() - ts).total_seconds() < 1
+    assert {
+        'key': action_key,
+        'verb': 'add',
+        'component': 'message',
+        'actor': await db_conn.fetchval("SELECT id FROM participants"),
+        'parent': None,
+        'participant': None,
+        'message': await db_conn.fetchval("SELECT id FROM messages WHERE body = 'hello'"),
+        'body': 'hello',
+    } == action
 
 
 async def test_add_message_missing(dclient, url):
     url_ = url('act', conv='xxx', component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_)
     assert r.status == 404, await r.text()
-    assert 'conversation xxx not found' == await r.text()
+    text = await r.text()
+    assert text.startswith('conversation xxx not found')
 
 
 async def test_add_message_invalid_data_list(dclient, conv_hash, url):
@@ -117,7 +135,7 @@ async def test_add_message_invalid_data_list(dclient, conv_hash, url):
 
 
 async def test_add_message_invalid_data_model_error(dclient, conv_hash, url):
-    data = {'parent': 'X' * 50}
+    data = {'parent': 'X' * 21}
     url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 400, await r.text()
@@ -125,7 +143,7 @@ async def test_add_message_invalid_data_model_error(dclient, conv_hash, url):
     assert """\
 {
   "parent": {
-    "error_msg": "length greater than maximum allowed: 40",
+    "error_msg": "length greater than maximum allowed: 20",
     "error_type": "ValueError",
     "index": null,
     "track": "ConstrainedStrValue"

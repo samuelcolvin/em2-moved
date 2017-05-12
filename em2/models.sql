@@ -39,23 +39,25 @@ CREATE TABLE participants (
 
 CREATE TABLE messages (
   id SERIAL PRIMARY KEY,
-  key CHAR(16) NOT NULL,
+  key CHAR(20) NOT NULL,
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   follows INT REFERENCES messages,
   child BOOLEAN DEFAULT FALSE,
+  deleted BOOLEAN DEFAULT FALSE,
   body TEXT,
   UNIQUE (conversation, key)
   -- TODO deleted
 );
+CREATE INDEX message_key ON messages USING btree (key);
 
 -- see Verbs enum which matches this
-CREATE TYPE VERB AS ENUM ('add', 'mod', 'del', 'lck', 'ulk');
+CREATE TYPE VERB AS ENUM ('add', 'modify', 'delete', 'recover', 'lock', 'unlock');
 -- see Components enum which matches this
-CREATE TYPE COMPONENT AS ENUM ('sbj', 'xpy', 'lbl', 'msg', 'prt', 'atc');
+CREATE TYPE COMPONENT AS ENUM ('subject', 'expiry', 'label', 'message', 'participant', 'attachment');
 
 CREATE TABLE actions (
   id SERIAL PRIMARY KEY,
-  hash VARCHAR(40) NOT NULL,
+  key CHAR(20) NOT NULL,
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   verb VERB NOT NULL,
   component COMPONENT NOT NULL,
@@ -66,14 +68,14 @@ CREATE TABLE actions (
   participant INT REFERENCES participants,
   message INT REFERENCES messages,
   body TEXT,
-  UNIQUE (conversation, hash)
+  UNIQUE (conversation, key)
 );
+CREATE INDEX action_key ON actions USING btree (key);
 
 CREATE TYPE ACTION_STATUS AS ENUM ('pending', 'temporary_failure', 'failed', 'successful');
 
 CREATE TABLE actions_status (
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
-
   status ACTION_STATUS NOT NULL DEFAULT 'pending',
   platform INT REFERENCES platforms,
   participant INT REFERENCES participants,

@@ -1,3 +1,4 @@
+import traceback
 from functools import update_wrapper
 
 from aiohttp.web import Application, HTTPBadRequest, HTTPNotFound, Request  # noqa
@@ -36,11 +37,11 @@ class View:
     async def call(self, request):
         raise NotImplementedError()
 
-    async def fetchval404(self, sql, *args, text=None):
-        return await _fetch404(self.conn.fetchval, sql, *args, text=text)
+    async def fetchval404(self, sql, *args, msg=None):
+        return await _fetch404(self.conn.fetchval, sql, *args, msg=msg)
 
-    async def fetchrow404(self, sql, *args, text=None):
-        return await _fetch404(self.conn.fetchrow, sql, *args, text=text)
+    async def fetchrow404(self, sql, *args, msg=None):
+        return await _fetch404(self.conn.fetchrow, sql, *args, msg=msg)
 
     async def request_json(self):
         try:
@@ -52,11 +53,14 @@ class View:
         return data
 
 
-async def _fetch404(func, sql, *args, text=None):
+async def _fetch404(func, sql, *args, msg=None):
     """
     fetch from the db, raise not found if the value is doesn't exist
     """
     val = await func(sql, *args)
     if not val:
-        raise HTTPNotFound(text=text or 'unable to find value in db')
+        # TODO add debug
+        msg = msg or 'unable to find value in db'
+        tb = ''.join(traceback.format_stack())
+        raise HTTPNotFound(text=f'{msg}\nsql:\n{sql}\ntraceback:{tb}')
     return val
