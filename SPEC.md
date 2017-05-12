@@ -93,7 +93,7 @@ Local only, sets hash and prompts initial "add participants"
 
 ### Participant
 * add (with perms) - **this is equivalent to send** 
-* remove
+* delete
 * change perms
 
 ### Messages
@@ -138,6 +138,7 @@ In directory:
 * description - markdown
 * other trusted profiles
 * platform
+* timezone, used both to display times and communicate in what timezone actions occurred
 
 Perhaps way of giving more info to people who have received a message from the user:
 * phone

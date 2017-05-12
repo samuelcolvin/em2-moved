@@ -55,16 +55,19 @@ async def test_session_update(dclient, url):
     assert c2 == c3
 
 
-async def test_list_details_conv(dclient, conv_key, url):
+async def test_list_conv(dclient, conv_key, url):
     r = await dclient.get(url('list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
     assert obj[0]['key'] == conv_key
+
+
+async def test_get_conv(dclient, conv_key, url):
     r = await dclient.get(url('get', conv=conv_key))
     assert r.status == 200, await r.text()
     obj = await r.json()
-    assert obj['subject'] == 'Test Conversation'
-    # TODO assert obj['messages'][0]['body'] == 'hello'
+    assert obj['details']['subject'] == 'Test Conversation'
+    assert obj['messages'][0]['body'] == 'this is the message'
 
 
 async def test_missing_conv(dclient, conv_key, url):
@@ -89,7 +92,7 @@ async def test_create_conv(dclient, url):
 
 async def test_add_message(dclient, conv_key, url, db_conn):
     data = {
-        'item': 'first_msg_key',
+        'item': 'msg-firstmessage_key',
         'body': 'hello',
     }
     url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
@@ -149,3 +152,15 @@ async def test_add_message_invalid_data_model_error(dclient, conv_key, url):
     "track": "ConstrainedStrValue"
   }
 }""" == text
+
+
+async def test_add_message_get(dclient, conv_key, url, db_conn):
+    data = {'item': 'msg-firstmessage_key', 'body': 'reply'}
+    url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await dclient.post(url_, json=data)
+    assert r.status == 201, await r.text()
+    r = await dclient.get(url('get', conv=conv_key))
+    assert r.status == 200, await r.text()
+    # obj = await r.json()
+    # import json
+    # print(json.dumps(obj, indent=2, sort_keys=True))

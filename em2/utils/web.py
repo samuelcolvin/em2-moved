@@ -15,7 +15,7 @@ def json_response(*, status_=200, list_=None, **data):
     )
 
 
-def raw_json_response(text, *, status_=200):
+def raw_json_response(text: str, *, status_=200):
     return Response(
         text=text,
         status=status_,

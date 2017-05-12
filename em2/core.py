@@ -12,8 +12,8 @@ def hash_id(*args, sha256=False):
         return hashlib.sha1(to_hash).hexdigest()
 
 
-def gen_public_key():
-    return base64.b32encode(os.urandom(12))[:20].decode().lower()
+def gen_public_key(prefix):
+    return prefix + '-' + base64.b32encode(os.urandom(10))[:16].decode().lower()
 
 
 @unique
