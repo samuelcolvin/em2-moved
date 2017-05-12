@@ -1,13 +1,8 @@
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 from cryptography.fernet import InvalidToken
-from pydantic import BaseModel, EmailStr
 
 from em2.utils.encoding import msg_decode, msg_encode
-
-
-class Session(BaseModel):
-    address: EmailStr = ...
-    recipient_id: int = None
+from .common import Session
 
 
 async def user_middleware(app, handler):

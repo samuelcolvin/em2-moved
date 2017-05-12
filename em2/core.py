@@ -1,4 +1,6 @@
+import base64
 import hashlib
+import os
 from enum import Enum, unique
 
 
@@ -8,6 +10,10 @@ def hash_id(*args, sha256=False):
         return hashlib.sha256(to_hash).hexdigest()
     else:
         return hashlib.sha1(to_hash).hexdigest()
+
+
+def gen_message_key():
+    return base64.b32encode(os.urandom(10))[:16].decode().lower()
 
 
 @unique

@@ -17,6 +17,7 @@ CREATE TABLE recipients (
 );
 CREATE INDEX recipient_address ON recipients USING btree (address);
 
+-- TODO rename hash to key
 CREATE TABLE conversations (
   id SERIAL PRIMARY KEY,
   hash VARCHAR(64) UNIQUE,
@@ -38,11 +39,12 @@ CREATE TABLE participants (
 
 CREATE TABLE messages (
   id SERIAL PRIMARY KEY,
-  hash VARCHAR(40) NOT NULL,
+  key CHAR(16) NOT NULL,
   conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
-  parent INT REFERENCES messages,
+  follows INT REFERENCES messages,
+  child BOOLEAN DEFAULT FALSE,
   body TEXT,
-  UNIQUE (conversation, hash)
+  UNIQUE (conversation, key)
   -- TODO deleted
 );
 

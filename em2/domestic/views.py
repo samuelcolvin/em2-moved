@@ -3,8 +3,9 @@ from typing import List
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPNotFound
 from pydantic import BaseModel, EmailStr, ValidationError, constr
 
-from em2.core import Components, Verbs, hash_id
+from em2.core import Components, Verbs, gen_message_key
 from em2.utils.web import json_response, raw_json_response
+from .common import View
 
 
 LIST_CONVS = """
@@ -44,142 +45,136 @@ async def get(request):
     return raw_json_response(details)
 
 
-class CreateConvModel(BaseModel):
-    subject: constr(max_length=255) = ...
-    message: str = ...
-    participants: List[EmailStr] = []
+class Create(View):
+    get_existing_recips = 'SELECT id, address FROM recipients WHERE address = any($1)'
+    set_missing_recips = """
+    INSERT INTO recipients (address) (SELECT unnest ($1::VARCHAR(255)[]))
+    ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address
+    RETURNING id
+    """
+    create = """
+    INSERT INTO conversations (creator, subject)
+    VALUES ($1, $2) RETURNING id
+    """
+    add_participants = 'INSERT INTO participants (conversation, recipient) VALUES ($1, $2)'
+    add_message = 'INSERT INTO messages (key, conversation, body) VALUES ($1, $2, $3)'
 
+    class ConvModel(BaseModel):
+        subject: constr(max_length=255) = ...
+        message: str = ...
+        participants: List[EmailStr] = []
 
-GET_EXISTING_RECIPIENTS = 'SELECT id, address FROM recipients WHERE address = any($1)'
-SET_MISSING_RECIPIENTS = """
-INSERT INTO recipients (address) (SELECT unnest ($1::VARCHAR(255)[]))
-ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address
-RETURNING id
-"""
-CREATE_CONV = """
-INSERT INTO conversations (creator, subject)
-VALUES ($1, $2) RETURNING id
-"""
-ADD_PARTICIPANT = 'INSERT INTO participants (conversation, recipient) VALUES ($1, $2)'
-ADD_MESSAGE = 'INSERT INTO messages (hash, conversation, body) VALUES ($1, $2, $3)'
-
-
-async def create_conv(request, conv: CreateConvModel):
-    conn = request['conn']
-    participant_addresses = set(conv.participants)
-    participant_ids = set()
-    if participant_addresses:
-        for r in await conn.fetch(GET_EXISTING_RECIPIENTS, participant_addresses):
-            participant_ids.add(r['id'])
-            participant_addresses.remove(r['address'])
-
+    async def get_conv_id(self, conv):
+        participant_addresses = set(conv.participants)
+        participant_ids = set()
         if participant_addresses:
-            extra_ids = {r['id'] for r in await conn.fetch(SET_MISSING_RECIPIENTS, participant_addresses)}
-            participant_ids.update(extra_ids)
+            for r in await self.conn.fetch(self.get_existing_recips, participant_addresses):
+                participant_ids.add(r['id'])
+                participant_addresses.remove(r['address'])
 
-    conv_id = await conn.fetchval(CREATE_CONV, request['session'].recipient_id, conv.subject)
-    if participant_ids:
-        await conn.executemany(ADD_PARTICIPANT, {(conv_id, pid) for pid in participant_ids})
-    message_hash = hash_id(request['session'].address, conv.message)
-    await conn.execute(ADD_MESSAGE, message_hash, conv_id, conv.message)
-    return conv_id
+            if participant_addresses:
+                extra_ids = {r['id'] for r in await self.conn.fetch(self.set_missing_recips, participant_addresses)}
+                participant_ids.update(extra_ids)
 
+        conv_id = await self.conn.fetchval(self.create, self.session.recipient_id, conv.subject)
+        if participant_ids:
+            await self.conn.executemany(self.add_participants, {(conv_id, pid) for pid in participant_ids})
+        await self.conn.execute(self.add_message, gen_message_key(), conv_id, conv.message)
+        return conv_id
 
-async def create(request):
-    try:
-        data = await request.json()
-        conv = CreateConvModel(**data)
-    except ValidationError as e:
-        raise HTTPBadRequest(text=e.json())
-    except (ValueError, TypeError):
-        raise HTTPBadRequest(text='invalid request data')
-
-    conn = request['conn']
-    participant_addresses = set(conv.participants)
-    participant_ids = set()
-    if participant_addresses:
-        for r in await conn.fetch(GET_EXISTING_RECIPIENTS, participant_addresses):
-            participant_ids.add(r['id'])
-            participant_addresses.remove(r['address'])
-
-        if participant_addresses:
-            extra_ids = {r['id'] for r in await conn.fetch(SET_MISSING_RECIPIENTS, participant_addresses)}
-            participant_ids.update(extra_ids)
-
-    conv_id = await conn.fetchval(CREATE_CONV, request['session'].recipient_id, conv.subject)
-    if participant_ids:
-        await conn.executemany(ADD_PARTICIPANT, {(conv_id, pid) for pid in participant_ids})
-    message_hash = hash_id(request['session'].address, conv.message)
-    await conn.execute(ADD_MESSAGE, message_hash, conv_id, conv.message)
-
-    # url = request.app.router['draft-conv'].url_for(id=conv_id)
-    return json_response(id=conv_id, status_=201)
+    async def call(self, request):
+        try:
+            data = await request.json()
+            conv = self.ConvModel(**data)
+        except ValidationError as e:
+            raise HTTPBadRequest(text=e.json())
+        except (ValueError, TypeError):
+            raise HTTPBadRequest(text='invalid request data')
+        # url = request.app.router['draft-conv'].url_for(id=conv_id)
+        conv_id = await self.get_conv_id(conv)
+        return json_response(id=conv_id, status_=201)
 
 
-GET_CONV_PART = """
-SELECT c.id as conv_id, p.id as participant
-FROM conversations AS c
-JOIN participants as p ON c.id = p.conversation
-WHERE c.hash = $1 AND p.recipient = $2
-"""
+class Act(View):
+    get_conv_part = """
+    SELECT c.id as conv_id, p.id as participant
+    FROM conversations AS c
+    JOIN participants as p ON c.id = p.conversation
+    WHERE c.hash = $1 AND p.recipient = $2
+    """
+    message_follows = """
+    SELECT m.id FROM messages AS m
+    WHERE m.conversation = $1 AND m.key = $2
+    """
+    add_message = """
+    INSERT INTO messages (key, conversation, follows, child, body) VALUES ($1, $2, $3, $4, $5)
+    RETURNING id
+    """
 
+    class Action(BaseModel):
+        conv: int = ...
+        verb: Verbs = ...
+        component: Components = ...
+        actor: int = ...
+        item: str = None
+        parent: constr(min_length=16, max_length=16) = None
+        body: str = None
+        message_follows: constr(min_length=16, max_length=16) = None
+        message_child: bool = False
+        # TODO: participant permissions and more exotic types
 
-async def _conv_id_participant(request, conv_hash):
-    return await request['conn'].fetchrow(GET_CONV_PART, conv_hash, request['session'].recipient_id)
+    """
+    Actions parents:
+    * can always add a new message or participant, parent doesn't matter
+    * if editing, deleting, locking, unlocking a message, parent must be the last event on that message.
+    * subject, expiry etc. parent be the most recent on that meta property.
+    """
 
+    async def modify_message(self, action: Action):
+        if action.verb is Verbs.ADD:
+            if not action.message_follows:
+                # TODO replace with method validation on Action
+                raise HTTPBadRequest(text='message_follows may not be null when adding a message')
 
-class ActionModel(BaseModel):
-    conversation: int = ...
-    verb: Verbs = ...
-    component: Components = ...
-    actor: int = ...
-    parent: int = None
-    participant: int = None
-    message: int = None
-    body: str = None
-
-    def validate_participant(self, v):
-        if self.component is Components.PARTICIPANT and v is None:
-            raise ValueError('participant can not be null if the component is participants')
-        return v
-
-    def validate_message(self, v):
-        print('validate_message', v)
-        if self.component is Components.MESSAGE and v is None:
-            raise ValueError('message can not be null if the component is messages')
-        return v
-
-
-async def _apply_action(request, action: ActionModel):
-    if action.component is Components.MESSAGE:
-        pass
-    elif action.component is Components.PARTICIPANT:
-        pass
-    else:
+            follows_id = await self.conn.fetchval(self.message_follows, action.conv, action.message_follows)
+            if not follows_id:
+                raise HTTPBadRequest(text='message follower not found on conversation')
+            args = gen_message_key(), action.conv, follows_id, action.message_child, action.body
+            message_id = await self.conn.fetchval(self.add_message, *args)
+            return message_id  # is this required?
         raise NotImplementedError()
 
+    async def _apply_action(self, action: Action):
+        # TODO in transaction
+        if action.component is Components.MESSAGE:
+            await self.modify_message(action)
+        elif action.component is Components.PARTICIPANT:
+            pass
+        else:
+            raise NotImplementedError()
 
-async def act(request):
-    conv_hash = request.match_info['conv']
-    try:
-        conv_id, actor_id = await _conv_id_participant(request, conv_hash)
-    except TypeError:
-        # TypeError if conv_actor is None because query returned nothing
-        raise HTTPNotFound(reason=f'conversation {conv_hash} not found')
+    async def call(self, request):
+        conn = request['conn']
+        conv_hash = request.match_info['conv']
+        try:
+            conv_id, actor_id = await conn.fetchrow(self.get_conv_part, conv_hash, request['session'].recipient_id)
+        except TypeError:
+            # TypeError if conv_actor is None because query returned nothing
+            raise HTTPNotFound(reason=f'conversation {conv_hash} not found')
 
-    try:
-        data = await request.json()
-        action = ActionModel(
-            conversation=conv_id,
-            actor=actor_id,
-            component=request.match_info['component'],
-            verb=request.match_info['verb'],
-            **data
-        )
-    except ValidationError as e:
-        raise HTTPBadRequest(text=e.json())
-    except (ValueError, TypeError):
-        raise HTTPBadRequest(text='invalid request data')
+        try:
+            data = await request.json()
+            action = self.Action(
+                conv=conv_id,
+                actor=actor_id,
+                component=request.match_info['component'],
+                verb=request.match_info['verb'],
+                **data
+            )
+        except ValidationError as e:
+            raise HTTPBadRequest(text=e.json())
+        except (ValueError, TypeError):
+            raise HTTPBadRequest(text='invalid request data')
 
-    await _apply_action(request, action)
-    return json_response(id=None, status_=201)
+        await self._apply_action(action)
+        return json_response(id=None, status_=201)

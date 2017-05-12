@@ -91,6 +91,7 @@ async def test_create_conv(dclient, url):
 async def test_add_message(dclient, conv_hash, url):
     data = {
         'subject': 'Test Subject',
+        'message_follows': 'testkey_length16'
     }
     url_ = url('act', conv=conv_hash, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)

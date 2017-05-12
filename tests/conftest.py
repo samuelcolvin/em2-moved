@@ -95,6 +95,8 @@ async def create_conversation(db_conn):
     conv_id = await db_conn.fetchval('INSERT INTO conversations (hash, creator, subject, ref) '
                                      'VALUES ($1, $2, $3, $4) RETURNING id', *args)
     await db_conn.execute('INSERT INTO participants (conversation, recipient) VALUES ($1, $2)', conv_id, recipient_id)
+    args = 'testkey_length16', conv_id, 'this is the message'
+    await db_conn.execute('INSERT INTO messages (key, conversation, body) VALUES ($1, $2, $3)', *args)
     return hash
 
 
