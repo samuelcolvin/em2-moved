@@ -202,19 +202,18 @@ IDs and subjects of conversations matching search
 
 * `GET:  /f/auth/` - also perhaps used to prompt platform to send any failed events
 * `POST: /f/evt/.../` - new event
-* `GET:  /f/{hash}/` - get kitchen sink on a conversation
-* `GET:  /f/{hash}/events/` - get events for a conversation, useful if events get missed.
+* `GET:  /f/{key}/` - get kitchen sink on a conversation
+* `GET:  /f/{key}/events/` - get events for a conversation, useful if events get missed.
 
 ### Domestic (Client/User) Endpoints
 
 * `GET:  /d/l/?offset=50` - list conversations
 * `GET:  /d/s/?q=...` - search conversations
-* `GET:  /d/{hash}/` - get kitchen sink on a conversation
+* `GET:  /d/{key}/` - get kitchen sink on a conversation
 * `WS:   /d/ws/` - connect to websocket to retrieve events
 * `POST: /d/evt/.../` - send event
 * `POST: /d/new/` - start draft
-* `GET:  /d/draft/{draft-id}/` - get kitchen sink on a draft conversation
-* `POST: /d/publish/{draft-id}/` - publish conversation
+* `POST: /d/publish/{key}/` - publish conversation
 
 ----------------------------------
 

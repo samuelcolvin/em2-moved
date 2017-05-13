@@ -20,6 +20,7 @@ CREATE INDEX recipient_address ON recipients USING btree (address);
 CREATE TABLE conversations (
   id SERIAL PRIMARY KEY,
   key VARCHAR(64) UNIQUE,
+  published BOOL DEFAULT False,
   creator INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   subject VARCHAR(255) NOT NULL,

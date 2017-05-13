@@ -7,7 +7,7 @@ from em2.utils.encoding import msg_encode
 from .conftest import AnyInt, CloseToNow, python_dict  # noqa
 
 
-async def test_valid_cookie(dclient, conv_key, url, db_conn):
+async def test_valid_cookie_list_convs(dclient, conv_key, url, db_conn):
     r = await dclient.get(url('list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
@@ -15,6 +15,7 @@ async def test_valid_cookie(dclient, conv_key, url, db_conn):
         'id': await db_conn.fetchval('SELECT id FROM recipients'),
         'key': conv_key,
         'subject': 'Test Conversation',
+        'published': False,
         'ts': CloseToNow()
     }] == obj
 
@@ -77,7 +78,7 @@ async def test_missing_conv(dclient, conv_key, url):
     assert 'key123x not found' in await r.text()
 
 
-async def test_create_conv(dclient, url):
+async def test_create_conv(dclient, url, db_conn):
     data = {
         'subject': 'Test Subject',
         'message': 'this is a message',
@@ -87,8 +88,9 @@ async def test_create_conv(dclient, url):
     }
     r = await dclient.post(url('create'), json=data)
     assert r.status == 201, await r.text()
-    # obj = await r.json()
-    # print(obj)
+    conv_key = await db_conn.fetchval('SELECT key FROM conversations')
+    assert {'key': conv_key} == await r.json()
+    assert conv_key.startswith('draft-')
 
 
 async def test_add_message(dclient, conv_key, url, db_conn):
@@ -181,6 +183,7 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
         'details': {
             'creator': 'testing@example.com',
             'key': 'key123',
+            'published': False,
             'subject': 'Test Conversation',
             'ts': CloseToNow()
         },
@@ -235,6 +238,7 @@ async def test_add_part_get(dclient, conv_key, url, db_conn):
         'details': {
             'creator': 'testing@example.com',
             'key': 'key123',
+            'published': False,
             'subject': 'Test Conversation',
             'ts': CloseToNow()
         },

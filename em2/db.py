@@ -17,7 +17,6 @@ class Database:
             max_size=self._settings.PG_POOL_MAXSIZE,
             loop=self._loop,
         )
-        await self._pool.execute("SET TIME ZONE 'UTC';")
 
     def acquire(self, *, timeout=None):
         return self._pool.acquire(timeout=timeout)

@@ -12,7 +12,7 @@ class VList(View):
     sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT c.id AS id, c.key AS key, c.subject AS subject, c.timestamp AS ts
+      SELECT c.id AS id, c.key AS key, c.subject AS subject, c.timestamp AS ts, c.published AS published
       FROM conversations AS c
       LEFT JOIN participants ON c.id = participants.conversation
       WHERE participants.recipient = $1 AND participants.active = True
@@ -34,7 +34,7 @@ class Get(View):
     conv_details_sql = """
     SELECT row_to_json(t)
     FROM (
-      SELECT c.key AS key, c.subject AS subject, c.timestamp AS ts, r.address AS creator
+      SELECT c.key AS key, c.subject AS subject, c.timestamp AS ts, r.address AS creator, c.published AS published
       FROM conversations AS c
       JOIN recipients AS r ON c.creator = r.id
       WHERE c.id = $1
@@ -113,9 +113,9 @@ class Create(View):
     ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address
     RETURNING id
     """
-    create_sql = """
-    INSERT INTO conversations (creator, subject)
-    VALUES ($1, $2) RETURNING id
+    create_conv_sql = """
+    INSERT INTO conversations (key, creator, subject)
+    VALUES ($1, $2, $3) RETURNING id
     """
     add_participants_sql = 'INSERT INTO participants (conversation, recipient) VALUES ($1, $2)'
     add_message_sql = 'INSERT INTO messages (key, conversation, body) VALUES ($1, $2, $3)'
@@ -125,7 +125,8 @@ class Create(View):
         message: str = ...
         participants: List[EmailStr] = []
 
-    async def get_conv_id(self, conv):
+    async def call(self, request):
+        conv = self.ConvModel(**await self.request_json())
         participant_addresses = set(conv.participants)
         participant_ids = set()
         if participant_addresses:
@@ -137,17 +138,14 @@ class Create(View):
                 extra_ids = {r['id'] for r in await self.conn.fetch(self.set_missing_recips_sql, participant_addresses)}
                 participant_ids.update(extra_ids)
 
-        conv_id = await self.conn.fetchval(self.create_sql, self.session.recipient_id, conv.subject)
+        key = gen_public_key('draft')
+        conv_id = await self.conn.fetchval(self.create_conv_sql, key, self.session.recipient_id, conv.subject)
         if participant_ids:
             await self.conn.executemany(self.add_participants_sql, {(conv_id, pid) for pid in participant_ids})
         await self.conn.execute(self.add_message_sql, gen_public_key('msg'), conv_id, conv.message)
-        return conv_id
 
-    async def call(self, request):
-        conv = self.ConvModel(**await self.request_json())
         # url = request.app.router['draft-conv'].url_for(id=conv_id)
-        conv_id = await self.get_conv_id(conv)
-        return json_response(id=conv_id, status_=201)
+        return json_response(key=key, status_=201)
 
 
 class Act(View):
@@ -187,7 +185,13 @@ class Act(View):
             **await self.request_json()
         )
 
-        key = await self.apply_action(data)
+        if data.component in (Components.MESSAGE, Components.PARTICIPANT) and not data.item:
+            # TODO replace with method validation on Data
+            raise HTTPBadRequest(text=f'item may not be null for {data.component} actions')
+
+        async with self.conn.transaction():
+            key, action_id = await self.apply_action(data)
+        # TODO: fire job, should the job be fired if the conversation is a draft?
         return json_response(key=key, status_=201)
 
     create_action_sql = """
@@ -197,13 +201,7 @@ class Act(View):
     """
 
     async def apply_action(self, data: Data):
-        # TODO: in transaction
         message_id, participant_id, parent_id = None, None, None
-
-        if data.component in (Components.MESSAGE, Components.PARTICIPANT) and not data.item:
-            # TODO replace with method validation on Data
-            raise HTTPBadRequest(text=f'item may not be null for {data.component} actions')
-
         if data.component is Components.MESSAGE:
             if data.verb is Verbs.ADD:
                 message_id = await self.add_message(data)
@@ -230,9 +228,7 @@ class Act(View):
             message_id,
             data.body,
         )
-        # TODO: fire job
-        print(action_id)
-        return key
+        return key, action_id
 
     find_message_sql = """
     SELECT m.id FROM messages AS m
