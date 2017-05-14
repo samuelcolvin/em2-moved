@@ -3,8 +3,14 @@ import hashlib
 import os
 from enum import Enum, unique
 
+from em2.utils.encoding import to_unix_ms
 
-def hash_id(*args, sha256=False):
+
+def generate_conv_key(creator, ts, subject):
+    return generate_hash(creator, to_unix_ms(ts), subject, sha256=True)
+
+
+def generate_hash(*args, sha256=False):
     to_hash = '_'.join(map(str, args)).encode()
     if sha256:
         return hashlib.sha256(to_hash).hexdigest()
@@ -40,3 +46,4 @@ class Verbs(str, Enum):
     RECOVER = 'recover'
     LOCK = 'lock'
     UNLOCK = 'unlock'
+    PUBLISH = 'publish'

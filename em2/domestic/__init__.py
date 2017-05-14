@@ -4,7 +4,7 @@ from aiohttp.web import Application
 from cryptography.fernet import Fernet
 
 from em2.core import Components, Verbs
-from .views import Act, Create, Get, VList
+from .views import Act, Create, Get, Publish, VList
 from .middleware import middleware
 
 
@@ -34,6 +34,7 @@ def create_domestic_app(settings):
 
     app.router.add_get('/', VList.view(), name='list')
     app.router.add_post('/new/', Create.view(), name='create')
+    app.router.add_post('/publish/{conv:[a-z0-9]+}/', Publish.view(), name='publish')
 
     components = '|'.join(m.value for m in Components)
     verbs = '|'.join(m.value for m in Verbs)

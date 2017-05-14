@@ -1,4 +1,5 @@
 import base64
+from asyncio import sleep
 
 from cryptography.fernet import Fernet
 
@@ -256,3 +257,16 @@ async def test_add_part_get(dclient, conv_key, url, db_conn):
             {'address': 'other@example.com', 'readall': False}
         ]
     } == obj
+
+
+async def test_publish_conv(dclient, conv_key, url, db_conn):
+    published, ts1 = await db_conn.fetchrow('SELECT published, timestamp FROM conversations')
+    assert not published
+    await sleep(0.01)
+    r = await dclient.post(url('publish', conv=conv_key))
+    assert r.status == 200, await r.text()
+    new_conv_key, published, ts2 = await db_conn.fetchrow('SELECT key, published, timestamp FROM conversations')
+    assert {'key': new_conv_key} == await r.json()
+    assert new_conv_key != conv_key
+    assert published
+    assert ts2 > ts1

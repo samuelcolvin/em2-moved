@@ -1,9 +1,10 @@
+from datetime import datetime
 from typing import List
 
 from aiohttp.web_exceptions import HTTPBadRequest
 from pydantic import EmailStr, constr
 
-from em2.core import Components, Verbs, gen_public_key
+from em2.core import Components, Verbs, gen_public_key, generate_conv_key
 from em2.utils.web import WebModel, json_response, raw_json_response
 from .common import View
 
@@ -161,8 +162,13 @@ class Act(View):
         # TODO: participant permissions and more exotic types
         # TODO: add timezone event originally occurred in
 
+        def validate_verb(self, v):
+            if v is Verbs.PUBLISH:
+                raise ValueError('use the publish endpoint, not "act" to publish conversations')
+            return v
+
     get_conv_part_sql = """
-    SELECT c.id AS conv_id, p.id AS participant
+    SELECT c.id, p.id
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conversation
     WHERE c.key = $1 AND p.recipient = $2
@@ -322,3 +328,50 @@ class Act(View):
         else:
             raise HTTPBadRequest(text=f'Invalid verb for participants, can only add, delete, recover or modify')
         return part_id
+
+
+class Publish(View):
+    get_conv_sql = """
+    SELECT c.id, c.subject, p.id
+    FROM conversations AS c
+    JOIN participants AS p ON c.id = p.conversation
+    WHERE c.published = False AND c.key = $1 AND c.creator = $2 AND p.recipient = $2
+    """
+    update_conv_sql = """
+    UPDATE conversations SET key = $1, timestamp = $2, published = True
+    WHERE id = $3
+    """
+    delete_actions_sql = 'DELETE FROM actions WHERE conversation = $1'
+    create_action_sql = """
+    INSERT INTO actions (key, conversation, actor, verb, component)
+    VALUES ($1, $2, $3, 'publish', 'participant')
+    RETURNING id
+    """
+
+    async def call(self, request):
+        conv_key = request.match_info['conv']
+        conv_id, subject, participant_id = await self.fetchrow404(
+            self.get_conv_sql,
+            conv_key,
+            self.session.recipient_id
+        )
+        new_ts = datetime.utcnow()
+        new_conv_key = generate_conv_key(self.session.address, new_ts, subject)
+        async with self.conn.transaction():
+            await self.conn.execute(
+                self.update_conv_sql,
+                new_conv_key,
+                new_ts,
+                conv_id,
+            )
+            # might need to not delete these actions, just mark them as draft somehow
+            await self.conn.execute(self.delete_actions_sql, conv_id)
+            action_id = await self.conn.fetchval(
+                self.create_action_sql,
+                gen_public_key('pub'),
+                conv_id,
+                participant_id,
+            )
+        print(action_id)
+        # TODO: fire job
+        return json_response(key=new_conv_key)
