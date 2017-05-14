@@ -3,7 +3,11 @@ import hashlib
 import os
 from enum import Enum, unique
 
-from em2.utils.encoding import to_unix_ms
+import asyncpg
+from asyncpg.pool import Pool  # noqa
+
+from . import Settings
+from .utils.encoding import to_unix_ms
 
 
 def generate_conv_key(creator, ts, subject):
@@ -47,3 +51,24 @@ class Verbs(str, Enum):
     LOCK = 'lock'
     UNLOCK = 'unlock'
     PUBLISH = 'publish'
+
+
+class Database:
+    def __init__(self, loop, settings: Settings):
+        self._loop = loop
+        self._settings = settings
+        self._pool: Pool = None
+
+    async def startup(self):
+        self._pool = await asyncpg.create_pool(
+            dsn=self._settings.pg_dsn,
+            min_size=self._settings.PG_POOL_MINSIZE,
+            max_size=self._settings.PG_POOL_MAXSIZE,
+            loop=self._loop,
+        )
+
+    def acquire(self, *, timeout=None):
+        return self._pool.acquire(timeout=timeout)
+
+    async def close(self):
+        return await self._pool.close()

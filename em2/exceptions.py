@@ -1,3 +1,4 @@
+# TODO clean up and move into core
 
 
 class Em2Exception(Exception):

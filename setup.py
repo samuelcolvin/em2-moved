@@ -9,7 +9,7 @@ em2
 
 # avoid loading the package before requirements are installed:
 version = SourceFileLoader('version', 'em2/version.py').load_module()
-requirements = [r for r in Path('em2/requirements.txt').read_text().split('\n') if r and not r.startswith('#')]
+requirements = [r for r in Path('em2/extras/requirements.txt').read_text().split('\n') if r and not r.startswith('#')]
 
 setup(
     name='em2',

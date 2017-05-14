@@ -7,7 +7,7 @@ from textwrap import wrap
 
 import aiodns
 from aiodns.error import DNSError
-from arq import Actor
+from arq import RedisMixin
 from arq.jobs import DatetimeJob
 from async_timeout import timeout
 from Crypto.Hash import SHA256
@@ -21,7 +21,7 @@ from em2.utils.encoding import to_unix_ms
 logger = logging.getLogger('em2.foreign.auth')
 
 
-class Authenticator(Actor):
+class Authenticator(RedisMixin):
     job_class = DatetimeJob
     _dft_value = b'1'
 

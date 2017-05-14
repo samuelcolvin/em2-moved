@@ -23,8 +23,8 @@ class Settings(BaseSettings):
 
     # datastore_cls: Module = 'em2.ds.pg.PostgresDataStore'
     # pusher_cls: Module = 'em2.comms.web.push.WebDNSPusher'
-    # fallback_cls: Module = 'em2.comms.fallback.FallbackHandler'
-    db_cls: Module = 'em2.db.Database'
+    fallback_cls: Module = 'em2.fallback.FallbackHandler'
+    db_cls: Module = 'em2.core.Database'
     authenticator_cls: Module = 'em2.foreign.auth.Authenticator'
 
     # default address for webservers eg. gunicorn to bind to
@@ -89,4 +89,4 @@ class Settings(BaseSettings):
 
     @property
     def models_sql(self):
-        return (self.THIS_DIR / 'models.sql').read_text()
+        return (self.THIS_DIR / 'extras/models.sql').read_text()

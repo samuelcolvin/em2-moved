@@ -1,4 +1,4 @@
-from em2.db import Database
+from em2.core import Database
 
 
 class DummyAcquireContext:
