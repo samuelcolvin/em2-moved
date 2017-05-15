@@ -217,11 +217,40 @@ IDs and subjects of conversations matching search
 
 ----------------------------------
 
-# Distributing Events
+# Action processing
 
-1. Event received
-2. Event instance created
-3. Job `process_event(event_id)` fired
-4. In the job, get the job, then:
-  * publish (via redis pub-sub) updates for all local participants connected to websockets
-  * (if event was local) create "Platform Event Delivery" objects and push to platforms/SMTP users.
+### Foreign Actions
+
+1. Action received
+2. If the conversation exists: Action instance created, else see below
+3. Job `propagate(action_id)` fired, in job:
+4. Get all participants for conversation, create a set in redis for recipient_ids `recipients:{action_id}`
+5. For each active front end application (see below), check if there are recipients in this conv: `SINTER`
+6. If recipients are found for any applications: get action details and add to list of "jobs" for that application
+
+If conv doesn't exist:
+1. Job `create_conv(action_details)` fired, in job:
+2. Request conv details from platform, if the conv doesn't exist: throw an error
+3. create action
+4. fire `propagate(action_id)`
+
+### Domestic Actions
+
+If conv is not published: app `call_later`s `app.send_draft_action` which does the same as `propagate` but only
+to the creator.
+
+Otherwise, fires `propagate(action_id, push=True)`. `propagate` gets the list of recipients,
+calls `push`, then continues as with foreign actions.
+
+### Frontend Applications
+
+Apps should have random name, they should delete all keys on termination.
+
+Redis keys:
+* `frontend:recipients:{app-name}` - contains a set of recipient ids associated with the app. Named such 
+that `propagate` can find all frontend apps with `frontend:recipients:*`. Expires fairly regularly such that if 
+the app dies this record of the app's existence dies soon too.
+* `frontend:jobs:{app-name}` - list of actions to push to clients, not created by the app, just waited upon.
+
+Task `process_actions`, running constantly in infinite `BLPOP` loop, when an action arrives sends it to clients. 
+`BLPOP` timesout occasionally and extends `EXPIRE` on `frontend:recipients:{app-name}`.

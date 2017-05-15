@@ -197,7 +197,7 @@ class Act(View):
 
         async with self.conn.transaction():
             key, action_id = await self.apply_action(data)
-        # TODO: fire job, should the job be fired if the conversation is a draft?
+        # TODO: fire propagate
         return json_response(key=key, status_=201)
 
     create_action_sql = """
@@ -373,5 +373,5 @@ class Publish(View):
                 participant_id,
             )
         print(action_id)
-        # TODO: fire job
+        # TODO: fire propagate
         return json_response(key=new_conv_key)

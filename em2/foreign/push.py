@@ -1,4 +1,3 @@
-# TODO remove noqa when this is fixed
 import asyncio
 import base64
 import logging
