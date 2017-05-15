@@ -30,23 +30,23 @@ CREATE TABLE conversations (
 
 CREATE TABLE participants (
   id SERIAL PRIMARY KEY,
-  conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
+  conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   recipient INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   readall BOOLEAN DEFAULT FALSE,
   active BOOLEAN DEFAULT TRUE,
   -- TODO permissions, hidden, status
-  UNIQUE (conversation, recipient)
+  UNIQUE (conv, recipient)
 );
 
 CREATE TABLE messages (
   id SERIAL PRIMARY KEY,
   key CHAR(20) NOT NULL,
-  conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
+  conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   after INT REFERENCES messages,
   child BOOLEAN DEFAULT FALSE, -- TODO perhaps record depth to limit child replies
   active BOOLEAN DEFAULT TRUE,
   body TEXT,
-  UNIQUE (conversation, key)
+  UNIQUE (conv, key)
   -- TODO deleted
 );
 CREATE INDEX message_key ON messages USING btree (key);
@@ -59,17 +59,17 @@ CREATE TYPE COMPONENT AS ENUM ('subject', 'expiry', 'label', 'message', 'partici
 CREATE TABLE actions (
   id SERIAL PRIMARY KEY,
   key CHAR(20) NOT NULL,
-  conversation INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
+  conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   verb VERB NOT NULL,
   component COMPONENT NOT NULL,
   actor INT NOT NULL REFERENCES participants ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   parent INT REFERENCES actions,
-  participant INT REFERENCES participants,
+  part INT REFERENCES participants,
   message INT REFERENCES messages,
   body TEXT,
-  UNIQUE (conversation, key)
+  UNIQUE (conv, key)
 );
 CREATE INDEX action_key ON actions USING btree (key);
 
@@ -79,7 +79,7 @@ CREATE TABLE actions_status (
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   status ACTION_STATUS NOT NULL DEFAULT 'pending',
   platform INT REFERENCES platforms,
-  participant INT REFERENCES participants,
+  part INT REFERENCES participants,
   errors JSONB[]
 );
 

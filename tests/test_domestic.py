@@ -107,14 +107,14 @@ async def test_add_message(dclient, conv_key, url, db_conn):
     action = dict(await db_conn.fetchrow('SELECT * FROM actions WHERE key = $1', action_key))
     assert {
         'id': AnyInt(),
-        'conversation': AnyInt(),
+        'conv': AnyInt(),
         'key': action_key,
         'verb': 'add',
         'component': 'message',
         'timestamp': CloseToNow(),
         'actor': await db_conn.fetchval("SELECT id FROM participants"),
         'parent': None,
-        'participant': None,
+        'part': None,
         'message': await db_conn.fetchval("SELECT id FROM messages WHERE body = 'hello'"),
         'body': 'hello',
     } == action

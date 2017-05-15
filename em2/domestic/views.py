@@ -15,7 +15,7 @@ class VList(View):
     FROM (
       SELECT c.id AS id, c.key AS key, c.subject AS subject, c.timestamp AS ts, c.published AS published
       FROM conversations AS c
-      LEFT JOIN participants ON c.id = participants.conversation
+      LEFT JOIN participants ON c.id = participants.conv
       WHERE participants.recipient = $1 AND participants.active = True
       ORDER BY c.id DESC LIMIT 50
     ) t;
@@ -29,7 +29,7 @@ class VList(View):
 class Get(View):
     get_conv_id_sql = """
     SELECT c.id FROM conversations AS c
-    JOIN participants AS p ON c.id = p.conversation
+    JOIN participants AS p ON c.id = p.conv
     WHERE p.recipient = $1 AND c.key = $2 AND p.active = True
     """
     conv_details_sql = """
@@ -48,7 +48,7 @@ class Get(View):
       SELECT m1.key AS key, m2.key AS after, m1.child AS child, m1.active AS active, m1.body AS body
       FROM messages AS m1
       LEFT JOIN messages AS m2 ON m1.after = m2.id
-      WHERE m1.conversation = $1 AND m1.active = True
+      WHERE m1.conv = $1 AND m1.active = True
     ) t;
     """
 
@@ -58,7 +58,7 @@ class Get(View):
       SELECT r.address AS address, p.readall AS readall
       FROM participants AS p
       JOIN recipients AS r ON p.recipient = r.id
-      WHERE p.conversation = $1 AND p.active = True
+      WHERE p.conv = $1 AND p.active = True
     ) t;
     """
 
@@ -78,10 +78,10 @@ class Get(View):
       JOIN participants AS actor_prt ON a.actor = actor_prt.id
       JOIN recipients AS actor_recipient ON actor_prt.recipient = actor_recipient.id
 
-      LEFT JOIN participants AS prt_prt ON a.participant = prt_prt.id
+      LEFT JOIN participants AS prt_prt ON a.part = prt_prt.id
       LEFT JOIN recipients AS prt_recipient ON prt_prt.recipient = prt_recipient.id
 
-      WHERE a.conversation = $1
+      WHERE a.conv = $1
     ) t;
     """
 
@@ -95,13 +95,13 @@ class Get(View):
         )
         details = await self.conn.fetchval(self.conv_details_sql, conv_id)
         messages = await self.conn.fetchval(self.messages_sql, conv_id)
-        participants = await self.conn.fetchval(self.participants_sql, conv_id)
+        parts = await self.conn.fetchval(self.participants_sql, conv_id)
         actions = await self.conn.fetchval(self.actions_sql, conv_id)
         return raw_json_response(
             '{'
             f'"details":{details},'
             f'"messages":{messages},'
-            f'"participants":{participants or "null"},'
+            f'"participants":{parts or "null"},'
             f'"actions":{actions or "null"}'
             '}'
         )
@@ -118,8 +118,8 @@ class Create(View):
     INSERT INTO conversations (key, creator, subject)
     VALUES ($1, $2, $3) RETURNING id
     """
-    add_participants_sql = 'INSERT INTO participants (conversation, recipient) VALUES ($1, $2)'
-    add_message_sql = 'INSERT INTO messages (key, conversation, body) VALUES ($1, $2, $3)'
+    add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
+    add_message_sql = 'INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)'
 
     class ConvModel(WebModel):
         subject: constr(max_length=255) = ...
@@ -128,21 +128,21 @@ class Create(View):
 
     async def call(self, request):
         conv = self.ConvModel(**await self.request_json())
-        participant_addresses = set(conv.participants)
-        participant_ids = set()
-        if participant_addresses:
-            for r in await self.conn.fetch(self.get_existing_recips_sql, participant_addresses):
-                participant_ids.add(r['id'])
-                participant_addresses.remove(r['address'])
+        part_addresses = set(conv.participants)
+        part_ids = set()
+        if part_addresses:
+            for r in await self.conn.fetch(self.get_existing_recips_sql, part_addresses):
+                part_ids.add(r['id'])
+                part_addresses.remove(r['address'])
 
-            if participant_addresses:
-                extra_ids = {r['id'] for r in await self.conn.fetch(self.set_missing_recips_sql, participant_addresses)}
-                participant_ids.update(extra_ids)
+            if part_addresses:
+                extra_ids = {r['id'] for r in await self.conn.fetch(self.set_missing_recips_sql, part_addresses)}
+                part_ids.update(extra_ids)
 
         key = gen_public_key('draft')
         conv_id = await self.conn.fetchval(self.create_conv_sql, key, self.session.recipient_id, conv.subject)
-        if participant_ids:
-            await self.conn.executemany(self.add_participants_sql, {(conv_id, pid) for pid in participant_ids})
+        if part_ids:
+            await self.conn.executemany(self.add_participants_sql, {(conv_id, pid) for pid in part_ids})
         await self.conn.execute(self.add_message_sql, gen_public_key('msg'), conv_id, conv.message)
 
         # url = request.app.router['draft-conv'].url_for(id=conv_id)
@@ -170,7 +170,7 @@ class Act(View):
     get_conv_part_sql = """
     SELECT c.id, p.id
     FROM conversations AS c
-    JOIN participants AS p ON c.id = p.conversation
+    JOIN participants AS p ON c.id = p.conv
     WHERE c.key = $1 AND p.recipient = $2
     """
 
@@ -201,13 +201,13 @@ class Act(View):
         return json_response(key=key, status_=201)
 
     create_action_sql = """
-    INSERT INTO actions (key, conversation, verb, component, actor, parent, participant, message, body)
+    INSERT INTO actions (key, conv, verb, component, actor, parent, part, message, body)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING id
     """
 
     async def apply_action(self, data: Data):
-        message_id, participant_id, parent_id = None, None, None
+        message_id, part_id, parent_id = None, None, None
         if data.component is Components.MESSAGE:
             if data.verb is Verbs.ADD:
                 message_id = await self.add_message(data)
@@ -215,9 +215,9 @@ class Act(View):
                 message_id, parent_id = await self.mod_message(data)
         elif data.component is Components.PARTICIPANT:
             if data.verb is Verbs.ADD:
-                participant_id = await self.add_participant(data)
+                part_id = await self.add_participant(data)
             else:
-                participant_id = await self.mod_participant(data)
+                part_id = await self.mod_participant(data)
         else:
             raise NotImplementedError()
 
@@ -230,7 +230,7 @@ class Act(View):
             data.component,
             data.actor,
             parent_id,
-            participant_id,
+            part_id,
             message_id,
             data.body,
         )
@@ -238,10 +238,10 @@ class Act(View):
 
     find_message_sql = """
     SELECT m.id FROM messages AS m
-    WHERE m.conversation = $1 AND m.key = $2
+    WHERE m.conv = $1 AND m.key = $2
     """
     add_message_sql = """
-    INSERT INTO messages (key, conversation, after, child, body) VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO messages (key, conv, after, child, body) VALUES ($1, $2, $3, $4, $5)
     RETURNING id
     """
 
@@ -255,7 +255,7 @@ class Act(View):
 
     latest_message_action_sql = """
     SELECT id, key, verb, actor FROM actions
-    WHERE conversation = $1 AND message = $2
+    WHERE conv = $1 AND message = $2
     ORDER BY id DESC
     LIMIT 1
     """
@@ -293,7 +293,7 @@ class Act(View):
     ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id
     """
     add_participant_sql = """
-    INSERT INTO participants (conversation, recipient) VALUES ($1, $2)
+    INSERT INTO participants (conv, recipient) VALUES ($1, $2)
     ON CONFLICT DO NOTHING RETURNING id
     """
 
@@ -314,7 +314,7 @@ class Act(View):
     find_participant_sql = """
     SELECT p.id FROM participants AS p
     JOIN recipients AS r ON p.recipient = r.id
-    WHERE p.conversation = $1 AND r.address = $2
+    WHERE p.conv = $1 AND r.address = $2
     """
     delete_participant_sql = 'UPDATE participants SET active = $1 WHERE id = $2'
 
@@ -334,23 +334,23 @@ class Publish(View):
     get_conv_sql = """
     SELECT c.id, c.subject, p.id
     FROM conversations AS c
-    JOIN participants AS p ON c.id = p.conversation
+    JOIN participants AS p ON c.id = p.conv
     WHERE c.published = False AND c.key = $1 AND c.creator = $2 AND p.recipient = $2
     """
     update_conv_sql = """
     UPDATE conversations SET key = $1, timestamp = $2, published = True
     WHERE id = $3
     """
-    delete_actions_sql = 'DELETE FROM actions WHERE conversation = $1'
+    delete_actions_sql = 'DELETE FROM actions WHERE conv = $1'
     create_action_sql = """
-    INSERT INTO actions (key, conversation, actor, verb, component)
+    INSERT INTO actions (key, conv, actor, verb, component)
     VALUES ($1, $2, $3, 'publish', 'participant')
     RETURNING id
     """
 
     async def call(self, request):
         conv_key = request.match_info['conv']
-        conv_id, subject, participant_id = await self.fetchrow404(
+        conv_id, subject, part_id = await self.fetchrow404(
             self.get_conv_sql,
             conv_key,
             self.session.recipient_id
@@ -370,7 +370,7 @@ class Publish(View):
                 self.create_action_sql,
                 gen_public_key('pub'),
                 conv_id,
-                participant_id,
+                part_id,
             )
         print(action_id)
         # TODO: fire propagate

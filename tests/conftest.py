@@ -97,10 +97,10 @@ async def create_conversation(db_conn):
     args = key, recipient_id, 'Test Conversation', 'test-conv'
     conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref) '
                                      'VALUES ($1, $2, $3, $4) RETURNING id', *args)
-    await db_conn.execute('INSERT INTO participants (conversation, recipient) VALUES ($1, $2)', conv_id, recipient_id)
+    await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, recipient_id)
     args = 'msg-firstmsgkeyvalue', conv_id, 'this is the message'
     args = 'msg-firstmessage_key', conv_id, 'this is the message'
-    await db_conn.execute('INSERT INTO messages (key, conversation, body) VALUES ($1, $2, $3)', *args)
+    await db_conn.execute('INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)', *args)
     return key
 
 
