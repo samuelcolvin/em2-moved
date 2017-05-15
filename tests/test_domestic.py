@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 
 from em2.core import Components, Verbs
 from em2.utils.encoding import msg_encode
-from .conftest import AnyInt, CloseToNow, python_dict  # noqa
+from .conftest import AnyInt, CloseToNow, RegexStr, python_dict  # noqa
 
 
 async def test_valid_cookie_list_convs(dclient, conv_key, url, db_conn):
@@ -90,7 +90,7 @@ async def test_create_conv(dclient, url, db_conn):
     r = await dclient.post(url('create'), json=data)
     assert r.status == 201, await r.text()
     conv_key = await db_conn.fetchval('SELECT key FROM conversations')
-    assert {'key': conv_key} == await r.json()
+    assert {'url': f'/c/{conv_key}/'} == await r.json()
     assert conv_key.startswith('draft-')
 
 
@@ -270,3 +270,17 @@ async def test_publish_conv(dclient, conv_key, url, db_conn):
     assert new_conv_key != conv_key
     assert published
     assert ts2 > ts1
+    action = dict(await db_conn.fetchrow('SELECT * FROM actions'))
+    assert {
+        'id': AnyInt(),
+        'conv': AnyInt(),
+        'key': RegexStr(r'^pub-.*'),
+        'verb': 'add',
+        'component': 'participant',
+        'timestamp': CloseToNow(),
+        'actor': await db_conn.fetchval("SELECT id FROM participants"),
+        'parent': None,
+        'part': None,
+        'message': None,
+        'body': None,
+    } == action

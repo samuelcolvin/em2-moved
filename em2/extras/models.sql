@@ -52,7 +52,7 @@ CREATE TABLE messages (
 CREATE INDEX message_key ON messages USING btree (key);
 
 -- see Verbs enum which matches this
-CREATE TYPE VERB AS ENUM ('add', 'modify', 'delete', 'recover', 'lock', 'unlock', 'publish');
+CREATE TYPE VERB AS ENUM ('add', 'modify', 'delete', 'recover', 'lock', 'unlock');
 -- see Components enum which matches this
 CREATE TYPE COMPONENT AS ENUM ('subject', 'expiry', 'label', 'message', 'participant', 'attachment');
 

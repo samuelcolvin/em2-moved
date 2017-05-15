@@ -50,7 +50,6 @@ class Verbs(str, Enum):
     RECOVER = 'recover'
     LOCK = 'lock'
     UNLOCK = 'unlock'
-    PUBLISH = 'publish'
 
 
 class Database:

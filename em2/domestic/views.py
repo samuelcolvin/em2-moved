@@ -145,8 +145,7 @@ class Create(View):
             await self.conn.executemany(self.add_participants_sql, {(conv_id, pid) for pid in part_ids})
         await self.conn.execute(self.add_message_sql, gen_public_key('msg'), conv_id, conv.message)
 
-        # url = request.app.router['draft-conv'].url_for(id=conv_id)
-        return json_response(key=key, status_=201)
+        return json_response(url=str(request.app.router['get'].url_for(conv=key)), status_=201)
 
 
 class Act(View):
@@ -161,11 +160,6 @@ class Act(View):
         message_child: bool = False
         # TODO: participant permissions and more exotic types
         # TODO: add timezone event originally occurred in
-
-        def validate_verb(self, v):
-            if v is Verbs.PUBLISH:
-                raise ValueError('use the publish endpoint, not "act" to publish conversations')
-            return v
 
     get_conv_part_sql = """
     SELECT c.id, p.id
@@ -344,7 +338,7 @@ class Publish(View):
     delete_actions_sql = 'DELETE FROM actions WHERE conv = $1'
     create_action_sql = """
     INSERT INTO actions (key, conv, actor, verb, component)
-    VALUES ($1, $2, $3, 'publish', 'participant')
+    VALUES ($1, $2, $3, 'add', 'participant')
     RETURNING id
     """
 

@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import re
 from datetime import datetime
 
 import asyncpg
@@ -98,7 +99,6 @@ async def create_conversation(db_conn):
     conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref) '
                                      'VALUES ($1, $2, $3, $4) RETURNING id', *args)
     await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, recipient_id)
-    args = 'msg-firstmsgkeyvalue', conv_id, 'this is the message'
     args = 'msg-firstmessage_key', conv_id, 'this is the message'
     await db_conn.execute('INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)', *args)
     return key
@@ -110,6 +110,9 @@ def conv_key(loop, db_conn):
 
 
 class CloseToNow:
+    """
+    these all need `pytest_assertrepr_compare` adding and moving to pytest-toolbox
+    """
     def __init__(self, delta=2):
         self.delta: float = delta
         self.now = datetime.utcnow()
@@ -129,11 +132,11 @@ class CloseToNow:
             return repr(self.other)
         else:
             # else return something which explains what's going on.
-            return f'<CloseToNow({self.delta})>'
+            return f'<CloseToNow(delta={self.delta})>'
 
 
 class AnyInt:
-    def __init__(self, delta=2):
+    def __init__(self):
         self.v = None
 
     def __eq__(self, other):
@@ -144,6 +147,23 @@ class AnyInt:
     def __repr__(self):
         if self.v is None:
             return '<AnyInt>'
+        else:
+            return repr(self.v)
+
+
+class RegexStr:
+    def __init__(self, regex):
+        self._regex = re.compile(regex)
+        self.v = None
+
+    def __eq__(self, other):
+        if self._regex.fullmatch(other):
+            self.v = other
+            return True
+
+    def __repr__(self):
+        if self.v is None:
+            return f'<RegexStr(regex={self._regex!r}>'
         else:
             return repr(self.v)
 
