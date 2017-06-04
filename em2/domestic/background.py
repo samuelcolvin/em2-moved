@@ -3,7 +3,7 @@ from time import time
 
 from arq import Drain
 
-from em2 import Settings
+from em2 import Settings  # noqa
 from em2.utils.encoding import msg_decode
 
 

@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from typing import List
@@ -168,7 +169,7 @@ class Act(View):
         # TODO: add timezone event originally occurred in
 
     get_conv_part_sql = """
-    SELECT c.id, p.id
+    SELECT c.id, c.published, p.id
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     WHERE c.key = $1 AND p.recipient = $2
@@ -176,7 +177,7 @@ class Act(View):
 
     async def call(self, request):
         conv_key = request.match_info['conv']
-        conv_id, actor_id = await self.fetchrow404(
+        conv_id, conv_published, actor_id = await self.fetchrow404(
             self.get_conv_part_sql,
             conv_key,
             self.session.recipient_id,
@@ -197,7 +198,17 @@ class Act(View):
 
         async with self.conn.transaction():
             key, action_id = await self.apply_action(data)
-        # TODO: fire propagate
+
+        if conv_published:
+            pass
+            # TODO: fire propagate
+        else:
+            ws = self.app['ws'].get(self.session.recipient_id)
+            if ws:
+                send_data = data.values
+                send_data['key'] = key
+                ws.send_str(json.dumps(send_data))
+
         return json_response(key=key, status_=201)
 
     create_action_sql = """
