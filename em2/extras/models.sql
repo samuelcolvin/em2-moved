@@ -1,19 +1,12 @@
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 
-CREATE TABLE platforms (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL UNIQUE
-  -- TODO check ttl
-);
-CREATE INDEX platform_name ON platforms USING btree (name);
-INSERT INTO platforms (name) VALUES ('f');
+-- TODO could store platforms here instead of in redis
 
 CREATE TABLE recipients (
   id SERIAL PRIMARY KEY,
-  address VARCHAR(255) NOT NULL UNIQUE,
-  platform INT REFERENCES platforms ON DELETE RESTRICT
-  -- TODO check ttl, perhaps display name
+  address VARCHAR(255) NOT NULL UNIQUE
+  -- TODO perhaps display name
 );
 CREATE INDEX recipient_address ON recipients USING btree (address);
 
@@ -38,12 +31,15 @@ CREATE TABLE participants (
   UNIQUE (conv, recipient)
 );
 
+-- see core.Relationships enum which matches this
+CREATE TYPE RELATIONSHIP AS ENUM ('sibling', 'child');
+
 CREATE TABLE messages (
   id SERIAL PRIMARY KEY,
   key CHAR(20) NOT NULL,
   conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   after INT REFERENCES messages,
-  child BOOLEAN DEFAULT FALSE, -- TODO perhaps record depth to limit child replies
+  relationship RELATIONSHIP, -- TODO perhaps record depth to limit child replies
   active BOOLEAN DEFAULT TRUE,
   body TEXT,
   UNIQUE (conv, key)
@@ -51,9 +47,9 @@ CREATE TABLE messages (
 );
 CREATE INDEX message_key ON messages USING btree (key);
 
--- see Verbs enum which matches this
+-- see core.Verbs enum which matches this
 CREATE TYPE VERB AS ENUM ('add', 'modify', 'delete', 'recover', 'lock', 'unlock');
--- see Components enum which matches this
+-- see core.Components enum which matches this
 CREATE TYPE COMPONENT AS ENUM ('subject', 'expiry', 'label', 'message', 'participant', 'attachment');
 
 CREATE TABLE actions (
@@ -64,7 +60,6 @@ CREATE TABLE actions (
   component COMPONENT NOT NULL,
   actor INT NOT NULL REFERENCES participants ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   parent INT REFERENCES actions,
   part INT REFERENCES participants,
   message INT REFERENCES messages,
@@ -78,7 +73,7 @@ CREATE TYPE ACTION_STATUS AS ENUM ('pending', 'temporary_failure', 'failed', 'su
 CREATE TABLE actions_status (
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   status ACTION_STATUS NOT NULL DEFAULT 'pending',
-  platform INT REFERENCES platforms,
+  platform VARCHAR(265),
   part INT REFERENCES participants,
   errors JSONB[]
 );

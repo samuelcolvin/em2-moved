@@ -6,7 +6,7 @@ logger = logging.getLogger('em2.fallback')
 
 
 class FallbackHandler:
-    def __init__(self, settings: Settings, *, loop=None, **kwargs):
+    def __init__(self, settings: Settings, loop=None, **kwargs):
         self.settings = settings
         self.loop = loop
 
@@ -22,15 +22,15 @@ class FallbackHandler:
         _bcc = []  # TODO
         for p in participants:
             addr = p['address']
-            if addr == action.address:
+            if addr == action.actor:
                 _from = addr
             else:
                 _to.append(addr)
         return _from, _to, _bcc
 
-    async def push(self, action, data, participants, conv_subject):
+    async def push(self, action, participants, conv_subject):
         e_from, to, bcc = self.get_from_to_bcc(action, participants)
-        logger.info('%.6s %s . %s, from: %s, to: (%d) %s', action.conv, action.component, action.verb,
+        logger.info('%.6s %s . %s, from: %s, to: (%d) %s', action.conv_key, action.component, action.verb,
                     e_from, len(to) + len(bcc), ', '.join(to))
 
 

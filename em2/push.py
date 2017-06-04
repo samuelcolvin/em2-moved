@@ -15,13 +15,11 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from em2 import Settings
+from em2.core import Action
 from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
-from em2.utils.encoding import MSGPACK_CONTENT_TYPE, msg_encode, to_unix_ms
+from em2.utils.encoding import to_unix_ms
 
 logger = logging.getLogger('em2.push')
-
-
-CT_HEADER = {'content-type': MSGPACK_CONTENT_TYPE}
 
 
 def _get_domain(address):
@@ -52,19 +50,19 @@ class Pusher(Actor):
     def __init__(self, settings: Settings, loop=None, **kwargs):
         self.settings = settings
         self.loop = loop
-        logger.info('initialising pusher %s, ds: %s', self)
+        logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.db = None
         self.session = None
         self.fallback = None
+        self._resolver = None
         super().__init__(**kwargs)
 
     async def startup(self):
-        if self._concurrency_enabled:
-            assert self.is_shadow, 'datastore should only be initialised for the pusher in shadow mode'
-        self.db = self.settings.db_cls(self.loop, self.settings)
+        assert not self._concurrency_enabled or self.is_shadow, 'pusher db should only be initialised in shadow mode'
+        self.db = self.settings.db_cls(self.settings, self.loop)
         self.session = aiohttp.ClientSession(loop=self.loop)
-        self.fallback = self.settings.fallback_cls(self.settings, loop=self.loop)
+        self.fallback = self.settings.fallback_cls(self.settings, self.loop)
         await self.db.startup()
         await self.fallback.startup()
 
@@ -74,50 +72,90 @@ class Pusher(Actor):
             await self.fallback.shutdown()
             await self.session.close()
 
+    part_addresses_sql = """
+    SELECT r.address
+    FROM participants AS p
+    JOIN recipients AS r ON p.recipient = r.id
+    WHERE p.conv = $1 AND p.active = TRUE
+    """
+
+    conv_subject_sql = """
+    SELECT subject
+    FROM conversations
+    WHERE id = $1
+    """
+
     @concurrent
-    async def push(self, action_id):  # flake8: noqa
-        # TODO this all needs rewriting to use self.db
-        action = Action(**action_dict)
-        async with self.ds.conn_manager() as conn:
-            cds = self.ds.new_conv_ds(action.conv, conn)
-
-            participants_data = await cds.receiving_participants()
-            addresses = [p['address'] for p in participants_data]
+    async def propagate(self, *,
+                        action_id,
+                        action_key,
+                        conv_key,
+                        conv_id,
+                        component,
+                        verb,
+                        actor,
+                        timestamp,
+                        parent=None,
+                        relationship=None,
+                        item=None,
+                        body=None):
+        action = Action(
+            action_id=action_id,
+            action_key=action_key,
+            conv_id=conv_id,
+            conv_key=conv_key,
+            component=component,
+            verb=verb,
+            actor=actor,
+            timestamp=timestamp,
+            parent=parent,
+            relationship=relationship,
+            body=body,
+            item=item,
+        )
+        async with self.db.acquire() as conn:
+            participants = await conn.fetch(self.part_addresses_sql, conv_id)  # TODO more info e.g. bbc etc.
+            addresses = [p[0] for p in participants]
             nodes = await self.get_nodes(*addresses)
-            remote_em2_nodes = [n for n in nodes if n not in {self.LOCAL, self.FALLBACK}]
+            remote_em2_nodes = {n for n in nodes if n not in {self.LOCAL, self.FALLBACK}}
+            logger.info('%s.%s %.6s to %d participants on %d nodes, of which em2 %d', component, verb, conv_key,
+                        len(participants), len(nodes), len(remote_em2_nodes))
+            if remote_em2_nodes:
+                await self.push(remote_em2_nodes, action)
 
-            logger.info('%s %.6s to %d parts on %d nodes, of which em2 %d', action.verb, action.conv,
-                        len(participants_data), len(nodes), len(remote_em2_nodes))
-            await self._push_em2(remote_em2_nodes, action, data)
             if any(n for n in nodes if n == self.FALLBACK):
-                logger.info('%s %.6s fallback required', action.verb, action.conv)
+                logger.info('%s %.6s fallback required', verb, conv_key)
                 # some actions eg. publish already include subject
-                subject = data.get('subject') or await cds.get_subject()
-                await self.fallback.push(action, data, participants_data, subject)
-            # TODO update event with success or failure
+                subject = await conn.fetch(self.conv_subject_sql, conv_id)
+                await self.fallback.push(action, participants, subject)
+            # TODO populate actions_status
+
+    async def push(self, nodes, action: Action):
+        if not nodes:
+            return
+        item = action.item or ''
+        path = f'{action.conv_key}/{action.component}/{action.verb}/{item}'
+        headers = {
+            'content-type': 'text/plain',
+            'em2-actor': action.actor,
+            'em2-timestamp': action.timestamp,
+            'em2-action-key': action.action_key,
+            'em2-parent': action.parent,
+            'em2-relationship': action.relationship,
+        }
+        cos = [self._post(node, path, headers, action.body.encode()) for node in nodes]
+        # TODO better error checks
+        await asyncio.gather(*cos, loop=self.loop)
 
     async def _post(self, domain, path, headers, data):
         logger.info('posting to %s > %s', domain, path)
         token = await self.authenticate(domain)
         headers['em2-auth'] = token
         url = f'{self.settings.COMMS_SCHEMA}://{domain}/{path}'
+        # TODO semaphore to limit maximum connection count
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
                 raise PushError('{}: {}'.format(r.status, await r.read()))
-
-    async def _push_em2(self, nodes, action, data):
-        action.item = action.item or ''
-        path = f'{action.conv}/{action.component}/{action.verb}/{action.item}'
-        headers = {
-            'content-type': MSGPACK_CONTENT_TYPE,
-            'em2-address': action.address,
-            'em2-timestamp': str(to_unix_ms(action.timestamp)),
-            'em2-event-id': action.event_id,
-        }
-        post_data = msg_encode(data)
-        cos = [self._post(node, path, headers, post_data) for node in nodes]
-        # TODO better error checks
-        await asyncio.gather(*cos, loop=self.loop)
 
     async def get_node(self, domain: str) -> str:
         """
@@ -171,19 +209,19 @@ class Pusher(Actor):
                 nodes.add(node)
         return nodes
 
-    def get_auth_data(self):
+    def auth_data(self):
+        yield 'platform', self.settings.LOCAL_DOMAIN
+
         timestamp = self._now_unix()
+        yield 'timestamp', timestamp
+
         msg = '{}:{}'.format(self.settings.LOCAL_DOMAIN, timestamp)
         h = SHA256.new(msg.encode())
 
         key = RSA.importKey(self.settings.private_domain_key)
         signer = PKCS1_v1_5.new(key)
         signature = base64.urlsafe_b64encode(signer.sign(h)).decode()
-        return {
-            'platform': self.settings.LOCAL_DOMAIN,
-            'timestamp': timestamp,
-            'signature': signature,
-        }
+        yield 'signature', signature
 
     async def authenticate(self, node_domain: str) -> str:
         logger.debug('authenticating with %s', node_domain)
@@ -193,18 +231,17 @@ class Pusher(Actor):
             if token:
                 token = token.decode()
             else:
-                token = await self._authenticate_direct(node_domain)
+                token = await self._authenticate_request(node_domain)
                 _, expires_at, _ = token.split(':', 2)
                 expire_token_at = int(expires_at) - self._early_token_expiry
                 await self.set_exat(redis, token_key, token, expire_token_at)
         logger.info('successfully authenticated with %s', node_domain)
         return token
 
-    async def _authenticate_direct(self, node_domain):
+    async def _authenticate_request(self, node_domain):
         url = f'{self.settings.COMMS_SCHEMA}://{node_domain}/authenticate'
         # TODO more error checks
-        auth_data = self.get_auth_data()
-        headers = {f'em2-{k}': str(v) for k, v in auth_data.items()}
+        headers = {f'em2-{k}': str(v) for k, v in self.auth_data()}
         try:
             async with self.session.post(url, headers=headers) as r:
                 if r.status != 201:
@@ -255,17 +292,3 @@ class Pusher(Actor):
 
     def __repr__(self):
         return '{}<{}>'.format(self.__class__.__name__, self.settings.LOCAL_DOMAIN)
-
-
-class NullPusher(Pusher):  # pragma: no cover
-    """
-    Pusher with no functionality to connect to other platforms. Used for testing or trial purposes only.
-    """
-    async def push(self, action, data):
-        pass
-
-    async def get_node(self, domain):
-        pass
-
-    async def authenticate(self, node_domain: str):
-        pass

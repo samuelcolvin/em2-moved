@@ -2,6 +2,7 @@ import base64
 import hashlib
 import os
 from enum import Enum, unique
+from typing import NamedTuple
 
 import asyncpg
 from asyncpg.pool import Pool  # noqa
@@ -56,6 +57,12 @@ class Verbs(str, Enum):
     UNLOCK = 'unlock'
 
 
+@unique
+class Relationships(str, Enum):
+    sibling = 'sibling'
+    child = 'child'
+
+
 class Database:
     def __init__(self, settings: Settings, loop):
         self._loop = loop
@@ -75,3 +82,18 @@ class Database:
 
     async def close(self):
         return await self._pool.close()
+
+
+class Action(NamedTuple):
+    action_id: int
+    action_key: str
+    conv_key: str
+    conv_id: int
+    component: Components
+    verb: Verbs
+    actor: str
+    timestamp: str
+    parent: str
+    relationship: Relationships
+    item: str
+    body: str

@@ -21,9 +21,10 @@ from em2.utils.encoding import msg_encode
 def settings():
     return Settings(
         PG_NAME='em2_test',
-        LOCAL_DOMAIN='testapp.com',
+        LOCAL_DOMAIN='em2.platform.example.com',
         authenticator_cls='tests.fixture_classes.FixedSimpleAuthenticator',
         db_cls='tests.fixture_classes.TestDatabase',
+        pusher_cls='tests.fixture_classes.DNSMockedPusher',
     )
 
 
@@ -47,7 +48,7 @@ def db_conn(loop, settings, clean_db):
     await_(tr.rollback())
 
 
-def _set_connection(app):
+async def f_startup_modify_app(app):
     app['db'].conn = app['_conn']
 
 
@@ -55,11 +56,22 @@ def _set_connection(app):
 def fclient(loop, settings, db_conn, test_client):
     app = create_foreign_app(settings)
     app['_conn'] = db_conn
-    app.on_startup.append(_set_connection)
+    app.on_startup.append(f_startup_modify_app)
     return loop.run_until_complete(test_client(app))
 
 
 test_addr = 'testing@example.com'
+
+
+async def d_startup_modify_app(app):
+    app['db'].conn = app['_conn']
+    app['pusher']._concurrency_enabled = False
+    await  app['pusher'].startup()
+    app['pusher'].db.conn = app['_conn']
+
+
+async def d_shutdown_modify_app(app):
+    await app['pusher'].session.close()
 
 
 @pytest.fixture
@@ -74,7 +86,8 @@ def dclient(loop, settings, db_conn, test_client):
     }
     app = create_domestic_app(settings, 'd-testing')
     app['_conn'] = db_conn
-    app.on_startup.append(_set_connection)
+    app.on_startup.append(d_startup_modify_app)
+    app.on_shutdown.append(d_shutdown_modify_app)
     return loop.run_until_complete(test_client(app, cookies=cookies))
 
 

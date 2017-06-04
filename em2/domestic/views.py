@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import datetime
 from typing import List
@@ -8,7 +7,7 @@ from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_ws import WebSocketResponse
 from pydantic import EmailStr, constr
 
-from em2.core import Components, Verbs, gen_random, generate_conv_key
+from em2.core import Components, Relationships, Verbs, gen_random, generate_conv_key
 from em2.utils.web import WebModel, json_response, raw_json_response
 
 from .common import View
@@ -52,7 +51,7 @@ class Get(View):
     messages_sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT m1.key AS key, m2.key AS after, m1.child AS child, m1.active AS active, m1.body AS body
+      SELECT m1.key AS key, m2.key AS after, m1.relationship AS relationship, m1.active AS active, m1.body AS body
       FROM messages AS m1
       LEFT JOIN messages AS m2 ON m1.after = m2.id
       WHERE m1.conv = $1 AND m1.active = True
@@ -164,7 +163,7 @@ class Act(View):
         item: constr(max_length=255) = None
         parent: constr(min_length=20, max_length=20) = None
         body: str = None
-        message_child: bool = False
+        relationship: Relationships = None  # TODO relationship is set when required
         # TODO: participant permissions and more exotic types
         # TODO: add timezone event originally occurred in
 
@@ -174,6 +173,13 @@ class Act(View):
     JOIN participants AS p ON c.id = p.conv
     WHERE c.key = $1 AND p.recipient = $2
     """
+
+    def __init__(self, request):
+        super().__init__(request)
+        self.action_key = gen_random('act')
+        self.action_id = None
+        self.action_timestamp = None
+        self.action_item = None
 
     async def call(self, request):
         conv_key = request.match_info['conv']
@@ -197,24 +203,40 @@ class Act(View):
             raise HTTPBadRequest(text=f'item may not be null for {data.component} actions')
 
         async with self.conn.transaction():
-            key, action_id = await self.apply_action(data)
+            await self.apply_action(data)
 
         if conv_published:
-            pass
-            # TODO: fire propagate
-        else:
-            ws = self.app['ws'].get(self.session.recipient_id)
-            if ws:
-                send_data = data.values
-                send_data['key'] = key
-                ws.send_str(json.dumps(send_data))
-
-        return json_response(key=key, status_=201)
+            await self.app['pusher'].propagate(
+                action_id=self.action_id,
+                action_key=self.action_key,
+                conv_key=conv_key,
+                conv_id=conv_id,
+                component=data.component,
+                verb=data.verb,
+                actor=self.session.address,
+                timestamp=self.action_timestamp,
+                parent=data.parent,
+                relationship=data.relationship,
+                item=self.action_item,
+                body=data.body,
+            )
+        return json_response(
+            key=self.action_key,
+            conv_key=conv_key,
+            component=data.component,
+            verb=data.verb,
+            timestamp=self.action_timestamp,
+            parent=data.parent,
+            relationship=data.relationship,
+            body=data.body,
+            item=self.action_item,
+            status_=201
+        )
 
     create_action_sql = """
     INSERT INTO actions (key, conv, verb, component, actor, parent, part, message, body)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id
+    RETURNING id, to_json(timestamp)
     """
 
     async def apply_action(self, data: Data):
@@ -232,10 +254,9 @@ class Act(View):
         else:
             raise NotImplementedError()
 
-        key = gen_random('act')
-        action_id = await self.conn.fetchval(
+        self.action_id, self.action_timestamp = await self.conn.fetchrow(
             self.create_action_sql,
-            key,
+            self.action_key,
             data.conv,
             data.verb,
             data.component,
@@ -245,14 +266,15 @@ class Act(View):
             message_id,
             data.body,
         )
-        return key, action_id
+        # remove quotes added by to_json
+        self.action_timestamp = self.action_timestamp[1:-1]
 
     find_message_sql = """
     SELECT m.id FROM messages AS m
     WHERE m.conv = $1 AND m.key = $2
     """
     add_message_sql = """
-    INSERT INTO messages (key, conv, after, child, body) VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO messages (key, conv, after, relationship, body) VALUES ($1, $2, $3, $4, $5)
     RETURNING id
     """
 
@@ -260,7 +282,8 @@ class Act(View):
         after_id = await self.fetchval404(self.find_message_sql, data.conv, data.item)
         if not data.body:
             raise HTTPBadRequest(text='body can not be empty when adding a message')
-        args = gen_random('msg'), data.conv, after_id, data.message_child, data.body
+        self.action_item = gen_random('msg')
+        args = self.action_item, data.conv, after_id, data.relationship, data.body
         message_id = await self.conn.fetchval(self.add_message_sql, *args)
         return message_id
 
@@ -274,7 +297,8 @@ class Act(View):
     modify_message_sql = 'UPDATE messages SET body = $1 WHERE id = $2'
 
     async def mod_message(self, data: Data):
-        message_id = await self.fetchval404(self.find_message_sql, data.conv, data.item)
+        self.action_item = data.item
+        message_id = await self.fetchval404(self.find_message_sql, data.conv, self.action_item)
         parent_id, parent_key, parent_verb, parent_actor = await self.fetchrow404(
             self.latest_message_action_sql,
             data.conv,
@@ -310,13 +334,13 @@ class Act(View):
 
     async def add_participant(self, data: Data):
         try:
-            address = EmailStr.validate(data.item)
+            self.action_item = EmailStr.validate(data.item)
         except (TypeError, ValueError):
             raise HTTPBadRequest(text='is not a valid email address')
 
-        recipient_id = await self.conn.fetchval(self.get_recipient_id, address)
+        recipient_id = await self.conn.fetchval(self.get_recipient_id, self.action_item)
         if recipient_id is None:
-            recipient_id = await self.conn.fetchval(self.set_recipient_id, address)
+            recipient_id = await self.conn.fetchval(self.set_recipient_id, self.action_item)
         part_id = await self.conn.fetchval(self.add_participant_sql, data.conv, recipient_id)
         if part_id is None:
             raise HTTPBadRequest(text='participant already exists on the conversation')
@@ -331,7 +355,8 @@ class Act(View):
 
     async def mod_participant(self, data: Data):
         # TODO check parent matches latest data.parent
-        part_id = await self.fetchval404(self.find_participant_sql, data.conv, data.item)
+        self.action_item = data.item
+        part_id = await self.fetchval404(self.find_participant_sql, data.conv, self.action_item)
         if data.verb in (Verbs.DELETE, Verbs.RECOVER):
             await self.conn.execute(self.delete_participant_sql, data.verb == Verbs.RECOVER, part_id)
         elif data.verb is Verbs.MODIFY:
@@ -356,7 +381,7 @@ class Publish(View):
     create_action_sql = """
     INSERT INTO actions (key, conv, actor, verb, component)
     VALUES ($1, $2, $3, 'add', 'participant')
-    RETURNING id
+    RETURNING id, timestamp
     """
 
     async def call(self, request):
@@ -377,14 +402,24 @@ class Publish(View):
             )
             # might need to not delete these actions, just mark them as draft somehow
             await self.conn.execute(self.delete_actions_sql, conv_id)
-            action_id = await self.conn.fetchval(
+            action_key = gen_random('pub')
+            action_id, action_timestamp = await self.conn.fetchrow(
                 self.create_action_sql,
-                gen_random('pub'),
+                action_key,
                 conv_id,
                 part_id,
             )
-        print(action_id)
-        # TODO: fire propagate
+
+        await self.app['pusher'].propagate(
+            action_id=action_id,
+            action_key=action_key,
+            conv_key=new_conv_key,
+            conv_id=conv_id,
+            component=Components.PARTICIPANT,
+            verb=Verbs.ADD,
+            actor=self.session.address,
+            timestamp=action_timestamp,
+        )
         return json_response(key=new_conv_key)
 
 

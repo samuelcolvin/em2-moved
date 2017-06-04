@@ -29,25 +29,25 @@ Also: display name, permissions, hidden, status: active, archived, muted, left?
 
 Also: notes & personal labels.
 
-### Event
+### Action
 
 * conversation
-* hash
+* key
 * timestamp
 * recipient
-* remove/local
-* parent hash
+* remote/local
+* parent key
 * action: add, modify, delete, lock, release lock
 * model: participant, message, attachment, subject, expiry, label
 * item id
-* ref - summary of body, used for hash
+* ref - summary of body, used for key
 * body
 
 ### Platform Event Delivery
 
 One per platform, but also one per participant using SMTP.
 
-* event id/hash
+* event id/key
 * platform
 * status
 * details on failure(s)
@@ -57,7 +57,7 @@ Do we need participant event delivery?
 ### Message
 
 * conversation
-* hash
+* key
 * parent
 * body
 

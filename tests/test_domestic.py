@@ -106,6 +106,17 @@ async def test_add_message(dclient, conv_key, url, db_conn):
     r = await dclient.post(url_, json=data)
     assert r.status == 201, await r.text()
     obj = await r.json()
+    assert {
+        'key': RegexStr('act-.*'),
+        'conv_key': 'key123',
+        'verb': 'add',
+        'component': 'message',
+        'timestamp': RegexStr(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d.\d{6}'),
+        'parent': None,
+        'relationship': None,
+        'body': 'hello',
+        'item': RegexStr('msg-.*'),
+    } == obj
     action_key = obj['key']
     action = dict(await db_conn.fetchrow('SELECT * FROM actions WHERE key = $1', action_key))
     assert {
@@ -161,7 +172,7 @@ async def test_add_message_invalid_data_model_error(dclient, conv_key, url):
 
 
 async def test_add_message_get(dclient, conv_key, url, db_conn):
-    data = {'item': 'msg-firstmessage_key', 'body': 'reply'}
+    data = {'item': 'msg-firstmessage_key', 'body': 'reply', 'relationship': 'sibling'}
     url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 201, await r.text()
@@ -196,14 +207,14 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
                 'active': True,
                 'after': None,
                 'body': 'this is the message',
-                'child': False,
+                'relationship': None,
                 'key': 'msg-firstmessage_key'
             },
             {
                 'active': True,
                 'after': 'msg-firstmessage_key',
                 'body': 'reply',
-                'child': False,
+                'relationship': 'sibling',
                 'key': new_msg_id
             }
         ],
@@ -251,7 +262,7 @@ async def test_add_part_get(dclient, conv_key, url, db_conn):
                 'active': True,
                 'after': None,
                 'body': 'this is the message',
-                'child': False,
+                'relationship': None,
                 'key': 'msg-firstmessage_key'
             }
         ],
@@ -262,7 +273,7 @@ async def test_add_part_get(dclient, conv_key, url, db_conn):
     } == obj
 
 
-async def test_publish_conv(dclient, conv_key, url, db_conn):
+async def test_publish_conv(dclient, conv_key, url, db_conn, redis):
     published, ts1 = await db_conn.fetchrow('SELECT published, timestamp FROM conversations')
     assert not published
     await sleep(0.01)
