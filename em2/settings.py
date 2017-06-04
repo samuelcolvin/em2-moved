@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from arq import RedisSettings
-from pydantic import BaseSettings, Module
+from pydantic import BaseSettings, PyObject
 from pydantic.utils import make_dsn
 
 
@@ -21,11 +21,11 @@ class Settings(BaseSettings):
     COMMS_SCHEMA = 'https'
     COMMS_DNS_IP: str = None
 
-    # datastore_cls: Module = 'em2.ds.pg.PostgresDataStore'
-    # pusher_cls: Module = 'em2.comms.web.push.WebDNSPusher'
-    fallback_cls: Module = 'em2.fallback.FallbackHandler'
-    db_cls: Module = 'em2.core.Database'
-    authenticator_cls: Module = 'em2.foreign.auth.Authenticator'
+    # datastore_cls: PyObject = 'em2.ds.pg.PostgresDataStore'
+    # pusher_cls: PyObject = 'em2.comms.web.push.WebDNSPusher'
+    fallback_cls: PyObject = 'em2.fallback.FallbackHandler'
+    db_cls: PyObject = 'em2.core.Database'
+    authenticator_cls: PyObject = 'em2.foreign.auth.Authenticator'
 
     # default address for webservers eg. gunicorn to bind to
     WEB_PORT = 8000
