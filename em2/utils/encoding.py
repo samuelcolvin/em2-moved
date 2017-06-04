@@ -1,7 +1,6 @@
 from datetime import datetime
 
 import msgpack
-
 from arq.utils import to_unix_ms as _to_unix_ms
 from arq.utils import from_unix_ms
 

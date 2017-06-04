@@ -5,6 +5,7 @@ from cryptography.fernet import Fernet
 
 from em2.core import Components, Verbs
 from em2.utils.encoding import msg_encode
+
 from .conftest import AnyInt, CloseToNow, RegexStr, python_dict  # noqa
 
 

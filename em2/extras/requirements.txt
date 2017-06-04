@@ -11,7 +11,7 @@ pycrypto==2.6.1
 pydantic==0.0.5
 
 # optionally used in logging
-raven==6.0.0
+raven==6.1.0
 
 # aiohttp
 aiohttp==2.1.0

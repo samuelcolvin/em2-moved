@@ -6,6 +6,7 @@ import pytest
 from em2 import Settings
 from em2.utils.encoding import msg_encode, to_unix_ms
 from em2.utils.network import check_server
+
 # from em2.core import Action, Components, Verbs
 from .fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 

@@ -2,6 +2,7 @@ from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 from cryptography.fernet import InvalidToken
 
 from em2.utils.encoding import msg_decode, msg_encode
+
 from .common import Session
 
 

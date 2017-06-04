@@ -3,7 +3,6 @@ import json
 from aiohttp.web import HTTPBadRequest, Response
 from pydantic import BaseModel, ValidationError
 
-
 JSON_CONTENT_TYPE = 'application/json'
 
 

@@ -6,6 +6,7 @@ from pydantic import EmailStr, constr
 
 from em2.core import Components, Verbs, gen_public_key, generate_conv_key
 from em2.utils.web import WebModel, json_response, raw_json_response
+
 from .common import View
 
 
