@@ -49,7 +49,7 @@ class Pusher(Actor):
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
 
-    def __init__(self, settings: Settings, *, loop=None, **kwargs):
+    def __init__(self, settings: Settings, loop=None, **kwargs):
         self.settings = settings
         self.loop = loop
         logger.info('initialising pusher %s, ds: %s', self)

@@ -22,7 +22,11 @@ def generate_hash(*args, sha256=False):
         return hashlib.sha1(to_hash).hexdigest()
 
 
-def gen_public_key(prefix):
+def gen_random(prefix):
+    """
+    :param prefix: string to prefix random key with
+    :return: prefix plus 16 char alphanumeric (lowercase) random string
+    """
     return prefix + '-' + base64.b32encode(os.urandom(10))[:16].decode().lower()
 
 
@@ -53,7 +57,7 @@ class Verbs(str, Enum):
 
 
 class Database:
-    def __init__(self, loop, settings: Settings):
+    def __init__(self, settings: Settings, loop):
         self._loop = loop
         self._settings = settings
         self._pool: Pool = None

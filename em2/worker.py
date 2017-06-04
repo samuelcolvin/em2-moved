@@ -1,7 +1,7 @@
 from arq import BaseWorker
 
 from em2 import setup_logging
-from em2.comms.web.push import WebDNSPusher
+from em2.push import Pusher
 from em2.settings import Settings
 
 
@@ -9,7 +9,7 @@ class Worker(BaseWorker):
     """
     arq worker used to execute jobs
     """
-    shadows = [WebDNSPusher]
+    shadows = [Pusher]
 
     def __init__(self, **kwargs):
         self.settings = kwargs.pop('settings', None) or Settings()

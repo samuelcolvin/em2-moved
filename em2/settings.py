@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     COMMS_DNS_IP: str = None
 
     # datastore_cls: PyObject = 'em2.ds.pg.PostgresDataStore'
-    # pusher_cls: PyObject = 'em2.comms.web.push.WebDNSPusher'
+    pusher_cls: PyObject = 'em2.push.Pusher'
     fallback_cls: PyObject = 'em2.fallback.FallbackHandler'
     db_cls: PyObject = 'em2.core.Database'
     authenticator_cls: PyObject = 'em2.foreign.auth.Authenticator'
@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     COOKIE_NAME = 'em2session'
     SECRET_KEY = b'i am not secure but 32 bits long'
     THIS_DIR = Path(__file__).resolve().parent
+    FRONTEND_RECIPIENTS_BASE = 'frontend:recipients:{}'
+    FRONTEND_JOBS_BASE = 'frontend:jobs:{}'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

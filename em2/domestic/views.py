@@ -1,13 +1,18 @@
+import logging
 from datetime import datetime
 from typing import List
 
+from aiohttp import WSMsgType
 from aiohttp.web_exceptions import HTTPBadRequest
+from aiohttp.web_ws import WebSocketResponse
 from pydantic import EmailStr, constr
 
-from em2.core import Components, Verbs, gen_public_key, generate_conv_key
+from em2.core import Components, Verbs, gen_random, generate_conv_key
 from em2.utils.web import WebModel, json_response, raw_json_response
 
 from .common import View
+
+logger = logging.getLogger('em2.domestic.views')
 
 
 class VList(View):
@@ -140,11 +145,11 @@ class Create(View):
                 extra_ids = {r['id'] for r in await self.conn.fetch(self.set_missing_recips_sql, part_addresses)}
                 part_ids.update(extra_ids)
 
-        key = gen_public_key('draft')
+        key = gen_random('draft')
         conv_id = await self.conn.fetchval(self.create_conv_sql, key, self.session.recipient_id, conv.subject)
         if part_ids:
             await self.conn.executemany(self.add_participants_sql, {(conv_id, pid) for pid in part_ids})
-        await self.conn.execute(self.add_message_sql, gen_public_key('msg'), conv_id, conv.message)
+        await self.conn.execute(self.add_message_sql, gen_random('msg'), conv_id, conv.message)
 
         return json_response(url=str(request.app.router['get'].url_for(conv=key)), status_=201)
 
@@ -216,7 +221,7 @@ class Act(View):
         else:
             raise NotImplementedError()
 
-        key = gen_public_key('act')
+        key = gen_random('act')
         action_id = await self.conn.fetchval(
             self.create_action_sql,
             key,
@@ -244,7 +249,7 @@ class Act(View):
         after_id = await self.fetchval404(self.find_message_sql, data.conv, data.item)
         if not data.body:
             raise HTTPBadRequest(text='body can not be empty when adding a message')
-        args = gen_public_key('msg'), data.conv, after_id, data.message_child, data.body
+        args = gen_random('msg'), data.conv, after_id, data.message_child, data.body
         message_id = await self.conn.fetchval(self.add_message_sql, *args)
         return message_id
 
@@ -363,10 +368,34 @@ class Publish(View):
             await self.conn.execute(self.delete_actions_sql, conv_id)
             action_id = await self.conn.fetchval(
                 self.create_action_sql,
-                gen_public_key('pub'),
+                gen_random('pub'),
                 conv_id,
                 part_id,
             )
         print(action_id)
         # TODO: fire propagate
         return json_response(key=new_conv_key)
+
+
+class Websocket(View):
+    ws_type_lookup = {k.value: v for v, k in WSMsgType.__members__.items()}
+
+    async def call(self, request):
+        ws = WebSocketResponse()
+        await ws.prepare(request)
+        logger.info('ws connection from %d', self.session)
+        await self.app['background'].add_recipient(self.session.recipient_id, ws)
+        try:
+            async for msg in ws:
+                if msg.tp == WSMsgType.TEXT:
+                    logger.info('ws message: %s', msg.data)
+                elif msg.tp == WSMsgType.ERROR:
+                    pass
+                    logger.warning('ws connection closed with exception %s', ws.exception())
+                else:
+                    pass
+                    logger.warning('unknown websocket message type %s, data: %s', self.ws_type_lookup[msg.tp], msg.data)
+        finally:
+            logger.debug('ws disconnection: %d', self.session)
+            await self.app['background'].remove_recipient(self.session.recipient_id)
+        return ws

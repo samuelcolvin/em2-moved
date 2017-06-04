@@ -6,6 +6,7 @@ from datetime import datetime
 
 import asyncpg
 import pytest
+from aioredis import create_redis
 from cryptography.fernet import Fernet
 from pydantic.datetime_parse import parse_datetime
 
@@ -47,13 +48,13 @@ def db_conn(loop, settings, clean_db):
 
 
 def _set_connection(app):
-    app['db'].conn = app['conn']
+    app['db'].conn = app['_conn']
 
 
 @pytest.fixture
 def fclient(loop, settings, db_conn, test_client):
     app = create_foreign_app(settings)
-    app['conn'] = db_conn
+    app['_conn'] = db_conn
     app.on_startup.append(_set_connection)
     return loop.run_until_complete(test_client(app))
 
@@ -71,8 +72,8 @@ def dclient(loop, settings, db_conn, test_client):
     cookies = {
         settings.COOKIE_NAME: fernet.encrypt(data).decode()
     }
-    app = create_domestic_app(settings)
-    app['conn'] = db_conn
+    app = create_domestic_app(settings, 'd-testing')
+    app['_conn'] = db_conn
     app.on_startup.append(_set_connection)
     return loop.run_until_complete(test_client(app, cookies=cookies))
 
@@ -107,6 +108,21 @@ async def create_conversation(db_conn):
 @pytest.fixture
 def conv_key(loop, db_conn):
     return loop.run_until_complete(create_conversation(db_conn))
+
+
+@pytest.yield_fixture
+def redis(loop):
+    async def _redis():
+        redis = await create_redis(('localhost', 6379))
+        await redis.flushdb()
+        return redis
+
+    redis = loop.run_until_complete(_redis())
+
+    yield redis
+
+    redis.close()
+    loop.run_until_complete(redis.wait_closed())
 
 
 class CloseToNow:

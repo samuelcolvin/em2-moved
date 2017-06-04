@@ -44,9 +44,7 @@ async def set_recipient(request):
     recipient_id = await request['conn'].fetchval(GET_RECIPIENT_ID, request['session'].address)
     if recipient_id is None:
         recipient_id = await request['conn'].fetchval(SET_RECIPIENT_ID, request['session'].address)
-    request['session'].recipient_id = recipient_id
-    # until samuelcolvin/pydantic#14 is fixed
-    request['session'].__values__['recipient_id'] = recipient_id
+    request['session'].setattr('recipient_id', recipient_id)
     request['session_change'] = True
 
 

@@ -1,6 +1,8 @@
 import base64
+import json
 from asyncio import sleep
 
+from aiohttp import WSMsgType
 from cryptography.fernet import Fernet
 
 from em2.core import Components, Verbs
@@ -279,9 +281,25 @@ async def test_publish_conv(dclient, conv_key, url, db_conn):
         'verb': 'add',
         'component': 'participant',
         'timestamp': CloseToNow(),
-        'actor': await db_conn.fetchval("SELECT id FROM participants"),
+        'actor': await db_conn.fetchval('SELECT id FROM participants'),
         'parent': None,
         'part': None,
         'message': None,
         'body': None,
     } == action
+
+
+async def test_action_received_via_ws(dclient, db_conn, redis):
+    async with dclient.session.ws_connect(dclient.make_url('/ws/')) as ws:
+        job_data = {
+            'recipients': [
+                await db_conn.fetchval('SELECT id FROM recipients')
+            ],
+            'action': 'foobar',
+        }
+        await redis.lpush('frontend:jobs:d-testing', msg_encode(job_data))
+        async for msg in ws:
+            assert msg.tp == WSMsgType.text
+            data = json.loads(msg.data)
+            assert data == 'foobar'
+            break
