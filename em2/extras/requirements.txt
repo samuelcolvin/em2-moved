@@ -14,7 +14,7 @@ pydantic==0.1.0
 raven==6.1.0
 
 # aiohttp
-aiohttp==2.1.0
+aiohttp==2.2.1
 cchardet==2.1.0
 uvloop==0.8.0
 
