@@ -9,6 +9,7 @@ import aiodns
 from aiodns.error import DNSError
 from arq import RedisMixin
 from arq.jobs import DatetimeJob
+from arq.utils import to_unix_ms
 from async_timeout import timeout
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
@@ -16,7 +17,6 @@ from Crypto.Signature import PKCS1_v1_5
 
 from em2 import Settings
 from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
-from em2.utils.encoding import to_unix_ms
 
 logger = logging.getLogger('em2.foreign.auth')
 

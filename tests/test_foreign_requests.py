@@ -2,9 +2,10 @@
 from datetime import datetime, timedelta
 
 import pytest
+from arq.utils import to_unix_ms
 
 from em2 import Settings
-from em2.utils.encoding import msg_encode, to_unix_ms
+from em2.utils.encoding import msg_encode
 from em2.utils.network import check_server
 
 # from em2.core import Action, Components, Verbs
