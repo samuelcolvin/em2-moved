@@ -1,17 +1,12 @@
 from datetime import datetime
 
 import msgpack
-from arq.utils import to_unix_ms as _to_unix_ms
-from arq.utils import from_unix_ms
+from arq.utils import from_unix_ms, to_unix_ms
 
 # unicode clock is small to encode and should be fairly unlikely to clash with another dict key
 _DT = '⌚'
 
 MSGPACK_CONTENT_TYPE = 'application/msgpack'
-
-
-def to_unix_ms(dt):
-    return _to_unix_ms(dt)[0]
 
 
 def _encode(obj):
