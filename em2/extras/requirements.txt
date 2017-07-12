@@ -3,7 +3,7 @@
 # they're kept in a separate file to keep things explicit and to work with pyup
 
 aiodns==1.1.1
-aioredis==0.3.1
+aioredis==0.3.3
 async-timeout==1.2.1
 arq==0.7.0
 msgpack-python==0.4.8
