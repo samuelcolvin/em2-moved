@@ -8,10 +8,10 @@ from em2.utils.encoding import msg_decode
 
 
 class Background:
-    def __init__(self, app):
+    def __init__(self, app, loop):
         self.app = app
         self.settings: Settings = app['settings']
-        self.task = app.loop.create_task(self._process_actions())
+        self.task = loop.create_task(self._process_actions())
         self.recipients_key = self.settings.FRONTEND_RECIPIENTS_BASE.format(self.app['name'])
         self.redis_pool = None
         self._last_added_recipient = 0

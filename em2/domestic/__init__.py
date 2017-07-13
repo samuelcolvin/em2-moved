@@ -1,3 +1,4 @@
+import asyncio
 import base64
 
 from aiohttp.web import Application
@@ -11,10 +12,11 @@ from .views import Act, Create, Get, Publish, VList, Websocket
 
 async def app_startup(app):
     settings = app['settings']
+    loop = app.loop or asyncio.get_event_loop()
     app.update(
-        db=settings.db_cls(settings, app.loop),
-        pusher=settings.pusher_cls(settings, app.loop),
-        background=Background(app),
+        db=settings.db_cls(settings, loop),
+        pusher=settings.pusher_cls(settings, loop),
+        background=Background(app, loop),
     )
     await app['db'].startup()
 
