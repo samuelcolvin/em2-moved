@@ -59,15 +59,6 @@ class Settings(BaseSettings):
     FRONTEND_RECIPIENTS_BASE = 'frontend:recipients:{}'
     FRONTEND_JOBS_BASE = 'frontend:jobs:{}'
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.redis = RedisSettings(
-            host=self.R_HOST,
-            port=self.R_PORT,
-            database=self.R_DATABASE,
-            password=self.R_PASSWORD,
-        )
-
     class Config:
         env_prefix = 'EM2_'
         ignore_extra = False
@@ -92,3 +83,12 @@ class Settings(BaseSettings):
     @property
     def models_sql(self):
         return (self.THIS_DIR / 'extras/models.sql').read_text()
+
+    @property
+    def redis(self):
+        return RedisSettings(
+            host=self.R_HOST,
+            port=self.R_PORT,
+            database=self.R_DATABASE,
+            password=self.R_PASSWORD,
+        )

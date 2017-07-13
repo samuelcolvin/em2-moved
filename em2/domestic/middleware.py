@@ -44,7 +44,7 @@ async def set_recipient(request):
     recipient_id = await request['conn'].fetchval(GET_RECIPIENT_ID, request['session'].address)
     if recipient_id is None:
         recipient_id = await request['conn'].fetchval(SET_RECIPIENT_ID, request['session'].address)
-    request['session'].setattr('recipient_id', recipient_id)
+    request['session'].recipient_id = recipient_id
     request['session_change'] = True
 
 
@@ -54,7 +54,7 @@ async def update_session_middleware(app, handler):
         response = await handler(request)
 
         if request.get('session_change'):
-            data = msg_encode(request['session'].values)
+            data = msg_encode(request['session'].values())
             token = app['fernet'].encrypt(data).decode()
             response.set_cookie(app['settings'].COOKIE_NAME, token)
 
