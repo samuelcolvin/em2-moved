@@ -163,7 +163,7 @@ class Act(View):
         item: constr(max_length=255) = None
         parent: constr(min_length=20, max_length=20) = None
         body: str = None
-        relationship: Relationships = None  # TODO relationship is set when required
+        relationship: Relationships = None  # TODO check relationship is set when required
         # TODO: participant permissions and more exotic types
         # TODO: add timezone event originally occurred in
 

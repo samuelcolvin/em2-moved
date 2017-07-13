@@ -300,6 +300,20 @@ async def test_publish_conv(dclient, conv_key, url, db_conn, redis):
     } == action
 
 
+async def test_publish_conv_foreign_part(dclient, conv_key, url, db_conn, redis):
+    url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await dclient.post(url_, json={'item': 'other@foreign.example.com'})
+    assert r.status == 201, await r.text()
+
+    assert not await db_conn.fetchval('SELECT published FROM conversations')
+
+    r = await dclient.post(url('publish', conv=conv_key))
+    assert r.status == 200, await r.text()
+
+    assert await db_conn.fetchval('SELECT published FROM conversations')
+    # TODO run test server and check results
+
+
 async def test_action_received_via_ws(dclient, db_conn, redis):
     async with dclient.session.ws_connect(dclient.make_url('/ws/')) as ws:
         job_data = {

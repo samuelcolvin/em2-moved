@@ -59,7 +59,7 @@ class Pusher(Actor):
         super().__init__(**kwargs)
 
     async def startup(self):
-        assert not self._concurrency_enabled or self.is_shadow, 'pusher db should only be initialised in shadow mode'
+        assert not self._concurrency_enabled or self.is_shadow, 'pusher db should only be started in shadow mode'
         self.db = self.settings.db_cls(self.settings, self.loop)
         self.session = aiohttp.ClientSession(loop=self.loop)
         self.fallback = self.settings.fallback_cls(self.settings, self.loop)
@@ -114,9 +114,11 @@ class Pusher(Actor):
             item=item,
         )
         async with self.db.acquire() as conn:
-            participants = await conn.fetch(self.part_addresses_sql, conv_id)  # TODO more info e.g. bbc etc.
+            participants = await conn.fetch(self.part_addresses_sql, conv_id)  # TODO more info e.g. bcc etc.
             addresses = [p[0] for p in participants]
+            # TODO use self.propagate instance to propagate action to all domestic users.
             nodes = await self.get_nodes(*addresses)
+            print('nodes:', nodes)
             remote_em2_nodes = {n for n in nodes if n not in {self.LOCAL, self.FALLBACK}}
             logger.info('%s.%s %.6s to %d participants on %d nodes, of which em2 %d', component, verb, conv_key,
                         len(participants), len(nodes), len(remote_em2_nodes))
@@ -128,11 +130,9 @@ class Pusher(Actor):
                 # some actions eg. publish already include subject
                 subject = await conn.fetch(self.conv_subject_sql, conv_id)
                 await self.fallback.push(action, participants, subject)
-            # TODO populate actions_status
+            # TODO save actions_status
 
     async def push(self, nodes, action: Action):
-        if not nodes:
-            return
         item = action.item or ''
         path = f'{action.conv_key}/{action.component}/{action.verb}/{item}'
         headers = {
@@ -155,6 +155,7 @@ class Pusher(Actor):
         # TODO semaphore to limit maximum connection count
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
+                # FIXME shouldn't raise an error here as we're inside a task, should just log
                 raise PushError('{}: {}'.format(r.status, await r.read()))
 
     async def get_node(self, domain: str) -> str:
@@ -175,7 +176,6 @@ class Pusher(Actor):
                     await self.authenticate(host)
                 except Em2ConnectionError:
                     # connection failed domain is probably not em2
-                    logger.info('looking for em2 node for "%s"', domain)
                     pass
                 else:
                     # TODO query host to find associated node
@@ -247,9 +247,8 @@ class Pusher(Actor):
                 if r.status != 201:
                     body = await r.text()
                     raise FailedOutboundAuthentication(f'{url} response {r.status} != 201, response:\n{body}')
-        except aiohttp.ClientOSError as e:
-            # generally "could not resolve host" or "connection refused",
-            # the exception is fairly useless at giving specifics # TODO: perhaps changed with aiohttp 2?
+        except aiohttp.ClientError as e:
+            # TODO log error rather than raising
             logger.info('ClientOSError: %e, url: %s', e, url)
             raise Em2ConnectionError(f'cannot connect to "{url}"') from e
         key = r.headers['em2-key']

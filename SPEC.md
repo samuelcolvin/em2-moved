@@ -225,7 +225,7 @@ IDs and subjects of conversations matching search
 2. If the conversation exists: Action instance created, else see below
 3. Job `propagate(action_id)` fired, in job:
 4. Get all participants for conversation, create a set in redis for recipient_ids `recipients:{action_id}`
-5. For each active front end application (see below), check if there are recipients in this conv: `SINTER`
+5. For each active frontend application (see below), check if there are recipients in this conv: `SINTER`
 6. If recipients are found for any applications: get action details and add to list of "jobs" for that application.
 Should be possible to add action data to all `frontend:jobs:{app-name}` lists in one pipeline operation.
 

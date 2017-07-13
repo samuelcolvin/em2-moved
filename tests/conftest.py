@@ -3,6 +3,7 @@ import base64
 import json
 import re
 from datetime import datetime
+from pathlib import Path
 
 import asyncpg
 import pytest
@@ -16,6 +17,8 @@ from em2.domestic import create_domestic_app
 from em2.foreign import create_foreign_app
 from em2.utils.encoding import msg_encode
 
+THIS_DIR = Path(__file__).parent.resolve()
+
 
 @pytest.fixture(scope='session')
 def settings():
@@ -25,6 +28,7 @@ def settings():
         authenticator_cls='tests.fixture_classes.FixedSimpleAuthenticator',
         db_cls='tests.fixture_classes.TestDatabase',
         pusher_cls='tests.fixture_classes.DNSMockedPusher',
+        PRIVATE_DOMAIN_KEY_FILE=str(THIS_DIR / 'fixture_classes/keys/private.pem')
     )
 
 
