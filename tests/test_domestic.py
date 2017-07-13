@@ -111,7 +111,7 @@ async def test_add_message(dclient, conv_key, url, db_conn):
         'conv_key': 'key123',
         'verb': 'add',
         'component': 'message',
-        'timestamp': RegexStr(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d.\d{6}'),
+        'timestamp': RegexStr(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d.\d{1,6}'),
         'parent': None,
         'relationship': None,
         'body': 'hello',
@@ -300,9 +300,9 @@ async def test_publish_conv(dclient, conv_key, url, db_conn, redis):
     } == action
 
 
-async def test_publish_conv_foreign_part(dclient, conv_key, url, db_conn, redis):
+async def test_publish_conv_foreign_part(dclient, conv_key, url, db_conn, redis, foreign_server):
     url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
-    r = await dclient.post(url_, json={'item': 'other@foreign.example.com'})
+    r = await dclient.post(url_, json={'item': 'other@foreign.com'})
     assert r.status == 201, await r.text()
 
     assert not await db_conn.fetchval('SELECT published FROM conversations')
@@ -311,7 +311,11 @@ async def test_publish_conv_foreign_part(dclient, conv_key, url, db_conn, redis)
     assert r.status == 200, await r.text()
 
     assert await db_conn.fetchval('SELECT published FROM conversations')
-    # TODO run test server and check results
+
+    assert foreign_server.app['request_log'] == [
+        'POST /authenticate > 201',
+        RegexStr('POST /[0-9a-f]+/participant/add/ > 201'),
+    ]
 
 
 async def test_action_received_via_ws(dclient, db_conn, redis):

@@ -17,6 +17,8 @@ from em2.domestic import create_domestic_app
 from em2.foreign import create_foreign_app
 from em2.utils.encoding import msg_encode
 
+from .fixture_classes.foreign_server import create_test_app
+
 THIS_DIR = Path(__file__).parent.resolve()
 
 
@@ -28,7 +30,8 @@ def settings():
         authenticator_cls='tests.fixture_classes.FixedSimpleAuthenticator',
         db_cls='tests.fixture_classes.TestDatabase',
         pusher_cls='tests.fixture_classes.DNSMockedPusher',
-        PRIVATE_DOMAIN_KEY_FILE=str(THIS_DIR / 'fixture_classes/keys/private.pem')
+        PRIVATE_DOMAIN_KEY_FILE=str(THIS_DIR / 'fixture_classes/keys/private.pem'),
+        COMMS_SCHEMA='http',
     )
 
 
@@ -140,6 +143,14 @@ def redis(loop):
 
     redis.close()
     loop.run_until_complete(redis.wait_closed())
+
+
+@pytest.fixture
+def foreign_server(loop, test_server, dclient):
+    app = create_test_app(loop)
+    server = loop.run_until_complete(test_server(app))
+    dclient.server.app['pusher'].set_foreign_port(server.port)
+    return server
 
 
 class CloseToNow:

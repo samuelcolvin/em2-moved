@@ -83,6 +83,9 @@ class MXQueryResult:
 
 
 class MockDNSResolver:
+    def __init__(self, port):
+        self._port = port
+
     async def query(self, host, qtype):
         if qtype == 'TXT':
             return self.get_txt(host)
@@ -126,9 +129,10 @@ class MockDNSResolver:
                 MXQueryResult(10, 'mx.local.com'),
             ]
         else:
+            extra = f':{self._port}' if self._port else ''
             return [
-                MXQueryResult(10, 'mx.platform.' + host),
-                MXQueryResult(5, 'em2.platform.' + host),
+                MXQueryResult(10, f'mx.platform.{host}{extra}'),
+                MXQueryResult(5, f'em2.platform.{host}{extra}'),
             ]
 
     def get_other(self, host, qtype):

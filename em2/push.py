@@ -61,10 +61,18 @@ class Pusher(Actor):
     async def startup(self):
         assert not self._concurrency_enabled or self.is_shadow, 'pusher db should only be started in shadow mode'
         self.db = self.settings.db_cls(self.settings, self.loop)
-        self.session = aiohttp.ClientSession(loop=self.loop)
+
+        resolver = self._get_http_resolver()
+        connector = aiohttp.TCPConnector(resolver=resolver)
+        self.session = aiohttp.ClientSession(loop=self.loop, connector=connector)
+
         self.fallback = self.settings.fallback_cls(self.settings, self.loop)
         await self.db.startup()
         await self.fallback.startup()
+
+    @classmethod
+    def _get_http_resolver(cls):
+        return aiohttp.AsyncResolver()
 
     async def shutdown(self):
         if self.db:
@@ -117,6 +125,7 @@ class Pusher(Actor):
             participants = await conn.fetch(self.part_addresses_sql, conv_id)  # TODO more info e.g. bcc etc.
             addresses = [p[0] for p in participants]
             # TODO use self.propagate instance to propagate action to all domestic users.
+            print('addresses:', addresses)
             nodes = await self.get_nodes(*addresses)
             print('nodes:', nodes)
             remote_em2_nodes = {n for n in nodes if n not in {self.LOCAL, self.FALLBACK}}
@@ -138,12 +147,14 @@ class Pusher(Actor):
         headers = {
             'content-type': 'text/plain',
             'em2-actor': action.actor,
-            'em2-timestamp': action.timestamp,
+            'em2-timestamp': str(to_unix_ms(action.timestamp)),
             'em2-action-key': action.action_key,
             'em2-parent': action.parent,
             'em2-relationship': action.relationship,
         }
-        cos = [self._post(node, path, headers, action.body.encode()) for node in nodes]
+        headers = {k: v for k, v in headers.items() if v is not None}
+        data = action.body and action.body.encode()
+        cos = [self._post(node, path, headers, data) for node in nodes]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 
@@ -152,7 +163,7 @@ class Pusher(Actor):
         token = await self.authenticate(domain)
         headers['em2-auth'] = token
         url = f'{self.settings.COMMS_SCHEMA}://{domain}/{path}'
-        # TODO semaphore to limit maximum connection count
+
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
                 # FIXME shouldn't raise an error here as we're inside a task, should just log
