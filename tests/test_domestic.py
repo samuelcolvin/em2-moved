@@ -180,7 +180,7 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
     r = await dclient.get(url('get', conv=conv_key))
     assert r.status == 200, await r.text()
     obj = await r.json()
-    new_msg_id = await db_conn.fetchval("SELECT key FROM messages WHERE body = 'reply'")
+    new_msg_key = await db_conn.fetchval("SELECT key FROM messages WHERE body = 'reply'")
     assert {
         'actions': [
             {
@@ -188,7 +188,7 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
                 'body': 'reply',
                 'component': 'message',
                 'key': await db_conn.fetchval('SELECT key FROM actions'),
-                'message': new_msg_id,
+                'message': new_msg_key,
                 'parent': None,
                 'participant': None,
                 'timestamp': CloseToNow(),
@@ -215,7 +215,7 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
                 'after': 'msg-firstmessage_key',
                 'body': 'reply',
                 'relationship': 'sibling',
-                'key': new_msg_id
+                'key': new_msg_key
             }
         ],
         'participants': [

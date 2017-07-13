@@ -174,13 +174,6 @@ class Act(View):
     WHERE c.key = $1 AND p.recipient = $2
     """
 
-    def __init__(self, request):
-        super().__init__(request)
-        self.action_key = gen_random('act')
-        self.action_id = None
-        self.action_timestamp = None
-        self.action_item = None
-
     async def call(self, request):
         conv_key = request.match_info['conv']
         conv_id, conv_published, actor_id = await self.fetchrow404(
@@ -202,34 +195,22 @@ class Act(View):
             # TODO replace with method validation on Data
             raise HTTPBadRequest(text=f'item may not be null for {data.component} actions')
 
+        action_key = gen_random('act')
         async with self.conn.transaction():
-            await self.apply_action(data)
+            item_key, action_id, action_timestamp = await self.apply_action(action_key, data)
 
         if conv_published:
-            await self.app['pusher'].propagate(
-                action_id=self.action_id,
-                action_key=self.action_key,
-                conv_key=conv_key,
-                conv_id=conv_id,
-                component=data.component,
-                verb=data.verb,
-                actor=self.session.address,
-                timestamp=self.action_timestamp,
-                parent=data.parent,
-                relationship=data.relationship,
-                item=self.action_item,
-                body=data.body,
-            )
+            await self.app['pusher'].propagate(action_id)
         return json_response(
-            key=self.action_key,
+            key=action_key,
             conv_key=conv_key,
             component=data.component,
             verb=data.verb,
-            timestamp=self.action_timestamp,
+            timestamp=action_timestamp,
             parent=data.parent,
             relationship=data.relationship,
             body=data.body,
-            item=self.action_item,
+            item=item_key,
             status_=201
         )
 
@@ -239,35 +220,36 @@ class Act(View):
     RETURNING id, to_json(timestamp)
     """
 
-    async def apply_action(self, data: Data):
-        message_id, part_id, parent_id = None, None, None
+    async def apply_action(self, action_key: str, data: Data):
+        item_key, prt_id, message_id, parent_id = None, None, None, None
         if data.component is Components.MESSAGE:
             if data.verb is Verbs.ADD:
-                message_id = await self.add_message(data)
+                item_key, message_id = await self.add_message(data)
             else:
-                message_id, parent_id = await self.mod_message(data)
+                item_key, message_id, parent_id = await self.mod_message(data)
         elif data.component is Components.PARTICIPANT:
             if data.verb is Verbs.ADD:
-                part_id = await self.add_participant(data)
+                item_key, prt_id = await self.add_participant(data)
             else:
-                part_id = await self.mod_participant(data)
+                item_key, prt_id = await self.mod_participant(data)
         else:
             raise NotImplementedError()
 
-        self.action_id, self.action_timestamp = await self.conn.fetchrow(
+        action_id, action_timestamp = await self.conn.fetchrow(
             self.create_action_sql,
-            self.action_key,
+            action_key,
             data.conv,
             data.verb,
             data.component,
             data.actor,
             parent_id,
-            part_id,
+            prt_id,
             message_id,
             data.body,
         )
         # remove quotes added by to_json
-        self.action_timestamp = self.action_timestamp[1:-1]
+        action_timestamp = action_timestamp[1:-1]
+        return item_key, action_id, action_timestamp
 
     find_message_sql = """
     SELECT m.id FROM messages AS m
@@ -282,10 +264,10 @@ class Act(View):
         after_id = await self.fetchval404(self.find_message_sql, data.conv, data.item)
         if not data.body:
             raise HTTPBadRequest(text='body can not be empty when adding a message')
-        self.action_item = gen_random('msg')
-        args = self.action_item, data.conv, after_id, data.relationship, data.body
+        item_key = gen_random('msg')
+        args = item_key, data.conv, after_id, data.relationship, data.body
         message_id = await self.conn.fetchval(self.add_message_sql, *args)
-        return message_id
+        return item_key, message_id
 
     latest_message_action_sql = """
     SELECT id, key, verb, actor FROM actions
@@ -297,8 +279,8 @@ class Act(View):
     modify_message_sql = 'UPDATE messages SET body = $1 WHERE id = $2'
 
     async def mod_message(self, data: Data):
-        self.action_item = data.item
-        message_id = await self.fetchval404(self.find_message_sql, data.conv, self.action_item)
+        message_key = data.item
+        message_id = await self.fetchval404(self.find_message_sql, data.conv, message_key)
         parent_id, parent_key, parent_verb, parent_actor = await self.fetchrow404(
             self.latest_message_action_sql,
             data.conv,
@@ -320,7 +302,7 @@ class Act(View):
                 raise HTTPBadRequest(text='body can not be empty when modifying a message')
             await self.conn.execute(self.modify_message_sql, data.body, message_id)
         # lock and unlock don't change the message
-        return message_id, parent_id
+        return message_key, message_id, parent_id
 
     get_recipient_id = 'SELECT id FROM recipients WHERE address = $1'
     set_recipient_id = """
@@ -334,17 +316,17 @@ class Act(View):
 
     async def add_participant(self, data: Data):
         try:
-            self.action_item = EmailStr.validate(data.item)
+            part_address = EmailStr.validate(data.item)
         except (TypeError, ValueError):
             raise HTTPBadRequest(text='is not a valid email address')
 
-        recipient_id = await self.conn.fetchval(self.get_recipient_id, self.action_item)
+        recipient_id = await self.conn.fetchval(self.get_recipient_id, part_address)
         if recipient_id is None:
-            recipient_id = await self.conn.fetchval(self.set_recipient_id, self.action_item)
-        part_id = await self.conn.fetchval(self.add_participant_sql, data.conv, recipient_id)
-        if part_id is None:
+            recipient_id = await self.conn.fetchval(self.set_recipient_id, part_address)
+        prt_id = await self.conn.fetchval(self.add_participant_sql, data.conv, recipient_id)
+        if prt_id is None:
             raise HTTPBadRequest(text='participant already exists on the conversation')
-        return part_id
+        return part_address, prt_id
 
     find_participant_sql = """
     SELECT p.id FROM participants AS p
@@ -355,15 +337,15 @@ class Act(View):
 
     async def mod_participant(self, data: Data):
         # TODO check parent matches latest data.parent
-        self.action_item = data.item
-        part_id = await self.fetchval404(self.find_participant_sql, data.conv, self.action_item)
+        part_address = data.item
+        prt_id = await self.fetchval404(self.find_participant_sql, data.conv, part_address)
         if data.verb in (Verbs.DELETE, Verbs.RECOVER):
-            await self.conn.execute(self.delete_participant_sql, data.verb == Verbs.RECOVER, part_id)
+            await self.conn.execute(self.delete_participant_sql, data.verb == Verbs.RECOVER, prt_id)
         elif data.verb is Verbs.MODIFY:
             raise NotImplementedError()
         else:
             raise HTTPBadRequest(text=f'Invalid verb for participants, can only add, delete, recover or modify')
-        return part_id
+        return part_address, prt_id
 
 
 class Publish(View):
@@ -410,16 +392,7 @@ class Publish(View):
                 part_id,
             )
 
-        await self.app['pusher'].propagate(
-            action_id=action_id,
-            action_key=action_key,
-            conv_key=new_conv_key,
-            conv_id=conv_id,
-            component=Components.PARTICIPANT,
-            verb=Verbs.ADD,
-            actor=self.session.address,
-            timestamp=action_timestamp,
-        )
+        await self.app['pusher'].propagate(action_id)
         return json_response(key=new_conv_key)
 
 

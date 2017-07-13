@@ -85,15 +85,14 @@ class Database:
 
 
 class Action(NamedTuple):
-    action_id: int
     action_key: str
     conv_key: str
     conv_id: int
-    component: Components
     verb: Verbs
+    component: Components
     actor: str
     timestamp: str
     parent: str
+    body: str
     relationship: Relationships
     item: str
-    body: str

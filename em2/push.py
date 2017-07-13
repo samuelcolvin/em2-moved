@@ -80,6 +80,26 @@ class Pusher(Actor):
             await self.fallback.shutdown()
             await self.session.close()
 
+    # see core.Action for order of returned values
+    action_detail_sql = """
+    SELECT a.key, c.key, c.id, a.verb, a.component, r.address, a.timestamp, parent.key, a.body, m.relationship,
+    m.key, prt_recipient.address
+    FROM actions AS a
+    JOIN conversations AS c ON a.conv = c.id
+
+    JOIN participants AS p ON a.actor = p.id
+    JOIN recipients AS r ON p.recipient = r.id
+
+    LEFT JOIN actions AS parent ON a.parent = parent.id
+
+    LEFT JOIN messages AS m ON a.message = m.id
+
+    LEFT JOIN participants AS prt_prt ON a.part = prt_prt.id
+    LEFT JOIN recipients AS prt_recipient ON prt_prt.recipient = prt_recipient.id
+
+    WHERE a.id = $1
+    """
+
     part_addresses_sql = """
     SELECT r.address
     FROM participants AS p
@@ -94,50 +114,30 @@ class Pusher(Actor):
     """
 
     @concurrent
-    async def propagate(self, *,
-                        action_id,
-                        action_key,
-                        conv_key,
-                        conv_id,
-                        component,
-                        verb,
-                        actor,
-                        timestamp,
-                        parent=None,
-                        relationship=None,
-                        item=None,
-                        body=None):
-        action = Action(
-            action_id=action_id,
-            action_key=action_key,
-            conv_id=conv_id,
-            conv_key=conv_key,
-            component=component,
-            verb=verb,
-            actor=actor,
-            timestamp=timestamp,
-            parent=parent,
-            relationship=relationship,
-            body=body,
-            item=item,
-        )
+    async def propagate(self, action_id):
         async with self.db.acquire() as conn:
-            participants = await conn.fetch(self.part_addresses_sql, conv_id)  # TODO more info e.g. bcc etc.
+            *args, message_key, prt_address = await conn.fetchrow(self.action_detail_sql, action_id)
+            # TODO perhaps need to had "after" to action data here and any other fields required to understand the
+            # action
+            action = Action(*args, message_key or prt_address)
+
+            participants = await conn.fetch(self.part_addresses_sql, action.conv_id)  # TODO more info e.g. bcc etc.
             addresses = [p[0] for p in participants]
             # TODO use self.propagate instance to propagate action to all domestic users.
-            print('addresses:', addresses)
             nodes = await self.get_nodes(*addresses)
-            print('nodes:', nodes)
             remote_em2_nodes = {n for n in nodes if n not in {self.LOCAL, self.FALLBACK}}
-            logger.info('%s.%s %.6s to %d participants on %d nodes, of which em2 %d', component, verb, conv_key,
+
+            logger.info('%s.%s %.6s to %d participants on %d nodes, of which em2 %d',
+                        action.component, action.verb, action.conv_key,
                         len(participants), len(nodes), len(remote_em2_nodes))
+
             if remote_em2_nodes:
                 await self.push(remote_em2_nodes, action)
 
             if any(n for n in nodes if n == self.FALLBACK):
-                logger.info('%s %.6s fallback required', verb, conv_key)
-                # some actions eg. publish already include subject
-                subject = await conn.fetch(self.conv_subject_sql, conv_id)
+                logger.info('%s %.6s fallback required', action.verb, action.conv_key)
+
+                subject = await conn.fetch(self.conv_subject_sql, action.conv_id)
                 await self.fallback.push(action, participants, subject)
             # TODO save actions_status
 
