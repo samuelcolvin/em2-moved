@@ -200,7 +200,7 @@ class Act(View):
             item_key, action_id, action_timestamp = await self.apply_action(action_key, data)
 
         if conv_published:
-            await self.app['pusher'].propagate(action_id)
+            await self.pusher.push(action_id)
         return json_response(
             key=action_key,
             conv_key=conv_key,
@@ -392,7 +392,7 @@ class Publish(View):
                 part_id,
             )
 
-        await self.app['pusher'].propagate(action_id)
+        await self.pusher.push(action_id)
         return json_response(key=new_conv_key)
 
 

@@ -14,10 +14,10 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-from em2 import Settings
-from em2.core import Action
-from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication
-from em2.utils.encoding import to_unix_ms
+from . import Settings
+from .core import Action, gen_random
+from .exceptions import Em2ConnectionError, FailedOutboundAuthentication
+from .utils.encoding import msg_encode, to_unix_ms
 
 logger = logging.getLogger('em2.push')
 
@@ -100,8 +100,8 @@ class Pusher(Actor):
     WHERE a.id = $1
     """
 
-    part_addresses_sql = """
-    SELECT r.address
+    parts_sql = """
+    SELECT r.id, r.address
     FROM participants AS p
     JOIN recipients AS r ON p.recipient = r.id
     WHERE p.conv = $1 AND p.active = TRUE
@@ -114,34 +114,57 @@ class Pusher(Actor):
     """
 
     @concurrent
-    async def propagate(self, action_id):
+    async def push(self, action_id):
         async with self.db.acquire() as conn:
             *args, message_key, prt_address = await conn.fetchrow(self.action_detail_sql, action_id)
-            # TODO perhaps need to had "after" to action data here and any other fields required to understand the
+            # TODO perhaps need to add "after" to action data here and any other fields required to understand the
             # action
             action = Action(*args, message_key or prt_address)
 
-            participants = await conn.fetch(self.part_addresses_sql, action.conv_id)  # TODO more info e.g. bcc etc.
-            addresses = [p[0] for p in participants]
-            # TODO use self.propagate instance to propagate action to all domestic users.
-            remote_nodes, local_addresses, fallback_addresses = await self.categorise_addresses(*addresses)
+            parts = await conn.fetch(self.parts_sql, action.conv_id)  # TODO more info e.g. bcc etc.
+
+            remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(*parts)
 
             logger.info('%s.%s %.6s to %d participants on %d em2 nodes, local %d, fallback %d',
                         action.component, action.verb, action.conv_key,
-                        len(participants), len(remote_nodes), len(local_addresses), len(fallback_addresses))
+                        len(parts), len(remote_nodes), len(local_recipients), len(fallback_addresses))
 
-            if local_addresses:
-                pass
+            if local_recipients:
+                await self.domestic_push(local_recipients, action)
 
             if remote_nodes:
-                await self.push(remote_nodes.keys(), action)
+                await self.foreign_push(remote_nodes.keys(), action)
 
             if fallback_addresses:
                 subject = await conn.fetch(self.conv_subject_sql, action.conv_id)
-                await self.fallback.push(action, participants, subject)
+                await self.fallback.push(action, parts, subject)
             # TODO save actions_status
 
-    async def push(self, nodes, action: Action):
+    async def domestic_push(self, recipient_ids, action: Action):
+        pool = await self.get_redis_pool()
+        with await pool as redis:
+            recipient_ids_key = gen_random('rid')
+            await asyncio.gather(
+                redis.sadd(recipient_ids_key, *recipient_ids),
+                redis.expire(recipient_ids_key, 60),
+            )
+            frontends = await redis.keys(self.settings.FRONTEND_RECIPIENTS_BASE.format('*'), encoding='utf8')
+            for frontend in frontends:
+                matching_recipient_ids = await redis.sinter(recipient_ids_key, frontend)
+                if not matching_recipient_ids:
+                    continue
+                _, name = frontend.rsplit(':', 1)
+                job_name = self.settings.FRONTEND_JOBS_BASE.format(name)
+                job_data = {
+                    'recipients': [int(rid) for rid in matching_recipient_ids],
+                    'action': action._asdict(),
+                }
+                await redis.lpush(job_name, msg_encode(job_data))
+
+    async def foreign_push(self, nodes, action: Action):
+        """
+        Push action to participants on remote nodes.
+        """
         item = action.item or ''
         path = f'{action.conv_key}/{action.component}/{action.verb}/{item}'
         headers = {
@@ -166,7 +189,8 @@ class Pusher(Actor):
 
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
-                logger.warning()
+                text = await r.text()
+                logger.warning('%s POST failed %d: %s', url, r.status, text)
 
     async def get_node(self, domain: str) -> str:
         """
@@ -196,15 +220,15 @@ class Pusher(Actor):
         logger.info('no em2 node found for %s, falling back', domain)
         return self.FALLBACK
 
-    async def categorise_addresses(self, *addresses: str) -> Tuple[Dict[str, Set[str]], Set[str], Set[str]]:
+    async def categorise_addresses(self, *parts: str) -> Tuple[Dict[str, Set[str]], Set[str], Set[str]]:
         remote_nodes = {}
-        local_addresses = set()
+        local_recipients = set()
         fallback_addresses = set()
 
         local_cache = {}
 
         async with await self.get_redis_conn() as redis:
-            for address in addresses:
+            for recipient_id, address in parts:
                 d = _get_domain(address)
 
                 node = local_cache.get(d)
@@ -221,14 +245,14 @@ class Pusher(Actor):
                     local_cache[d] = node
 
                 if node == self.LOCAL:
-                    local_addresses.add(address)
+                    local_recipients.add(recipient_id)
                 elif node == self.FALLBACK:
                     fallback_addresses.add(address)
                 elif node in remote_nodes:
                     remote_nodes[node].add(d)
                 else:
                     remote_nodes[node] = {d}
-        return remote_nodes, local_addresses, fallback_addresses
+        return remote_nodes, local_recipients, fallback_addresses
 
     def auth_data(self):
         yield 'platform', self.settings.LOCAL_DOMAIN
@@ -297,10 +321,10 @@ class Pusher(Actor):
             return []
 
     async def set_exat(self, redis, key: bytes, value: str, expires_at: int):
-        pipe = redis.pipeline()
-        pipe.set(key, value)
-        pipe.expireat(key, expires_at)
-        await pipe.execute()
+        await asyncio.gather(
+            redis.set(key, value),
+            redis.expireat(key, expires_at),
+        )
 
     async def key_exists(self, platform_token: str):
         async with await self.get_redis_conn() as redis:

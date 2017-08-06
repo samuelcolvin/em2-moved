@@ -12,6 +12,7 @@ class DNSMockedPusher(Pusher):
         super().__init__(*args, **kwargs)
         self._mx_query_count = 0
         self._foreign_port = None
+        self.settings = self.settings.copy()
 
     @property
     def resolver(self):

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from time import time
 
@@ -5,6 +6,7 @@ from arq import Drain
 
 from em2 import Settings  # noqa
 from em2.utils.encoding import msg_decode
+from em2.utils.web import Em2JsonEncoder
 
 
 class Background:
@@ -15,19 +17,20 @@ class Background:
         self.recipients_key = self.settings.FRONTEND_RECIPIENTS_BASE.format(self.app['name'])
         self.redis_pool = None
         self._last_added_recipient = 0
+        self.connections = {}
 
     async def add_recipient(self, id, ws=None):
         if ws:
-            self.app['ws'][id] = ws
+            self.connections[id] = ws
         async with self.redis_pool.get() as redis:
-            pipe = redis.pipeline()
-            pipe.sadd(self.recipients_key, id)
-            pipe.expire(self.recipients_key, 60)
-            await pipe.execute()
+            await asyncio.gather(
+                redis.sadd(self.recipients_key, id),
+                redis.expire(self.recipients_key, 60),
+            )
         self._last_added_recipient = time()
 
     async def remove_recipient(self, id):
-        self.app['ws'].pop(id)
+        self.connections.pop(id)
         async with self.redis_pool.get() as redis:
             await redis.srem(self.recipients_key, id)
 
@@ -53,9 +56,9 @@ class Background:
             async for _, raw_data in drain.iter(jobs_key, pop_timeout=30):
                 if raw_data:
                     data = msg_decode(raw_data)
-                    send_data = json.dumps(data['action'])
+                    send_data = json.dumps(data['action'], cls=Em2JsonEncoder)
                     for recipient_id in data['recipients']:
-                        ws = self.app['ws'].get(recipient_id)
+                        ws = self.connections.get(recipient_id)
                         if ws:
                             ws.send_str(send_data)
                 if (time() - self._last_added_recipient) >= 20:

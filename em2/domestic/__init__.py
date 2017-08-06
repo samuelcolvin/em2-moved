@@ -38,7 +38,6 @@ def create_domestic_app(settings, app_name=None):
         settings=settings,
         fernet=Fernet(secret_key),
         name=app_name or gen_random('d'),
-        ws={},
     )
 
     app.router.add_get('/', VList.view(), name='list')

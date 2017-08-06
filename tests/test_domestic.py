@@ -3,6 +3,7 @@ import json
 from asyncio import sleep
 
 from aiohttp import WSMsgType
+from async_timeout import timeout
 from cryptography.fernet import Fernet
 
 from em2.core import Components, Verbs
@@ -318,17 +319,22 @@ async def test_publish_conv_foreign_part(dclient, conv_key, url, db_conn, redis,
     ]
 
 
-async def test_action_received_via_ws(dclient, db_conn, redis):
+async def test_publish_domestic_push(dclient, conv_key, url, db_conn, redis):
     async with dclient.session.ws_connect(dclient.make_url('/ws/')) as ws:
-        job_data = {
-            'recipients': [
-                await db_conn.fetchval('SELECT id FROM recipients')
-            ],
-            'action': 'foobar',
-        }
-        await redis.lpush('frontend:jobs:d-testing', msg_encode(job_data))
-        async for msg in ws:
-            assert msg.tp == WSMsgType.text
-            data = json.loads(msg.data)
-            assert data == 'foobar'
-            break
+
+        assert not await db_conn.fetchval('SELECT published FROM conversations')
+        r = await dclient.post(url('publish', conv=conv_key))
+        assert r.status == 200, await r.text()
+        assert await db_conn.fetchval('SELECT published FROM conversations')
+
+        got_message = False
+        with timeout(0.1):
+            async for msg in ws:
+                assert msg.tp == WSMsgType.text
+                data = json.loads(msg.data)
+                assert data['component'] == 'participant'
+                assert data['verb'] == 'add'
+                assert data['actor'] == 'testing@example.com'
+                got_message = True
+                break
+        assert got_message

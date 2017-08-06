@@ -5,6 +5,8 @@ from aiohttp.web import Application, HTTPBadRequest, HTTPNotFound, Request  # no
 from asyncpg.connection import Connection  # noqa
 from pydantic import BaseModel, EmailStr
 
+from em2.push import Pusher
+
 
 class Session(BaseModel):
     address: EmailStr = ...
@@ -17,6 +19,7 @@ class View:
         self.app: Application = request.app
         self.conn: Connection = request['conn']
         self.session: Session = request['session']
+        self.pusher: Pusher = self.app['pusher']
 
     @classmethod
     def view(cls):

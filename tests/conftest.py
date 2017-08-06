@@ -145,12 +145,12 @@ def redis(loop):
     loop.run_until_complete(redis.wait_closed())
 
 
-@pytest.fixture
+@pytest.yield_fixture
 def foreign_server(loop, test_server, dclient):
     app = create_test_app(loop)
     server = loop.run_until_complete(test_server(app))
     dclient.server.app['pusher'].set_foreign_port(server.port)
-    return server
+    yield server
 
 
 class CloseToNow:

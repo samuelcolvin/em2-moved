@@ -28,6 +28,7 @@ def gen_random(prefix):
     :param prefix: string to prefix random key with
     :return: prefix plus 16 char alphanumeric (lowercase) random string
     """
+    # TODO move to untils
     return prefix + '-' + base64.b32encode(os.urandom(10))[:16].decode().lower()
 
 
