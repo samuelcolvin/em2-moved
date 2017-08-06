@@ -2,7 +2,7 @@ import asyncio
 import base64
 import logging
 from datetime import datetime
-from typing import Set
+from typing import Dict, Set, Tuple
 
 import aiodns
 import aiohttp
@@ -124,19 +124,19 @@ class Pusher(Actor):
             participants = await conn.fetch(self.part_addresses_sql, action.conv_id)  # TODO more info e.g. bcc etc.
             addresses = [p[0] for p in participants]
             # TODO use self.propagate instance to propagate action to all domestic users.
-            nodes = await self.get_nodes(*addresses)
-            remote_em2_nodes = {n for n in nodes if n not in {self.LOCAL, self.FALLBACK}}
+            remote_nodes, local_addresses, fallback_addresses = await self.categorise_addresses(*addresses)
 
-            logger.info('%s.%s %.6s to %d participants on %d nodes, of which em2 %d',
+            logger.info('%s.%s %.6s to %d participants on %d em2 nodes, local %d, fallback %d',
                         action.component, action.verb, action.conv_key,
-                        len(participants), len(nodes), len(remote_em2_nodes))
+                        len(participants), len(remote_nodes), len(local_addresses), len(fallback_addresses))
 
-            if remote_em2_nodes:
-                await self.push(remote_em2_nodes, action)
+            if local_addresses:
+                pass
 
-            if any(n for n in nodes if n == self.FALLBACK):
-                logger.info('%s %.6s fallback required', action.verb, action.conv_key)
+            if remote_nodes:
+                await self.push(remote_nodes.keys(), action)
 
+            if fallback_addresses:
                 subject = await conn.fetch(self.conv_subject_sql, action.conv_id)
                 await self.fallback.push(action, participants, subject)
             # TODO save actions_status
@@ -166,8 +166,7 @@ class Pusher(Actor):
 
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
-                # FIXME shouldn't raise an error here as we're inside a task, should just log
-                raise PushError('{}: {}'.format(r.status, await r.read()))
+                logger.warning()
 
     async def get_node(self, domain: str) -> str:
         """
@@ -197,28 +196,39 @@ class Pusher(Actor):
         logger.info('no em2 node found for %s, falling back', domain)
         return self.FALLBACK
 
-    async def get_nodes(self, *addresses: str) -> Set[str]:
-        # cache here instead of in get_node so we can use the same redis connection
-        nodes = set()
-        checked_domains = set()
+    async def categorise_addresses(self, *addresses: str) -> Tuple[Dict[str, Set[str]], Set[str], Set[str]]:
+        remote_nodes = {}
+        local_addresses = set()
+        fallback_addresses = set()
+
+        local_cache = {}
+
         async with await self.get_redis_conn() as redis:
             for address in addresses:
                 d = _get_domain(address)
-                if d in checked_domains:
-                    continue
-                checked_domains.add(d)
 
-                key = self.domain_node_prefix + d.encode()
-                node_b = await redis.get(key)
-                if node_b:
-                    node = node_b.decode()
-                    logger.info('found cached node %s -> %s', d, node)
+                node = local_cache.get(d)
+                if not node:
+                    key = self.domain_node_prefix + d.encode()
+                    node_b = await redis.get(key)
+                    if node_b:
+                        node = node_b.decode()
+                        logger.info('found cached node %s -> %s', d, node)
+                    else:
+                        node = await self.get_node(d)
+                        logger.info('got node for %s -> %s', d, node)
+                        await redis.setex(key, self.settings.COMMS_DNS_CACHE_EXPIRY, node.encode())
+                    local_cache[d] = node
+
+                if node == self.LOCAL:
+                    local_addresses.add(address)
+                elif node == self.FALLBACK:
+                    fallback_addresses.add(address)
+                elif node in remote_nodes:
+                    remote_nodes[node].add(d)
                 else:
-                    node = await self.get_node(d)
-                    logger.info('got node for %s -> %s', d, node)
-                    await redis.setex(key, self.settings.COMMS_DNS_CACHE_EXPIRY, node.encode())
-                nodes.add(node)
-        return nodes
+                    remote_nodes[node] = {d}
+        return remote_nodes, local_addresses, fallback_addresses
 
     def auth_data(self):
         yield 'platform', self.settings.LOCAL_DOMAIN

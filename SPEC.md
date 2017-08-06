@@ -255,3 +255,24 @@ the app dies this record of the app's existence dies soon too.
 
 Task `process_actions`, running constantly in infinite `BLPOP` loop, when an action arrives sends it to clients. 
 `BLPOP` timesout occasionally and extends `EXPIRE` on `frontend:recipients:{app-name}`.
+
+----------------------------------
+
+# Integration with SMTP
+
+list all participants in the email body, then
+
+### Either
+
+Send "to" each SMTP recipient
+
+set reply-to to a unique address on the platform, leave the platform to forward the message other SMTP participants
+
+(Will have problem with "forging" emails from the original SMTP adddress)
+
+### Or
+
+cc to all SMTP addresses, cc to a unique address for each em2 domain "<conv-key>.<message-key>@platform.com",
+this might involve multiple email addresses for each platform but that's fine.
+
+Second solution should work better and look more normal for SMTP users.
