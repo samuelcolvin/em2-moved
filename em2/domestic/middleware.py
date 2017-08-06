@@ -2,6 +2,7 @@ from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 from cryptography.fernet import InvalidToken
 
 from em2.utils.encoding import msg_decode, msg_encode
+from em2.utils.web import db_conn_middleware
 
 from .common import Session
 
@@ -20,14 +21,6 @@ async def user_middleware(app, handler):
             raise HTTPBadRequest(text='bad cookie data')
         return await handler(request)
     return user_middleware_handler
-
-
-async def db_conn_middleware(app, handler):
-    async def _handler(request):
-        async with app['db'].acquire() as conn:
-            request['conn'] = conn
-            return await handler(request)
-    return _handler
 
 
 GET_RECIPIENT_ID = 'SELECT id FROM recipients WHERE address = $1'

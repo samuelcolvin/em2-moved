@@ -1,10 +1,21 @@
 import datetime
 import json
+import traceback
+from functools import update_wrapper
 
-from aiohttp.web import HTTPBadRequest, Response
+from aiohttp.web import Application, HTTPBadRequest, HTTPNotFound, Request, Response  # noqa
+from asyncpg.connection import Connection  # noqa
 from pydantic import BaseModel, ValidationError
 
 JSON_CONTENT_TYPE = 'application/json'
+
+
+async def db_conn_middleware(app, handler):
+    async def _handler(request):
+        async with app['db'].acquire() as conn:
+            request['conn'] = conn
+            return await handler(request)
+    return _handler
 
 
 class Em2JsonEncoder(json.JSONEncoder):
@@ -44,3 +55,52 @@ class WebModel(BaseModel):
             return super()._process_values(values)
         except ValidationError as e:
             raise HTTPBadRequest(text=e.json(), content_type=JSON_CONTENT_TYPE)
+
+
+async def _fetch404(func, sql, *args, msg=None):
+    """
+    fetch from the db, raise not found if the value is doesn't exist
+    """
+    val = await func(sql, *args)
+    if not val:
+        # TODO add debug
+        msg = msg or 'unable to find value in db'
+        tb = ''.join(traceback.format_stack())
+        raise HTTPNotFound(text=f'{msg}\nsql:\n{sql}\ntraceback:{tb}')
+    return val
+
+
+class FetchVal404Mixin:
+    async def fetchval404(self, sql, *args, msg=None):
+        return await _fetch404(self.conn.fetchval, sql, *args, msg=msg)
+
+    async def fetchrow404(self, sql, *args, msg=None):
+        return await _fetch404(self.conn.fetchrow, sql, *args, msg=msg)
+
+
+class View(FetchVal404Mixin):
+    def __init__(self, request):
+        self.request: Request = request
+        self.app: Application = request.app
+        self.conn: Connection = request['conn']
+        from em2.push import Pusher
+        self.pusher: Pusher = self.app['pusher']
+
+    @classmethod
+    def view(cls):
+
+        async def view(request):
+            self = cls(request)
+            return await self.call(request)
+
+        view.view_class = cls
+
+        # take name and docstring from class
+        update_wrapper(view, cls, updated=())
+
+        # and possible attributes set by decorators
+        update_wrapper(view, cls.call, assigned=())
+        return view
+
+    async def call(self, request):
+        raise NotImplementedError()

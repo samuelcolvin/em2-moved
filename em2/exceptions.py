@@ -73,10 +73,6 @@ class FailedInboundAuthentication(Em2AuthException):
     pass
 
 
-class PlatformForbidden(Em2AuthException):
-    pass
-
-
 class DomainPlatformMismatch(Em2AuthException):
     pass
 

@@ -49,7 +49,7 @@ class Pusher(Actor):
 
     def __init__(self, settings: Settings, loop=None, **kwargs):
         self.settings = settings
-        self.loop = loop
+        self.loop = loop or asyncio.get_event_loop()
         logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.db = None
@@ -114,7 +114,7 @@ class Pusher(Actor):
     """
 
     @concurrent
-    async def push(self, action_id):
+    async def push(self, action_id, transmit=True):
         async with self.db.acquire() as conn:
             *args, message_key, prt_address = await conn.fetchrow(self.action_detail_sql, action_id)
             # TODO perhaps need to add "after" to action data here and any other fields required to understand the
@@ -132,12 +132,13 @@ class Pusher(Actor):
             if local_recipients:
                 await self.domestic_push(local_recipients, action)
 
-            if remote_nodes:
-                await self.foreign_push(remote_nodes.keys(), action)
+            if transmit:
+                if remote_nodes:
+                    await self.foreign_push(remote_nodes.keys(), action)
 
-            if fallback_addresses:
-                subject = await conn.fetch(self.conv_subject_sql, action.conv_id)
-                await self.fallback.push(action, parts, subject)
+                if fallback_addresses:
+                    subject = await conn.fetch(self.conv_subject_sql, action.conv_id)
+                    await self.fallback.push(action, parts, subject)
             # TODO save actions_status
 
     async def domestic_push(self, recipient_ids, action: Action):
@@ -168,7 +169,7 @@ class Pusher(Actor):
         item = action.item or ''
         path = f'{action.conv_key}/{action.component}/{action.verb}/{item}'
         headers = {
-            'content-type': 'text/plain',
+            'content-type': 'text/plain',  # TODO is this necessary?
             'em2-actor': action.actor,
             'em2-timestamp': str(to_unix_ms(action.timestamp)),
             'em2-action-key': action.action_key,

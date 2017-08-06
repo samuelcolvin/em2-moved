@@ -4,17 +4,17 @@ Views dedicated to propagation of data between platforms.
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
-from arq.utils import from_unix_ms
+from aiohttp.web_exceptions import HTTPBadRequest
 
-# from em2.core import Action
-from em2.exceptions import DomainPlatformMismatch, Em2Exception, FailedInboundAuthentication, PlatformForbidden
-from em2.utils.encoding import MSGPACK_CONTENT_TYPE, msg_decode, msg_encode
+from em2.core import ApplyAction
+from em2.exceptions import FailedInboundAuthentication
+from em2.utils.web import View, WebModel
 
 logger = logging.getLogger('em2.foreign.views')
 
 
 def get_ip(request):
+    # TODO switch to use X-Forwarded-For
     peername = request.transport.get_extra_info('peername')
     ip = '-'
     if peername is not None:
@@ -22,109 +22,83 @@ def get_ip(request):
     return ip
 
 
-def _get_headers(request_headers, spec):
-    valid_headers = {}
-    errors = []
-    for h, required, *validators in spec:
-        name = 'em2-' + h.replace('_', '-')
-        value = request_headers.get(name, None)
-        if value:
-            if validators:
-                v = validators[0]
-                try:
-                    value = v(value, **valid_headers)
-                except ValueError as e:
-                    errors.append((name, e))
-                    continue
-            valid_headers[h] = value
-        elif required:
-            errors.append((name, 'missing'))
-
-    if errors:
-        msg = '\n'.join(f'{name}: {error}' for name, error in errors)
-        raise HTTPBadRequest(text=f'Invalid Headers:\n{msg}\n')
-    return valid_headers
+class ForeignView(View):
+    def __init__(self, request):
+        super().__init__(request)
+        self.auth = self.app['authenticator']
 
 
-# headers and whether they're required
-AUTH_HEADERS = [
-    ('platform', True),
-    ('timestamp', True, lambda v, **others: int(v)),
-    ('signature', True),
-]
+class Authenticate(ForeignView):
+    class Headers(WebModel):
+        platform: str
+        timestamp: int
+        signature: str
+
+        class Config:
+            fields = {
+                'platform': 'em2-platform',
+                'timestamp': 'em2-timestamp',
+                'signature': 'em2-signature',
+            }
+
+    async def call(self, request):
+        logger.info('authentication request from %s', get_ip(request))
+        headers = self.Headers(**request.headers)
+        logger.info('authentication data: %s', headers)
+
+        try:
+            key = await self.auth.authenticate_platform(headers.platform, headers.timestamp, headers.signature)
+        except FailedInboundAuthentication as e:
+            logger.info('failed inbound authentication: %s', e)
+            raise HTTPBadRequest(text=e.args[0] + '\n') from e
+        return web.Response(text='ok\n', status=201, headers={'em2-key': key})
 
 
-async def authenticate(request):
-    logger.info('authentication request from %s', get_ip(request))
-    headers = _get_headers(request.headers, AUTH_HEADERS)
-    logger.info('authentication data: %s', headers)
+class Act(ForeignView):
+    find_participant_sql = """
+    SELECT c.id, p.id
+    FROM conversations AS c
+    JOIN participants AS p ON c.id = p.conv
+    JOIN recipients AS r ON p.recipient = r.id
+    WHERE c.key = $1 AND r.address = $2
+    """
 
-    auth = request.app['authenticator']
-    try:
-        key = await auth.authenticate_platform(headers['platform'], headers['timestamp'], headers['signature'])
-    except FailedInboundAuthentication as e:
-        logger.info('failed inbound authentication: %s', e)
-        raise HTTPBadRequest(text=e.args[0] + '\n') from e
-    return web.Response(text='ok\n', status=201, headers={'em2-key': key})
+    def required_header(self, name):
+        try:
+            return self.request.headers[name]
+        except KeyError:
+            raise HTTPBadRequest(text=f'header "{name}" missing')
 
+    async def call(self, request):
+        platform = await self.auth.validate_platform_token(self.required_header('em2-auth'))
+        logger.info('action from %s', platform)
 
-def validate_timestamp(v, **others):
-    return from_unix_ms(int(v))
+        actor_address = self.required_header('em2-actor')
+        _, address_domain = actor_address.split('@', 1)
 
+        await self.auth.check_domain_platform(address_domain, platform)
 
-ACT_HEADERS = [
-    ('auth', True),
-    ('address', True),
-    ('timestamp', True, validate_timestamp),
-    ('event_id', True),
-    ('parent_event_id', False),
-]
+        r = await self.conn.fetchrow(self.find_participant_sql, request.match_info['conv'], actor_address)
+        if not r:
+            # TODO call create_cov
+            return web.Response(status=204)
 
+        conv_id, actor_id = r
 
-async def _parse_headers(headers, auth):
-    platform_token = headers.pop('auth')
-    try:
-        platform = await auth.valid_platform_token(platform_token)
-    except PlatformForbidden as e:
-        raise HTTPForbidden(text='Invalid auth header\n') from e
-
-    logger.info('action from %s', platform)
-    address = headers.pop('address')
-    address_domain = address[address.index('@') + 1:]
-    try:
-        await auth.check_domain_platform(address_domain, platform)
-    except DomainPlatformMismatch as e:
-        raise HTTPForbidden(text=e.args[0] + '\n') from e
-
-    return address, headers
-
-
-async def act(request):
-    headers = _get_headers(request.headers, ACT_HEADERS)
-    address, extra_headers = await _parse_headers(headers, request.app['authenticator'])
-
-    # TODO support json as well as msgpack
-    body_data = await request.read()
-    try:
-        obj = msg_decode(body_data)
-    except ValueError as e:
-        raise HTTPBadRequest(text='Error Decoding msgpack: {}\n'.format(e)) from e
-
-    if not isinstance(obj, dict):
-        raise HTTPBadRequest(text='request data is not a dictionary\n')
-
-    conversation = request.match_info['conv']
-    component = request.match_info['component']
-    verb = request.match_info['verb']
-    item = request.match_info['item'] or None
-
-    Action = request.app['...']  # FIXME big old bodge to keep linting passing
-    action = Action(address, conversation, verb, component, item=item, **extra_headers)
-    controller = request.app['controller']
-    try:
-        response = await controller.act(action, **obj)
-    except Em2Exception as e:
-        raise HTTPBadRequest(text='{}: {}\n'.format(e.__class__.__name__, e))
-
-    body = msg_encode(response) if response else b'\n'
-    return web.Response(body=body, status=201, content_type=MSGPACK_CONTENT_TYPE)
+        apply_action = ApplyAction(
+            self.conn,
+            create_timestamp=False,
+            action_key=self.required_header('em2-action-key'),
+            conv=conv_id,
+            actor=actor_id,
+            timestamp=self.required_header('em2-timestamp'),
+            component=request.match_info['component'],
+            verb=request.match_info['verb'],
+            item=request.match_info['item'] or None,
+            parent=self.request.headers.get('em2-parent'),
+            body=await request.text(),
+            relationship=self.request.headers.get('em2-relationship'),
+        )
+        await apply_action.run()
+        await self.pusher.push(apply_action.action_id, transmit=False)
+        return web.Response(status=201)

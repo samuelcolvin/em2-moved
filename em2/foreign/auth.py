@@ -7,6 +7,7 @@ from textwrap import wrap
 
 import aiodns
 from aiodns.error import DNSError
+from aiohttp.web_exceptions import HTTPForbidden
 from arq import RedisMixin
 from arq.jobs import DatetimeJob
 from arq.utils import to_unix_ms
@@ -16,7 +17,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from em2 import Settings
-from em2.exceptions import DomainPlatformMismatch, FailedInboundAuthentication, PlatformForbidden
+from em2.exceptions import FailedInboundAuthentication
 
 logger = logging.getLogger('em2.foreign.auth')
 
@@ -60,17 +61,14 @@ class Authenticator(RedisMixin):
         await self._store_platform_token(platform_token, token_expires_at)
         return platform_token
 
-    # the "key_exists" method should be defined on any inheriting class,
-    # it's not defined here to avoid overwriting other parent classes, eg. below
-
-    async def valid_platform_token(self, token):
+    async def validate_platform_token(self, token):
         if not await self.key_exists(token):
-            raise PlatformForbidden('platform "{}" not found'.format(token))
+            raise HTTPForbidden(text='invalid token')
         return token.split(':', 1)[0]
 
     async def check_domain_platform(self, domain, platform):
         if not await self._check_domain_uses_platform(domain, platform):
-            raise DomainPlatformMismatch('"{}" does not use "{}"'.format(domain, platform))
+            raise HTTPForbidden(text=f'"{domain}" does not use "{platform}"')
 
     async def _get_public_key(self, platform: str):
         dns_results = await self.dns_query(platform, 'TXT')

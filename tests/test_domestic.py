@@ -100,7 +100,7 @@ async def test_create_conv(dclient, url, db_conn):
 
 async def test_add_message(dclient, conv_key, url, db_conn):
     data = {
-        'item': 'msg-firstmessage_key',
+        'item': 'msg-firstmessagekeyx',
         'body': 'hello',
     }
     url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
@@ -173,7 +173,7 @@ async def test_add_message_invalid_data_model_error(dclient, conv_key, url):
 
 
 async def test_add_message_get(dclient, conv_key, url, db_conn):
-    data = {'item': 'msg-firstmessage_key', 'body': 'reply', 'relationship': 'sibling'}
+    data = {'item': 'msg-firstmessagekeyx', 'body': 'reply', 'relationship': 'sibling'}
     url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await dclient.post(url_, json=data)
     assert r.status == 201, await r.text()
@@ -209,11 +209,11 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
                 'after': None,
                 'body': 'this is the message',
                 'relationship': None,
-                'key': 'msg-firstmessage_key'
+                'key': 'msg-firstmessagekeyx'
             },
             {
                 'active': True,
-                'after': 'msg-firstmessage_key',
+                'after': 'msg-firstmessagekeyx',
                 'body': 'reply',
                 'relationship': 'sibling',
                 'key': new_msg_key
@@ -264,7 +264,7 @@ async def test_add_part_get(dclient, conv_key, url, db_conn):
                 'after': None,
                 'body': 'this is the message',
                 'relationship': None,
-                'key': 'msg-firstmessage_key'
+                'key': 'msg-firstmessagekeyx'
             }
         ],
         'participants': [
@@ -316,6 +316,56 @@ async def test_publish_conv_foreign_part(dclient, conv_key, url, db_conn, redis,
     assert foreign_server.app['request_log'] == [
         'POST /authenticate > 201',
         RegexStr('POST /[0-9a-f]+/participant/add/ > 201'),
+    ]
+
+
+async def test_publish_add_msg_conv(dclient, conv_key, url, db_conn, redis, foreign_server):
+    url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await dclient.post(url_, json={'item': 'other@foreign.com'})
+    assert r.status == 201, await r.text()
+
+    r = await dclient.post(url('publish', conv=conv_key))
+    assert r.status == 200, await r.text()
+
+    assert foreign_server.app['request_log'] == [
+        'POST /authenticate > 201',
+        RegexStr('POST /[0-9a-f]+/participant/add/ > 201'),
+    ]
+
+    new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
+    url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await dclient.post(url_, json={'item': 'msg-firstmessagekeyx', 'body': 'hello'})
+    assert r.status == 201, await r.text()
+
+    assert foreign_server.app['request_log'] == [
+        'POST /authenticate > 201',
+        RegexStr(f'POST /{new_conv_key}/participant/add/ > 201'),
+        RegexStr(f'POST /{new_conv_key}/message/add/msg-[0-9a-z]+ > 201'),
+    ]
+
+
+async def test_publish_update_add_part(dclient, conv_key, url, db_conn, redis, foreign_server):
+    url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await dclient.post(url_, json={'item': 'other@foreign.com'})
+    assert r.status == 201, await r.text()
+
+    r = await dclient.post(url('publish', conv=conv_key))
+    assert r.status == 200, await r.text()
+
+    assert foreign_server.app['request_log'] == [
+        'POST /authenticate > 201',
+        RegexStr('POST /[0-9a-f]+/participant/add/ > 201'),
+    ]
+
+    new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
+    url_ = url('act', conv=new_conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await dclient.post(url_, json={'item': 'new@foreign.com'})
+    assert r.status == 201, await r.text()
+    print(foreign_server.app['request_log'])
+    assert foreign_server.app['request_log'] == [
+        'POST /authenticate > 201',
+        RegexStr(f'POST /{new_conv_key}/participant/add/ > 201'),
+        RegexStr(f'POST /{new_conv_key}/participant/add/new@foreign.com > 201'),
     ]
 
 

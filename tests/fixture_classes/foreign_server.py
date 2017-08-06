@@ -23,7 +23,7 @@ def create_test_app(loop):
     app = Application(middlewares=[logging_middleware])
 
     app.router.add_post('/authenticate', auth)
-    app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:[a-z0-9]*}', act, name='act')
+    app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', act, name='act')
 
     app.update(
         request_log=[]

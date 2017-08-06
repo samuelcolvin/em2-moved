@@ -3,11 +3,10 @@ from datetime import datetime
 from typing import List
 
 from aiohttp import WSMsgType
-from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_ws import WebSocketResponse
 from pydantic import EmailStr, constr
 
-from em2.core import Components, Relationships, Verbs, gen_random, generate_conv_key
+from em2.core import ApplyAction, gen_random, generate_conv_key
 from em2.utils.web import WebModel, json_response, raw_json_response
 
 from .common import View
@@ -155,18 +154,6 @@ class Create(View):
 
 
 class Act(View):
-    class Data(WebModel):
-        conv: int = ...
-        verb: Verbs = ...
-        component: Components = ...
-        actor: int = ...
-        item: constr(max_length=255) = None
-        parent: constr(min_length=20, max_length=20) = None
-        body: str = None
-        relationship: Relationships = None  # TODO check relationship is set when required
-        # TODO: participant permissions and more exotic types
-        # TODO: add timezone event originally occurred in
-
     get_conv_part_sql = """
     SELECT c.id, c.published, p.id
     FROM conversations AS c
@@ -183,169 +170,32 @@ class Act(View):
             msg=f'conversation {conv_key} not found'
         )
 
-        data = self.Data(
+        apply_action = ApplyAction(
+            self.conn,
+            create_timestamp=True,
+            action_key=gen_random('act'),
             conv=conv_id,
             actor=actor_id,
             component=request.match_info['component'],
             verb=request.match_info['verb'],
             **await self.request_json()
         )
-
-        if data.component in (Components.MESSAGE, Components.PARTICIPANT) and not data.item:
-            # TODO replace with method validation on Data
-            raise HTTPBadRequest(text=f'item may not be null for {data.component} actions')
-
-        action_key = gen_random('act')
-        async with self.conn.transaction():
-            item_key, action_id, action_timestamp = await self.apply_action(action_key, data)
+        await apply_action.run()
 
         if conv_published:
-            await self.pusher.push(action_id)
+            await self.pusher.push(apply_action.action_id)
         return json_response(
-            key=action_key,
+            key=apply_action.data.action_key,
             conv_key=conv_key,
-            component=data.component,
-            verb=data.verb,
-            timestamp=action_timestamp,
-            parent=data.parent,
-            relationship=data.relationship,
-            body=data.body,
-            item=item_key,
-            status_=201
+            component=apply_action.data.component,
+            verb=apply_action.data.verb,
+            timestamp=apply_action.action_timestamp,
+            parent=apply_action.data.parent,
+            relationship=apply_action.data.relationship,
+            body=apply_action.data.body,
+            item=apply_action.item_key,
+            status_=201,
         )
-
-    create_action_sql = """
-    INSERT INTO actions (key, conv, verb, component, actor, parent, part, message, body)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id, to_json(timestamp)
-    """
-
-    async def apply_action(self, action_key: str, data: Data):
-        item_key, prt_id, message_id, parent_id = None, None, None, None
-        if data.component is Components.MESSAGE:
-            if data.verb is Verbs.ADD:
-                item_key, message_id = await self.add_message(data)
-            else:
-                item_key, message_id, parent_id = await self.mod_message(data)
-        elif data.component is Components.PARTICIPANT:
-            if data.verb is Verbs.ADD:
-                item_key, prt_id = await self.add_participant(data)
-            else:
-                item_key, prt_id = await self.mod_participant(data)
-        else:
-            raise NotImplementedError()
-
-        action_id, action_timestamp = await self.conn.fetchrow(
-            self.create_action_sql,
-            action_key,
-            data.conv,
-            data.verb,
-            data.component,
-            data.actor,
-            parent_id,
-            prt_id,
-            message_id,
-            data.body,
-        )
-        # remove quotes added by to_json
-        action_timestamp = action_timestamp[1:-1]
-        return item_key, action_id, action_timestamp
-
-    find_message_sql = """
-    SELECT m.id FROM messages AS m
-    WHERE m.conv = $1 AND m.key = $2
-    """
-    add_message_sql = """
-    INSERT INTO messages (key, conv, after, relationship, body) VALUES ($1, $2, $3, $4, $5)
-    RETURNING id
-    """
-
-    async def add_message(self, data: Data):
-        after_id = await self.fetchval404(self.find_message_sql, data.conv, data.item)
-        if not data.body:
-            raise HTTPBadRequest(text='body can not be empty when adding a message')
-        item_key = gen_random('msg')
-        args = item_key, data.conv, after_id, data.relationship, data.body
-        message_id = await self.conn.fetchval(self.add_message_sql, *args)
-        return item_key, message_id
-
-    latest_message_action_sql = """
-    SELECT id, key, verb, actor FROM actions
-    WHERE conv = $1 AND message = $2
-    ORDER BY id DESC
-    LIMIT 1
-    """
-    delete_recover_message_sql = 'UPDATE messages SET active = $1 WHERE id = $2'
-    modify_message_sql = 'UPDATE messages SET body = $1 WHERE id = $2'
-
-    async def mod_message(self, data: Data):
-        message_key = data.item
-        message_id = await self.fetchval404(self.find_message_sql, data.conv, message_key)
-        parent_id, parent_key, parent_verb, parent_actor = await self.fetchrow404(
-            self.latest_message_action_sql,
-            data.conv,
-            message_id
-        )
-        if data.parent != parent_key:
-            raise HTTPBadRequest(text=f'parent does not match latest action on the message: {parent_key}')
-
-        if parent_actor != data.actor and parent_verb == Verbs.LOCK:
-            raise HTTPBadRequest(text=f'message {data.item} is locked and cannot be updated')
-        # could do more validation here to enforce:
-        # * locking before modification
-        # * not modifying deleted messages
-        # * not repeatedly recovering messages
-        if data.verb in (Verbs.DELETE, Verbs.RECOVER):
-            await self.conn.execute(self.delete_recover_message_sql, data.verb == Verbs.RECOVER, message_id)
-        elif data.verb == Verbs.MODIFY:
-            if not data.body:
-                raise HTTPBadRequest(text='body can not be empty when modifying a message')
-            await self.conn.execute(self.modify_message_sql, data.body, message_id)
-        # lock and unlock don't change the message
-        return message_key, message_id, parent_id
-
-    get_recipient_id = 'SELECT id FROM recipients WHERE address = $1'
-    set_recipient_id = """
-    INSERT INTO recipients (address) VALUES ($1)
-    ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id
-    """
-    add_participant_sql = """
-    INSERT INTO participants (conv, recipient) VALUES ($1, $2)
-    ON CONFLICT DO NOTHING RETURNING id
-    """
-
-    async def add_participant(self, data: Data):
-        try:
-            part_address = EmailStr.validate(data.item)
-        except (TypeError, ValueError):
-            raise HTTPBadRequest(text='is not a valid email address')
-
-        recipient_id = await self.conn.fetchval(self.get_recipient_id, part_address)
-        if recipient_id is None:
-            recipient_id = await self.conn.fetchval(self.set_recipient_id, part_address)
-        prt_id = await self.conn.fetchval(self.add_participant_sql, data.conv, recipient_id)
-        if prt_id is None:
-            raise HTTPBadRequest(text='participant already exists on the conversation')
-        return part_address, prt_id
-
-    find_participant_sql = """
-    SELECT p.id FROM participants AS p
-    JOIN recipients AS r ON p.recipient = r.id
-    WHERE p.conv = $1 AND r.address = $2
-    """
-    delete_participant_sql = 'UPDATE participants SET active = $1 WHERE id = $2'
-
-    async def mod_participant(self, data: Data):
-        # TODO check parent matches latest data.parent
-        part_address = data.item
-        prt_id = await self.fetchval404(self.find_participant_sql, data.conv, part_address)
-        if data.verb in (Verbs.DELETE, Verbs.RECOVER):
-            await self.conn.execute(self.delete_participant_sql, data.verb == Verbs.RECOVER, prt_id)
-        elif data.verb is Verbs.MODIFY:
-            raise NotImplementedError()
-        else:
-            raise HTTPBadRequest(text=f'Invalid verb for participants, can only add, delete, recover or modify')
-        return part_address, prt_id
 
 
 class Publish(View):
