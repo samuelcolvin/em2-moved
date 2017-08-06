@@ -4,7 +4,7 @@ Views dedicated to propagation of data between platforms.
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPBadRequest
+from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 
 from em2.core import ApplyAction
 from em2.exceptions import FailedInboundAuthentication
@@ -62,6 +62,9 @@ class Act(ForeignView):
     JOIN recipients AS r ON p.recipient = r.id
     WHERE c.key = $1 AND r.address = $2
     """
+    get_conv_sql = """
+    SELECT id FROM conversations WHERE key = $1
+    """
 
     def required_header(self, name):
         try:
@@ -78,10 +81,15 @@ class Act(ForeignView):
 
         await self.auth.check_domain_platform(address_domain, platform)
 
-        r = await self.conn.fetchrow(self.find_participant_sql, request.match_info['conv'], actor_address)
+        conv_key = request.match_info['conv']
+        r = await self.conn.fetchrow(self.find_participant_sql, conv_key, actor_address)
         if not r:
-            # TODO call create_cov
-            return web.Response(status=204)
+            if await self.conn.fetchval(self.get_conv_sql, conv_key):
+                # if the conv already exists this actor is not a participant in it
+                raise HTTPForbidden(text=f'"{actor_address}" is not a participant in this conversation')
+            else:
+                # TODO call create_cov
+                return web.Response(status=204)
 
         conv_id, actor_id = r
 
