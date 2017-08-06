@@ -1,0 +1,3 @@
+# this should install everything you need for development or testing, you might also want to install "ipython"
+-r em2/extras/requirements.txt
+-r tests/requirements.txt

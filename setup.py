@@ -34,7 +34,10 @@ setup(
     """,
     zip_safe=True,
     package_data={
-        'em2': ['requirements.txt'],
+        'em2': [
+            'extras/requirements.txt',
+            'extras/models.sql',
+        ],
     },
     install_requires=requirements,
 )
