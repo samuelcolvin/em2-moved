@@ -16,7 +16,7 @@ from Crypto.Signature import PKCS1_v1_5
 
 from em2 import Settings
 from em2.core import Action
-from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication, PushError
+from em2.exceptions import Em2ConnectionError, FailedOutboundAuthentication
 from em2.utils.encoding import to_unix_ms
 
 logger = logging.getLogger('em2.push')

@@ -32,8 +32,9 @@ class Background:
             await redis.srem(self.recipients_key, id)
 
     async def close(self):
-        async with self.redis_pool.get() as redis:
-            await redis.delete(self.recipients_key)
+        if self.redis_pool:
+            async with self.redis_pool.get() as redis:
+                await redis.delete(self.recipients_key)
         if self.task.done():
             self.task.result()
         self.task.cancel()
