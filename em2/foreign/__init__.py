@@ -1,7 +1,7 @@
 from aiohttp.web import Application
 
 from em2.utils.web import db_conn_middleware
-from .views import Act, Authenticate
+from .views import Act, Authenticate, Get
 
 
 async def app_startup(app):
@@ -29,7 +29,7 @@ def create_foreign_app(settings):
     app.on_cleanup.append(app_cleanup)
 
     # TODO deal with domain routing
-    # TODO add trailing slashes
     app.router.add_post('/auth/', Authenticate.view(), name='authenticate')
+    app.router.add_get('/get/{conv:[a-z0-9]+}/', Get.view(), name='get')
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', Act.view(), name='act')
     return app

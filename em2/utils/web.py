@@ -70,7 +70,7 @@ async def _fetch404(func, sql, *args, msg=None):
     return val
 
 
-class FetchVal404Mixin:
+class FetchOr404Mixin:
     async def fetchval404(self, sql, *args, msg=None):
         return await _fetch404(self.conn.fetchval, sql, *args, msg=msg)
 
@@ -78,7 +78,7 @@ class FetchVal404Mixin:
         return await _fetch404(self.conn.fetchrow, sql, *args, msg=msg)
 
 
-class View(FetchVal404Mixin):
+class View(FetchOr404Mixin):
     def __init__(self, request):
         self.request: Request = request
         self.app: Application = request.app

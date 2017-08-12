@@ -6,9 +6,9 @@ import logging
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 
-from em2.core import ApplyAction
+from em2.core import ApplyAction, GetConv
 from em2.exceptions import FailedInboundAuthentication
-from em2.utils.web import View, WebModel
+from em2.utils.web import View, WebModel, raw_json_response
 
 logger = logging.getLogger('em2.foreign.views')
 
@@ -26,6 +26,12 @@ class ForeignView(View):
     def __init__(self, request):
         super().__init__(request)
         self.auth = self.app['authenticator']
+
+    def required_header(self, name):
+        try:
+            return self.request.headers[name]
+        except KeyError:
+            raise HTTPBadRequest(text=f'header "{name}" missing')
 
 
 class Authenticate(ForeignView):
@@ -54,6 +60,20 @@ class Authenticate(ForeignView):
         return web.Response(text='ok\n', status=201, headers={'em2-key': key})
 
 
+class Get(ForeignView):
+    async def call(self, request):
+        platform = await self.auth.validate_platform_token(self.required_header('em2-auth'))
+
+        prt_address = self.required_header('em2-participant')
+        _, prt_domain = prt_address.split('@', 1)
+        await self.auth.check_domain_platform(prt_domain, platform)
+
+        conv_key = request.match_info['conv']
+        logger.info('platform %s getting %.6s', platform, conv_key)
+        json_str = await GetConv(self.conn).run(conv_key, prt_address)
+        return raw_json_response(json_str)
+
+
 class Act(ForeignView):
     find_participant_sql = """
     SELECT c.id, p.id
@@ -65,12 +85,6 @@ class Act(ForeignView):
     get_conv_sql = """
     SELECT id FROM conversations WHERE key = $1
     """
-
-    def required_header(self, name):
-        try:
-            return self.request.headers[name]
-        except KeyError:
-            raise HTTPBadRequest(text=f'header "{name}" missing')
 
     async def call(self, request):
         platform = await self.auth.validate_platform_token(self.required_header('em2-auth'))

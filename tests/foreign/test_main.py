@@ -5,10 +5,47 @@ from arq.utils import to_unix_ms
 from em2 import Settings
 from em2.utils.network import check_server
 
+from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict, timstamp_regex  # noqa
 from ..fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 
-async def test_add_message(cli, conv, url):
+async def test_get_conv(cli, conv, url):
+    url_ = url('get', conv=conv.key)
+    r = await cli.get(url_, data='foobar', headers={
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-participant': conv.creator_address,
+    })
+    assert r.status == 200, await r.text()
+    obj = await r.json()
+    print(python_dict(obj))
+    assert {
+        'actions': None,
+        'details': {
+            'creator': 'test@already-authenticated.com',
+            'key': 'key123',
+            'published': False,
+            'subject': 'Test Conversation',
+            'ts': timstamp_regex,
+        },
+        'messages': [
+            {
+                'active': True,
+                'after': None,
+                'body': 'this is the message',
+                'key': 'msg-firstmessagekeyx',
+                'relationship': None
+            }
+        ],
+        'participants': [
+            {
+                'address': 'test@already-authenticated.com',
+                'readall': False
+            }
+        ]
+    } == obj
+
+
+async def test_add_message(cli, conv, url, get_conv):
     url_ = url('act', conv=conv.key, component='message', verb='add', item='msg-secondmessagekey')
     r = await cli.post(url_, data='foobar', headers={
         'em2-auth': 'already-authenticated.com:123:whatever',
@@ -17,9 +54,51 @@ async def test_add_message(cli, conv, url):
         'em2-action-key': 'x' * 20,
     })
     assert r.status == 201, await r.text()
-    assert await r.text() == ''
-
-    # TODO test the new message & action look right
+    obj = await get_conv(conv)
+    assert {
+        'actions': [
+            {
+                'actor': 'test@already-authenticated.com',
+                'body': 'foobar',
+                'component': 'message',
+                'key': 'xxxxxxxxxxxxxxxxxxxx',
+                'message': 'msg-secondmessagekey',
+                'parent': None,
+                'participant': None,
+                'timestamp': timstamp_regex,
+                'verb': 'add'
+            }
+        ],
+        'details': {
+            'creator': 'test@already-authenticated.com',
+            'key': 'key123',
+            'published': False,
+            'subject': 'Test Conversation',
+            'ts': timstamp_regex
+        },
+        'messages': [
+            {
+                'active': True,
+                'after': None,
+                'body': 'this is the message',
+                'key': 'msg-firstmessagekeyx',
+                'relationship': None
+            },
+            {
+                'active': True,
+                'after': 'msg-firstmessagekeyx',
+                'body': 'foobar',
+                'key': 'msg-secondmessagekey',
+                'relationship': None
+            }
+        ],
+        'participants': [
+            {
+                'address': 'test@already-authenticated.com',
+                'readall': False
+            }
+        ]
+    } == obj
 
 
 async def test_conv_missing(cli, url):
@@ -116,3 +195,32 @@ async def test_authenticate_failed(cli, url):
     r = await cli.post(url('authenticate'), headers=headers)
     assert r.status == 400
     assert await r.text() == 'invalid signature\n'
+
+
+async def test_mod_message(cli, conv, url, get_conv):
+    second_msg_key = 'msg-secondmessagekey'
+    second_msg_action = 'a' * 20
+    url_ = url('act', conv=conv.key, component='message', verb='add', item=second_msg_key)
+    r = await cli.post(url_, data='foobar', headers={
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-actor': conv.creator_address,
+        'em2-timestamp': datetime.now().strftime('%s'),
+        'em2-action-key': second_msg_action,
+    })
+    assert r.status == 201, await r.text()
+    obj = await get_conv(conv)
+    assert obj['messages'][1]['body'] == 'foobar'
+
+    url_ = url('act', conv=conv.key, component='message', verb='modify', item=second_msg_key)
+    r = await cli.post(url_, data='different content', headers={
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-actor': conv.creator_address,
+        'em2-timestamp': datetime.now().strftime('%s'),
+        'em2-parent': second_msg_action,
+        'em2-action-key': 'b' * 20,
+    })
+    assert r.status == 201, await r.text()
+    obj = await get_conv(conv)
+    print(python_dict(obj))
+    assert len(obj['actions']) == 2
+    assert obj['messages'][1]['body'] == 'different content'

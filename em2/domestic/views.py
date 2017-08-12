@@ -6,7 +6,7 @@ from aiohttp import WSMsgType
 from aiohttp.web_ws import WebSocketResponse
 from pydantic import EmailStr, constr
 
-from em2.core import ApplyAction, gen_random, generate_conv_key
+from em2.core import ApplyAction, GetConv, gen_random, generate_conv_key
 from em2.utils.web import WebModel, json_response, raw_json_response
 
 from .common import View
@@ -32,84 +32,10 @@ class VList(View):
 
 
 class Get(View):
-    get_conv_id_sql = """
-    SELECT c.id FROM conversations AS c
-    JOIN participants AS p ON c.id = p.conv
-    WHERE p.recipient = $1 AND c.key = $2 AND p.active = True
-    """
-    conv_details_sql = """
-    SELECT row_to_json(t)
-    FROM (
-      SELECT c.key AS key, c.subject AS subject, c.timestamp AS ts, r.address AS creator, c.published AS published
-      FROM conversations AS c
-      JOIN recipients AS r ON c.creator = r.id
-      WHERE c.id = $1
-    ) t;
-    """
-
-    messages_sql = """
-    SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
-    FROM (
-      SELECT m1.key AS key, m2.key AS after, m1.relationship AS relationship, m1.active AS active, m1.body AS body
-      FROM messages AS m1
-      LEFT JOIN messages AS m2 ON m1.after = m2.id
-      WHERE m1.conv = $1 AND m1.active = True
-    ) t;
-    """
-
-    participants_sql = """
-    SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
-    FROM (
-      SELECT r.address AS address, p.readall AS readall
-      FROM participants AS p
-      JOIN recipients AS r ON p.recipient = r.id
-      WHERE p.conv = $1 AND p.active = True
-    ) t;
-    """
-
-    actions_sql = """
-    SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
-    FROM (
-      SELECT a.key AS key, a.verb AS verb, a.component AS component, a.body AS body, a.timestamp AS timestamp,
-      actor_recipient.address AS actor,
-      a_parent.key AS parent,
-      m.key AS message,
-      prt_recipient.address AS participant
-      FROM actions AS a
-
-      LEFT JOIN actions AS a_parent ON a.parent = a_parent.id
-      LEFT JOIN messages AS m ON a.message = m.id
-
-      JOIN participants AS actor_prt ON a.actor = actor_prt.id
-      JOIN recipients AS actor_recipient ON actor_prt.recipient = actor_recipient.id
-
-      LEFT JOIN participants AS prt_prt ON a.part = prt_prt.id
-      LEFT JOIN recipients AS prt_recipient ON prt_prt.recipient = prt_recipient.id
-
-      WHERE a.conv = $1
-    ) t;
-    """
-
     async def call(self, request):
         conv_key = request.match_info['conv']
-        conv_id = await self.fetchval404(
-            self.get_conv_id_sql,
-            self.session.recipient_id,
-            conv_key,
-            msg=f'conversation {conv_key} not found'
-        )
-        details = await self.conn.fetchval(self.conv_details_sql, conv_id)
-        messages = await self.conn.fetchval(self.messages_sql, conv_id)
-        parts = await self.conn.fetchval(self.participants_sql, conv_id)
-        actions = await self.conn.fetchval(self.actions_sql, conv_id)
-        return raw_json_response(
-            '{'
-            f'"details":{details},'
-            f'"messages":{messages},'
-            f'"participants":{parts or "null"},'
-            f'"actions":{actions or "null"}'
-            '}'
-        )
+        json_str = await GetConv(self.conn).run(conv_key, self.session.address)
+        return raw_json_response(json_str)
 
 
 class Create(View):
