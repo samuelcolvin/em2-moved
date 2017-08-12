@@ -9,81 +9,81 @@ from cryptography.fernet import Fernet
 from em2.core import Components, Verbs
 from em2.utils.encoding import msg_encode
 
-from .conftest import AnyInt, CloseToNow, RegexStr, python_dict  # noqa
+from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict  # noqa
 
 
-async def test_valid_cookie_list_convs(dclient, conv_key, url, db_conn):
-    r = await dclient.get(url('list'))
+async def test_valid_cookie_list_convs(cli, conv, url, db_conn):
+    r = await cli.get(url('list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
     assert [{
         'id': await db_conn.fetchval('SELECT id FROM recipients'),
-        'key': conv_key,
+        'key': conv.key,
         'subject': 'Test Conversation',
         'published': False,
         'ts': CloseToNow()
     }] == obj
 
 
-async def test_no_cookie(dclient, url):
-    dclient.session.cookie_jar.clear()
-    r = await dclient.get(url('list'))
+async def test_no_cookie(cli, url):
+    cli.session.cookie_jar.clear()
+    r = await cli.get(url('list'))
     assert r.status == 403, await r.text()
     assert 'Invalid token' in await r.text()
 
 
-async def test_invalid_cookie(dclient, url, settings):
+async def test_invalid_cookie(cli, url, settings):
     data = {'address': 'testing@example.com'}
     data = msg_encode(data)
     fernet = Fernet(base64.urlsafe_b64encode(b'i am different and 32 bits long!'))
-    settings = dclient.server.app['settings']
+    settings = cli.server.app['settings']
     cookies = {settings.COOKIE_NAME: fernet.encrypt(data).decode()}
-    dclient.session.cookie_jar.update_cookies(cookies)
+    cli.session.cookie_jar.update_cookies(cookies)
 
-    r = await dclient.get(url('list'))
+    r = await cli.get(url('list'))
     assert r.status == 403, await r.text()
     assert 'Invalid token' in await r.text()
 
 
-async def test_session_update(dclient, url):
-    assert len(dclient.session.cookie_jar) == 1
-    c1 = list(dclient.session.cookie_jar)[-1]
+async def test_session_update(cli, url):
+    assert len(cli.session.cookie_jar) == 1
+    c1 = list(cli.session.cookie_jar)[-1]
 
-    r = await dclient.get(url('list'))
+    r = await cli.get(url('list'))
     assert r.status == 200, await r.text()
-    assert len(dclient.session.cookie_jar) == 2
-    c2 = list(dclient.session.cookie_jar)[-1]
+    assert len(cli.session.cookie_jar) == 2
+    c2 = list(cli.session.cookie_jar)[-1]
 
-    r = await dclient.get(url('list'))
+    r = await cli.get(url('list'))
     assert r.status == 200, await r.text()
-    assert len(dclient.session.cookie_jar) == 2
-    c3 = list(dclient.session.cookie_jar)[-1]
+    assert len(cli.session.cookie_jar) == 2
+    c3 = list(cli.session.cookie_jar)[-1]
     assert c1 != c2
     assert c2 == c3
 
 
-async def test_list_conv(dclient, conv_key, url):
-    r = await dclient.get(url('list'))
+async def test_list_conv(cli, conv, url):
+    r = await cli.get(url('list'))
     assert r.status == 200, await r.text()
     obj = await r.json()
-    assert obj[0]['key'] == conv_key
+    assert obj[0]['key'] == conv.key
 
 
-async def test_get_conv(dclient, conv_key, url):
-    r = await dclient.get(url('get', conv=conv_key))
+async def test_get_conv(cli, conv, url):
+    r = await cli.get(url('get', conv=conv.key))
     assert r.status == 200, await r.text()
     obj = await r.json()
     assert obj['details']['subject'] == 'Test Conversation'
     assert obj['messages'][0]['body'] == 'this is the message'
 
 
-async def test_missing_conv(dclient, conv_key, url):
-    r = await dclient.get(url('get', conv=conv_key + 'x'))
+async def test_missing_conv(cli, conv, url):
+    r = await cli.get(url('get', conv=conv.key + 'x'))
     assert r.status == 404, await r.text()
     assert 'key123x not found' in await r.text()
 
 
-async def test_create_conv(dclient, url, db_conn):
+async def test_create_conv(cli, url, db_conn):
     data = {
         'subject': 'Test Subject',
         'message': 'this is a message',
@@ -91,20 +91,20 @@ async def test_create_conv(dclient, url, db_conn):
             'other@example.com',
         ],
     }
-    r = await dclient.post(url('create'), json=data)
+    r = await cli.post(url('create'), json=data)
     assert r.status == 201, await r.text()
     conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     assert {'url': f'/c/{conv_key}/'} == await r.json()
     assert conv_key.startswith('draft-')
 
 
-async def test_add_message(dclient, conv_key, url, db_conn):
+async def test_add_message(cli, conv, url, db_conn):
     data = {
         'item': 'msg-firstmessagekeyx',
         'body': 'hello',
     }
-    url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
-    r = await dclient.post(url_, json=data)
+    url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
     assert r.status == 201, await r.text()
     obj = await r.json()
     assert {
@@ -122,7 +122,7 @@ async def test_add_message(dclient, conv_key, url, db_conn):
     action = dict(await db_conn.fetchrow('SELECT * FROM actions WHERE key = $1', action_key))
     assert {
         'id': AnyInt(),
-        'conv': AnyInt(),
+        'conv': conv.id,
         'key': action_key,
         'verb': 'add',
         'component': 'message',
@@ -135,30 +135,30 @@ async def test_add_message(dclient, conv_key, url, db_conn):
     } == action
 
 
-async def test_add_message_missing(dclient, url):
+async def test_add_message_missing(cli, url):
     url_ = url('act', conv='xxx', component=Components.MESSAGE, verb=Verbs.ADD)
-    r = await dclient.post(url_)
+    r = await cli.post(url_)
     assert r.status == 404, await r.text()
     text = await r.text()
     assert text.startswith('conversation xxx not found')
 
 
-async def test_add_message_invalid_data_list(dclient, conv_key, url):
+async def test_add_message_invalid_data_list(cli, conv, url):
     data = [
         'subject',
         'item',
     ]
-    url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
-    r = await dclient.post(url_, json=data)
+    url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
     assert r.status == 400, await r.text()
     text = await r.text()
     assert 'request json should be a dictionary' == text
 
 
-async def test_add_message_invalid_data_model_error(dclient, conv_key, url):
+async def test_add_message_invalid_data_model_error(cli, conv, url):
     data = {'parent': 'X' * 21}
-    url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
-    r = await dclient.post(url_, json=data)
+    url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
     assert r.status == 400, await r.text()
     text = await r.text()
     assert """\
@@ -172,20 +172,20 @@ async def test_add_message_invalid_data_model_error(dclient, conv_key, url):
 }""" == text
 
 
-async def test_add_message_get(dclient, conv_key, url, db_conn):
+async def test_add_message_get(cli, conv, url, db_conn):
     data = {'item': 'msg-firstmessagekeyx', 'body': 'reply', 'relationship': 'sibling'}
-    url_ = url('act', conv=conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
-    r = await dclient.post(url_, json=data)
+    url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
     assert r.status == 201, await r.text()
 
-    r = await dclient.get(url('get', conv=conv_key))
+    r = await cli.get(url('get', conv=conv.key))
     assert r.status == 200, await r.text()
     obj = await r.json()
     new_msg_key = await db_conn.fetchval("SELECT key FROM messages WHERE body = 'reply'")
     assert {
         'actions': [
             {
-                'actor': 'testing@example.com',
+                'actor': conv.creator_address,
                 'body': 'reply',
                 'component': 'message',
                 'key': await db_conn.fetchval('SELECT key FROM actions'),
@@ -197,7 +197,7 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
             }
         ],
         'details': {
-            'creator': 'testing@example.com',
+            'creator': conv.creator_address,
             'key': 'key123',
             'published': False,
             'subject': 'Test Conversation',
@@ -221,26 +221,26 @@ async def test_add_message_get(dclient, conv_key, url, db_conn):
         ],
         'participants': [
             {
-                'address': 'testing@example.com',
+                'address': conv.creator_address,
                 'readall': False
             }
         ]
     } == obj
 
 
-async def test_add_part_get(dclient, conv_key, url, db_conn):
+async def test_add_part_get(cli, conv, url, db_conn):
     data = {'item': 'other@example.com'}
-    url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
-    r = await dclient.post(url_, json=data)
+    url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
     assert r.status == 201, await r.text()
 
-    r = await dclient.get(url('get', conv=conv_key))
+    r = await cli.get(url('get', conv=conv.key))
     assert r.status == 200, await r.text()
     obj = await r.json()
     assert {
         'actions': [
             {
-                'actor': 'testing@example.com',
+                'actor': conv.creator_address,
                 'body': None,
                 'component': 'participant',
                 'key': await db_conn.fetchval("SELECT key FROM actions"),
@@ -252,7 +252,7 @@ async def test_add_part_get(dclient, conv_key, url, db_conn):
             }
         ],
         'details': {
-            'creator': 'testing@example.com',
+            'creator': conv.creator_address,
             'key': 'key123',
             'published': False,
             'subject': 'Test Conversation',
@@ -268,27 +268,27 @@ async def test_add_part_get(dclient, conv_key, url, db_conn):
             }
         ],
         'participants': [
-            {'address': 'testing@example.com', 'readall': False},
+            {'address': conv.creator_address, 'readall': False},
             {'address': 'other@example.com', 'readall': False}
         ]
     } == obj
 
 
-async def test_publish_conv(dclient, conv_key, url, db_conn, redis):
+async def test_publish_conv(cli, conv, url, db_conn, redis):
     published, ts1 = await db_conn.fetchrow('SELECT published, timestamp FROM conversations')
     assert not published
     await sleep(0.01)
-    r = await dclient.post(url('publish', conv=conv_key))
+    r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
     new_conv_key, published, ts2 = await db_conn.fetchrow('SELECT key, published, timestamp FROM conversations')
     assert {'key': new_conv_key} == await r.json()
-    assert new_conv_key != conv_key
+    assert new_conv_key != conv.key
     assert published
     assert ts2 > ts1
     action = dict(await db_conn.fetchrow('SELECT * FROM actions'))
     assert {
         'id': AnyInt(),
-        'conv': AnyInt(),
+        'conv': conv.id,
         'key': RegexStr(r'^pub-.*'),
         'verb': 'add',
         'component': 'participant',
@@ -301,14 +301,14 @@ async def test_publish_conv(dclient, conv_key, url, db_conn, redis):
     } == action
 
 
-async def test_publish_conv_foreign_part(dclient, conv_key, url, db_conn, redis, foreign_server):
-    url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
-    r = await dclient.post(url_, json={'item': 'other@foreign.com'})
+async def test_publish_conv_foreign_part(cli, conv, url, db_conn, redis, foreign_server):
+    url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await cli.post(url_, json={'item': 'other@foreign.com'})
     assert r.status == 201, await r.text()
 
     assert not await db_conn.fetchval('SELECT published FROM conversations')
 
-    r = await dclient.post(url('publish', conv=conv_key))
+    r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
 
     assert await db_conn.fetchval('SELECT published FROM conversations')
@@ -319,12 +319,12 @@ async def test_publish_conv_foreign_part(dclient, conv_key, url, db_conn, redis,
     ]
 
 
-async def test_publish_add_msg_conv(dclient, conv_key, url, db_conn, redis, foreign_server):
-    url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
-    r = await dclient.post(url_, json={'item': 'other@foreign.com'})
+async def test_publish_add_msg_conv(cli, conv, url, db_conn, redis, foreign_server):
+    url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await cli.post(url_, json={'item': 'other@foreign.com'})
     assert r.status == 201, await r.text()
 
-    r = await dclient.post(url('publish', conv=conv_key))
+    r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
 
     assert foreign_server.app['request_log'] == [
@@ -334,7 +334,7 @@ async def test_publish_add_msg_conv(dclient, conv_key, url, db_conn, redis, fore
 
     new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
-    r = await dclient.post(url_, json={'item': 'msg-firstmessagekeyx', 'body': 'hello'})
+    r = await cli.post(url_, json={'item': 'msg-firstmessagekeyx', 'body': 'hello'})
     assert r.status == 201, await r.text()
 
     assert foreign_server.app['request_log'] == [
@@ -344,12 +344,12 @@ async def test_publish_add_msg_conv(dclient, conv_key, url, db_conn, redis, fore
     ]
 
 
-async def test_publish_update_add_part(dclient, conv_key, url, db_conn, redis, foreign_server):
-    url_ = url('act', conv=conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
-    r = await dclient.post(url_, json={'item': 'other@foreign.com'})
+async def test_publish_update_add_part(cli, conv, url, db_conn, redis, foreign_server):
+    url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await cli.post(url_, json={'item': 'other@foreign.com'})
     assert r.status == 201, await r.text()
 
-    r = await dclient.post(url('publish', conv=conv_key))
+    r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
 
     assert foreign_server.app['request_log'] == [
@@ -359,7 +359,7 @@ async def test_publish_update_add_part(dclient, conv_key, url, db_conn, redis, f
 
     new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     url_ = url('act', conv=new_conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
-    r = await dclient.post(url_, json={'item': 'new@foreign.com'})
+    r = await cli.post(url_, json={'item': 'new@foreign.com'})
     assert r.status == 201, await r.text()
     print(foreign_server.app['request_log'])
     assert foreign_server.app['request_log'] == [
@@ -369,11 +369,11 @@ async def test_publish_update_add_part(dclient, conv_key, url, db_conn, redis, f
     ]
 
 
-async def test_publish_domestic_push(dclient, conv_key, url, db_conn, redis):
-    async with dclient.session.ws_connect(dclient.make_url('/ws/')) as ws:
+async def test_publish_domestic_push(cli, conv, url, db_conn, redis):
+    async with cli.session.ws_connect(cli.make_url('/ws/')) as ws:
 
         assert not await db_conn.fetchval('SELECT published FROM conversations')
-        r = await dclient.post(url('publish', conv=conv_key))
+        r = await cli.post(url('publish', conv=conv.key))
         assert r.status == 200, await r.text()
         assert await db_conn.fetchval('SELECT published FROM conversations')
 
@@ -384,7 +384,7 @@ async def test_publish_domestic_push(dclient, conv_key, url, db_conn, redis):
                 data = json.loads(msg.data)
                 assert data['component'] == 'participant'
                 assert data['verb'] == 'add'
-                assert data['actor'] == 'testing@example.com'
+                assert data['actor'] == conv.creator_address
                 got_message = True
                 break
         assert got_message

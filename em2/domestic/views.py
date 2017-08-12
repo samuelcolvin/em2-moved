@@ -172,7 +172,7 @@ class Act(View):
 
         apply_action = ApplyAction(
             self.conn,
-            create_timestamp=True,
+            remote_action=False,
             action_key=gen_random('act'),
             conv=conv_id,
             actor=actor_id,

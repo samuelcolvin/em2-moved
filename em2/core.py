@@ -131,9 +131,9 @@ class ApplyAction(FetchVal404Mixin):
 
     __slots__ = 'conn',
 
-    def __init__(self, conn, create_timestamp, **data):
+    def __init__(self, conn, remote_action, **data):
         self.conn = conn
-        self._create_timestamp = create_timestamp
+        self._remote_action = remote_action
         self.data = self.Data(**data)
         self.item_key = None
         self.action_id = None
@@ -170,17 +170,29 @@ class ApplyAction(FetchVal404Mixin):
                 message_id,
                 self.data.body,
             )
-            if self._create_timestamp:
+            if self._remote_action:
+                args += self.data.timestamp.replace(tzinfo=None),
+                self.action_id = await self.conn.fetchval(self.create_action_sql, *args)
+            else:
                 self.action_id, action_timestamp = await self.conn.fetchrow(self.create_action_create_ts_sql, *args)
                 # remove quotes added by to_json
                 self.action_timestamp = action_timestamp[1:-1]
-            else:
-                args += self.data.timestamp.replace(tzinfo=None),
-                self.action_id = await self.conn.fetchval(self.create_action_sql, *args)
 
-    _find_message_sql = """
-    SELECT m.id FROM messages AS m
-    WHERE m.conv = $1 AND m.key = $2
+    _find_msg_by_action_sql = """
+    SELECT m.id
+    FROM actions AS a
+    JOIN messages AS m ON a.message = m.id
+    WHERE a.conv = $1 AND a.key = $2
+    """
+    _check_msg_actions_sql = """
+    SELECT id FROM actions
+    WHERE conv = $1 and message IS NOT NULL
+    LIMIT 1
+    """
+    _get_first_msg_sql = """
+    SELECT id FROM messages
+    WHERE conv = $1
+    LIMIT 2
     """
     _add_message_sql = """
     INSERT INTO messages (key, conv, after, relationship, body) VALUES ($1, $2, $3, $4, $5)
@@ -188,16 +200,35 @@ class ApplyAction(FetchVal404Mixin):
     """
 
     async def _add_message(self):
-        after_id = await self.fetchval404(self._find_message_sql, self.data.conv, self.data.item)
+        if self.data.parent:
+            after_id = await self.fetchval404(self._find_msg_by_action_sql, self.data.conv, self.data.parent)
+        else:
+            # the only valid case here is that there's no action for messages
+            if await self.conn.fetchval(self._check_msg_actions_sql, self.data.conv):
+                raise HTTPBadRequest(text='parent may not be null if actions already exist')
+            msg_ids = await self.conn.fetch(self._get_first_msg_sql, self.data.conv)
+            if len(msg_ids) != 1:
+                raise HTTPBadRequest(text=f'only one message should exist if parent is null: {len(msg_ids)}')
+            after_id = msg_ids[0][0]
+
         if not self.data.body:
             raise HTTPBadRequest(text='body can not be empty when adding a message')
-        item_key = gen_random('msg')
+        if self._remote_action:
+            item_key = self.data.item
+        else:
+            item_key = gen_random('msg')
         args = item_key, self.data.conv, after_id, self.data.relationship, self.data.body
         message_id = await self.conn.fetchval(self._add_message_sql, *args)
         return item_key, message_id
 
+    _find_message_by_key_sql = """
+    SELECT m.id
+    FROM messages AS m
+    WHERE m.conv = $1 AND m.key = $2
+    """
     _latest_message_action_sql = """
-    SELECT id, key, verb, actor FROM actions
+    SELECT id, key, verb, actor
+    FROM actions
     WHERE conv = $1 AND message = $2
     ORDER BY id DESC
     LIMIT 1
@@ -207,7 +238,7 @@ class ApplyAction(FetchVal404Mixin):
 
     async def _mod_message(self):
         message_key = self.data.item
-        message_id = await self.fetchval404(self._find_message_sql, self.data.conv, message_key)
+        message_id = await self.fetchval404(self._find_message_by_key_sql, self.data.conv, message_key)
         parent_id, parent_key, parent_verb, parent_actor = await self.fetchrow404(
             self._latest_message_action_sql,
             self.data.conv,

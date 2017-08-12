@@ -95,7 +95,7 @@ class Act(ForeignView):
 
         apply_action = ApplyAction(
             self.conn,
-            create_timestamp=False,
+            remote_action=True,
             action_key=self.required_header('em2-action-key'),
             conv=conv_id,
             actor=actor_id,

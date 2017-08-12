@@ -1,23 +1,17 @@
 import asyncio
-import base64
 import json
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import NamedTuple
 
 import asyncpg
 import pytest
 from aioredis import create_redis
-from cryptography.fernet import Fernet
 from pydantic.datetime_parse import parse_datetime
 
 from em2 import Settings
 from em2.cli.database import prepare_database
-from em2.domestic import create_domestic_app
-from em2.foreign import create_foreign_app
-from em2.utils.encoding import msg_encode
-
-from .fixture_classes.foreign_server import create_test_app
 
 THIS_DIR = Path(__file__).parent.resolve()
 
@@ -55,79 +49,33 @@ def db_conn(loop, settings, clean_db):
     await_(tr.rollback())
 
 
-async def f_startup_modify_app(app):
-    app['db'].conn = app['_conn']
-
-
-@pytest.fixture
-def fclient(loop, settings, db_conn, test_client):
-    app = create_foreign_app(settings)
-    app['_conn'] = db_conn
-    app.on_startup.append(f_startup_modify_app)
-    return loop.run_until_complete(test_client(app))
-
-
-test_addr = 'testing@example.com'
-
-
-async def d_startup_modify_app(app):
-    app['db'].conn = app['_conn']
-    app['pusher']._concurrency_enabled = False
-    await  app['pusher'].startup()
-    app['pusher'].db.conn = app['_conn']
-
-
-async def d_shutdown_modify_app(app):
-    await app['pusher'].session.close()
-
-
-@pytest.fixture
-def dclient(loop, settings, db_conn, test_client):
-    data = {
-        'address': test_addr
-    }
-    data = msg_encode(data)
-    fernet = Fernet(base64.urlsafe_b64encode(settings.SECRET_KEY))
-    cookies = {
-        settings.COOKIE_NAME: fernet.encrypt(data).decode()
-    }
-    app = create_domestic_app(settings, 'd-testing')
-    app['_conn'] = db_conn
-    app.on_startup.append(d_startup_modify_app)
-    app.on_shutdown.append(d_shutdown_modify_app)
-    return loop.run_until_complete(test_client(app, cookies=cookies))
-
-
 @pytest.fixture
 def url(request):
-    if 'fclient' in request.fixturenames:
-        client_name = 'fclient'
-    elif 'dclient' in request.fixturenames:
-        client_name = 'dclient'
-    else:
-        raise NotImplementedError()
-    client = request.getfixturevalue(client_name)
+    client = request.getfixturevalue('cli')
 
     def _url(name, **parts):
         return client.server.app.router[name].url_for(**parts)
     return _url
 
 
-async def create_conversation(db_conn):
-    recipient_id = await db_conn.fetchval('INSERT INTO recipients (address) VALUES ($1) RETURNING id', test_addr)
+class ConvInfo(NamedTuple):
+    id: int
+    key: str
+    first_msg_key: str
+    creator_address: str
+
+
+async def create_conversation(db_conn, creator):
+    recipient_id = await db_conn.fetchval('INSERT INTO recipients (address) VALUES ($1) RETURNING id', creator)
     key = 'key123'
     args = key, recipient_id, 'Test Conversation', 'test-conv'
     conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref) '
                                      'VALUES ($1, $2, $3, $4) RETURNING id', *args)
     await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, recipient_id)
-    args = 'msg-firstmessagekeyx', conv_id, 'this is the message'
+    first_msg_key = 'msg-firstmessagekeyx'
+    args = first_msg_key, conv_id, 'this is the message'
     await db_conn.execute('INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)', *args)
-    return key
-
-
-@pytest.fixture
-def conv_key(loop, db_conn):
-    return loop.run_until_complete(create_conversation(db_conn))
+    return ConvInfo(id=conv_id, key=key, first_msg_key=first_msg_key, creator_address=creator)
 
 
 @pytest.yield_fixture
@@ -143,14 +91,6 @@ def redis(loop):
 
     redis.close()
     loop.run_until_complete(redis.wait_closed())
-
-
-@pytest.yield_fixture
-def foreign_server(loop, test_server, dclient):
-    app = create_test_app(loop)
-    server = loop.run_until_complete(test_server(app))
-    dclient.server.app['pusher'].set_foreign_port(server.port)
-    yield server
 
 
 class CloseToNow:
