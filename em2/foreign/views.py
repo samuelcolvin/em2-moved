@@ -103,6 +103,7 @@ class Act(ForeignView):
                 raise HTTPForbidden(text=f'"{actor_address}" is not a participant in this conversation')
             else:
                 # TODO call create_cov
+                # we should make sure the action is add participant and that prt is on this node
                 return web.Response(status=204)
 
         conv_id, actor_id = r

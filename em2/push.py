@@ -114,6 +114,10 @@ class Pusher(Actor):
     """
 
     @concurrent
+    async def create_conv(self, conv_key):
+        pass
+
+    @concurrent
     async def push(self, action_id, transmit=True):
         async with self.db.acquire() as conn:
             *args, message_key, prt_address = await conn.fetchrow(self.action_detail_sql, action_id)

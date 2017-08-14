@@ -221,6 +221,5 @@ async def test_mod_message(cli, conv, url, get_conv):
     })
     assert r.status == 201, await r.text()
     obj = await get_conv(conv)
-    print(python_dict(obj))
     assert len(obj['actions']) == 2
     assert obj['messages'][1]['body'] == 'different content'
