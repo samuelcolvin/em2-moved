@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 from em2.core import Components, Verbs
 from em2.utils.encoding import msg_encode
 
-from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict, timstamp_regex  # noqa
+from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict, timestamp_regex  # noqa
 
 
 async def test_valid_cookie_list_convs(cli, conv, url, db_conn):
@@ -17,7 +17,6 @@ async def test_valid_cookie_list_convs(cli, conv, url, db_conn):
     assert r.status == 200, await r.text()
     obj = await r.json()
     assert [{
-        'id': await db_conn.fetchval('SELECT id FROM recipients'),
         'key': conv.key,
         'subject': 'Test Conversation',
         'published': False,
@@ -112,7 +111,7 @@ async def test_add_message(cli, conv, url, db_conn):
         'conv_key': 'key123',
         'verb': 'add',
         'component': 'message',
-        'timestamp': timstamp_regex,
+        'timestamp': timestamp_regex,
         'parent': None,
         'relationship': None,
         'body': 'hello',
@@ -127,7 +126,7 @@ async def test_add_message(cli, conv, url, db_conn):
         'verb': 'add',
         'component': 'message',
         'timestamp': CloseToNow(),
-        'actor': await db_conn.fetchval('SELECT id FROM participants'),
+        'actor': await db_conn.fetchval('SELECT id FROM recipients'),
         'parent': None,
         'part': None,
         'message': await db_conn.fetchval("SELECT id FROM messages WHERE body = 'hello'"),
@@ -293,7 +292,7 @@ async def test_publish_conv(cli, conv, url, db_conn, redis):
         'verb': 'add',
         'component': 'participant',
         'timestamp': CloseToNow(),
-        'actor': await db_conn.fetchval('SELECT id FROM participants'),
+        'actor': await db_conn.fetchval('SELECT id FROM recipients'),
         'parent': None,
         'part': None,
         'message': None,

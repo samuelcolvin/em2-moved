@@ -58,7 +58,7 @@ CREATE TABLE actions (
   conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   verb VERB NOT NULL,
   component COMPONENT NOT NULL,
-  actor INT NOT NULL REFERENCES participants ON DELETE RESTRICT,
+  actor INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   parent INT REFERENCES actions,
   part INT REFERENCES participants,
@@ -74,7 +74,6 @@ CREATE TABLE actions_status (
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   status ACTION_STATUS NOT NULL DEFAULT 'pending',
   platform VARCHAR(265),
-  part INT REFERENCES participants,
   errors JSONB[]
 );
 

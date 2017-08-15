@@ -393,13 +393,12 @@ class GetConv(FetchOr404Mixin):
       LEFT JOIN actions AS a_parent ON a.parent = a_parent.id
       LEFT JOIN messages AS m ON a.message = m.id
 
-      JOIN participants AS actor_prt ON a.actor = actor_prt.id
-      JOIN recipients AS actor_recipient ON actor_prt.recipient = actor_recipient.id
+      JOIN recipients AS actor_recipient ON a.actor = actor_recipient.id
 
       LEFT JOIN participants AS prt_prt ON a.part = prt_prt.id
       LEFT JOIN recipients AS prt_recipient ON prt_prt.recipient = prt_recipient.id
-
       WHERE a.conv = $1
+      ORDER BY a.id
     ) t;
     """
 

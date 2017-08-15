@@ -18,7 +18,7 @@ class VList(View):
     sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT c.id AS id, c.key AS key, c.subject AS subject, c.timestamp AS ts, c.published AS published
+      SELECT c.key AS key, c.subject AS subject, c.timestamp AS ts, c.published AS published
       FROM conversations AS c
       LEFT JOIN participants ON c.id = participants.conv
       WHERE participants.recipient = $1 AND participants.active = True
@@ -75,7 +75,7 @@ class Create(View):
 
 class Act(View):
     get_conv_part_sql = """
-    SELECT c.id, c.published, p.id
+    SELECT c.id, c.published
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     WHERE c.key = $1 AND p.recipient = $2
@@ -83,7 +83,7 @@ class Act(View):
 
     async def call(self, request):
         conv_key = request.match_info['conv']
-        conv_id, conv_published, actor_id = await self.fetchrow404(
+        conv_id, conv_published = await self.fetchrow404(
             self.get_conv_part_sql,
             conv_key,
             self.session.recipient_id,
@@ -95,7 +95,7 @@ class Act(View):
             remote_action=False,
             action_key=gen_random('act'),
             conv=conv_id,
-            actor=actor_id,
+            actor=self.session.recipient_id,
             component=request.match_info['component'],
             verb=request.match_info['verb'],
             **await self.request_json()
@@ -120,7 +120,7 @@ class Act(View):
 
 class Publish(View):
     get_conv_sql = """
-    SELECT c.id, c.subject, p.id
+    SELECT c.id, c.subject
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     WHERE c.published = False AND c.key = $1 AND c.creator = $2 AND p.recipient = $2
@@ -138,7 +138,7 @@ class Publish(View):
 
     async def call(self, request):
         conv_key = request.match_info['conv']
-        conv_id, subject, part_id = await self.fetchrow404(
+        conv_id, subject = await self.fetchrow404(
             self.get_conv_sql,
             conv_key,
             self.session.recipient_id
@@ -159,7 +159,7 @@ class Publish(View):
                 self.create_action_sql,
                 action_key,
                 conv_id,
-                part_id,
+                self.session.recipient_id,
             )
 
         await self.pusher.push(action_id)

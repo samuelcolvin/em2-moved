@@ -5,7 +5,7 @@ from arq.utils import to_unix_ms
 from em2 import Settings
 from em2.utils.network import check_server
 
-from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict, timstamp_regex  # noqa
+from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict, timestamp_regex  # noqa
 from ..fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 
@@ -25,7 +25,7 @@ async def test_get_conv(cli, conv, url):
             'key': 'key123',
             'published': False,
             'subject': 'Test Conversation',
-            'ts': timstamp_regex,
+            'ts': timestamp_regex,
         },
         'messages': [
             {
@@ -80,7 +80,7 @@ async def test_add_message_participant(cli, conv, url, get_conv):
                 'message': 'msg-secondmessagekey',
                 'parent': None,
                 'participant': None,
-                'timestamp': timstamp_regex,
+                'timestamp': timestamp_regex,
                 'verb': 'add'
             },
             {
@@ -91,7 +91,7 @@ async def test_add_message_participant(cli, conv, url, get_conv):
                 'message': None,
                 'parent': None,
                 'participant': 'foobar@example.com',
-                'timestamp': timstamp_regex,
+                'timestamp': timestamp_regex,
                 'verb': 'add'
             },
         ],
@@ -100,7 +100,7 @@ async def test_add_message_participant(cli, conv, url, get_conv):
             'key': 'key123',
             'published': False,
             'subject': 'Test Conversation',
-            'ts': timstamp_regex
+            'ts': timestamp_regex
         },
         'messages': [
             {

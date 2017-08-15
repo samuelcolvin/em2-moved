@@ -82,8 +82,7 @@ class Pusher(Actor):
     FROM actions AS a
     JOIN conversations AS c ON a.conv = c.id
 
-    JOIN participants AS p ON a.actor = p.id
-    JOIN recipients AS r ON p.recipient = r.id
+    JOIN recipients AS r ON a.actor = r.id
 
     LEFT JOIN actions AS parent ON a.parent = parent.id
 

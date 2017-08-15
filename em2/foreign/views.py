@@ -72,7 +72,7 @@ class Get(ForeignView):
 
 class Act(ForeignView):
     find_participant_sql = """
-    SELECT c.id, p.id
+    SELECT c.id, r.id
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     JOIN recipients AS r ON p.recipient = r.id

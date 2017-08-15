@@ -19,6 +19,12 @@ from .fixture_classes.foreign_server import create_test_app
 THIS_DIR = Path(__file__).parent.resolve()
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        '--reuse-db', action='store_true', default=False, help='keep the existing database if it exists'
+    )
+
+
 @pytest.fixture(scope='session')
 def settings():
     return Settings(
@@ -33,10 +39,10 @@ def settings():
 
 
 @pytest.fixture(scope='session')
-def clean_db(settings):
+def clean_db(request, settings):
     # loop fixture has function scope so can't be used here.
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(prepare_database(settings, True))
+    loop.run_until_complete(prepare_database(settings, not request.config.getoption('--reuse-db')))
     teardown_test_loop(loop)
 
 
@@ -175,7 +181,7 @@ class RegexStr:
             return repr(self.v)
 
 
-timstamp_regex = RegexStr(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:.\d{1,6})?')
+timestamp_regex = RegexStr(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:.\d{1,6})?')
 
 
 CHANGES = [
