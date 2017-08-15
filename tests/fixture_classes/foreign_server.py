@@ -41,7 +41,7 @@ CONV_DETAILS = {
             'key': 'yyyyyyyyyyyyyyyyyyyy',
             'message': None,
             'parent': None,
-            'participant': 'foobar@example.com',
+            'participant': 'testing@local.com',
             'timestamp': '2032-06-01T13:00:00.12345',
             'verb': 'add'
         },

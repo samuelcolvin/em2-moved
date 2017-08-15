@@ -476,6 +476,12 @@ class CreateForeignConv:
     INSERT INTO messages (conv, key, body, active, after, relationship)
     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
     """
+    get_participants_sql = """
+    SELECT r.address, p.id
+    FROM participants AS p
+    JOIN recipients AS r ON p.recipient = r.id
+    WHERE p.conv=$1
+    """
     create_action_sql = """
     INSERT INTO actions (key, conv, verb, component, actor, parent, part, message, body, timestamp)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -517,18 +523,23 @@ class CreateForeignConv:
                 conv_id, msg.key, msg.body, msg.active, after_id, msg.relationship
             )
 
-        # recip_id[deets.creator] = creator_recip_id
-        # action_lookup = {}
-        # for action in conv.actions:
-        #     args = (
-        #         action.key,
-        #         conv_id,
-        #         action.verb,
-        #         action.component,
-        #         recip_id[action.actor],  # FIXME this is wrong
-        #         action.parent and action_lookup[action.parent],
-        #         prt_id,
-        #         action.message and msg_lookup[action.message],
-        #         action.body if action.component == Components.MESSAGE else None,
-        #         action.timestamp
-        #     )
+        if conv.actions is None:
+            return
+
+        prt_lookup = dict(await self.conn.fetch(self.get_participants_sql, conv_id))
+        recip_id[deets.creator] = creator_recip_id
+        action_lookup = {}
+        for action in conv.actions:
+            action_lookup[action.key] = await self.conn.fetchval(
+                self.create_action_sql,
+                action.key,
+                conv_id,
+                action.verb,
+                action.component,
+                recip_id[action.actor],
+                action.parent and action_lookup[action.parent],
+                action.participant and prt_lookup[action.participant],  # TODO what happens when prts get deleted?
+                action.message and msg_lookup[action.message],
+                action.body if action.component == Components.MESSAGE else None,
+                action.timestamp
+            )

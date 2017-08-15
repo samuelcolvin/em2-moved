@@ -14,7 +14,19 @@ async def test_create(cli, url, foreign_server, get_conv):
     obj = await get_conv('key123')
     print(python_dict(obj))
     assert {
-        'actions': None,
+        'actions': [
+            {
+                'actor': 'test@already-authenticated.com',
+                'body': None,
+                'component': 'participant',
+                'key': 'yyyyyyyyyyyyyyyyyyyy',
+                'message': None,
+                'parent': None,
+                'participant': 'testing@local.com',
+                'ts': '2032-06-01T13:00:00.12345',
+                'verb': 'add'
+            }
+        ],
         'details': {
             'creator': 'test@already-authenticated.com',
             'key': 'key123',
