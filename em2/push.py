@@ -16,7 +16,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from . import Settings
-from .core import Action, gen_random
+from .core import Action, CreateForeignConv, gen_random
 from .exceptions import Em2ConnectionError, FailedOutboundAuthentication
 from .utils import get_domain
 from .utils.encoding import msg_encode, to_unix_ms
@@ -109,26 +109,6 @@ class Pusher(Actor):
     """
 
     @concurrent
-    async def create_conv(self, domain, conv_key):
-        logger.info('getting conv %.6s from %s', conv_key, domain)
-        token = await self.authenticate(domain)
-        url = f'{self.settings.COMMS_SCHEMA}://{domain}/get/{conv_key}/'
-
-        text = None
-        try:
-            async with self.session.get(url, headers={'em2-auth': token}, ) as r:
-                text = await r.text()
-                if r.status != 200:
-                    raise ClientError(f'status {r.status} not 200')
-                data = await r.json()
-        except (ValueError, ClientError) as e:
-            logger.warning('%s request failed: %s, text="%s"', url, e, text)
-            return
-
-        list(data.keys())
-        # FIXME process data here
-
-    @concurrent
     async def push(self, action_id, transmit=True):
         async with self.db.acquire() as conn:
             *args, message_key, prt_address = await conn.fetchrow(self.action_detail_sql, action_id)
@@ -215,8 +195,7 @@ class Pusher(Actor):
         :return: node's domain or None if em2 is not enabled for this address
         """
         logger.info('looking for em2 node for "%s"', domain)
-        results = await self.mx_query(domain)
-        for _, host in results:
+        async for host in self.mx_hosts(domain):
             node = None
             if host == self.settings.LOCAL_DOMAIN:
                 node = self.LOCAL
@@ -269,19 +248,25 @@ class Pusher(Actor):
                     remote_nodes[node] = {d}
         return remote_nodes, local_recipients, fallback_addresses
 
-    def auth_data(self):
-        yield 'platform', self.settings.LOCAL_DOMAIN
+    @concurrent
+    async def create_conv(self, domain, conv_key):
+        logger.info('getting conv %.6s from %s', conv_key, domain)
+        token = await self.authenticate(domain)
+        url = f'{self.settings.COMMS_SCHEMA}://{domain}/get/{conv_key}/'
 
-        timestamp = self._now_unix()
-        yield 'timestamp', timestamp
+        text = None
+        try:
+            async with self.session.get(url, headers={'em2-auth': token}, ) as r:
+                text = await r.text()
+                if r.status != 200:
+                    raise ClientError(f'status {r.status} not 200')
+                data = await r.json()
+        except (ValueError, ClientError) as e:
+            return logger.warning('%s request failed: %s, text="%s"', url, e, text)
 
-        msg = '{}:{}'.format(self.settings.LOCAL_DOMAIN, timestamp)
-        h = SHA256.new(msg.encode())
-
-        key = RSA.importKey(self.settings.private_domain_key)
-        signer = PKCS1_v1_5.new(key)
-        signature = base64.urlsafe_b64encode(signer.sign(h)).decode()
-        yield 'signature', signature
+        async with self.db.acquire() as conn:
+            creator = CreateForeignConv(conn)
+            await creator.run(data)
 
     async def authenticate(self, node_domain: str) -> str:
         logger.debug('authenticating with %s', node_domain)
@@ -301,7 +286,7 @@ class Pusher(Actor):
     async def _authenticate_request(self, node_domain):
         url = f'{self.settings.COMMS_SCHEMA}://{node_domain}/authenticate'
         # TODO more error checks
-        headers = {f'em2-{k}': str(v) for k, v in self.auth_data()}
+        headers = {f'em2-{k}': str(v) for k, v in self._auth_data()}
         try:
             async with self.session.post(url, headers=headers) as r:
                 if r.status != 201:
@@ -314,10 +299,23 @@ class Pusher(Actor):
         key = r.headers['em2-key']
         return key
 
+    def _auth_data(self):
+        yield 'platform', self.settings.LOCAL_DOMAIN
+
+        timestamp = self._now_unix()
+        yield 'timestamp', timestamp
+
+        msg = '{}:{}'.format(self.settings.LOCAL_DOMAIN, timestamp)
+        h = SHA256.new(msg.encode())
+
+        key = RSA.importKey(self.settings.private_domain_key)
+        signer = PKCS1_v1_5.new(key)
+        signature = base64.urlsafe_b64encode(signer.sign(h)).decode()
+        yield 'signature', signature
+
     async def domain_is_local(self, domain: str) -> bool:
         # TODO results should be cached
-        results = await self.mx_query(domain)
-        for _, host in results:
+        async for host in self.mx_hosts(domain):
             if host == self.settings.LOCAL_DOMAIN:
                 return True
         return False
@@ -329,11 +327,12 @@ class Pusher(Actor):
             self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=nameservers)
         return self._resolver
 
-    async def mx_query(self, host):
+    async def mx_hosts(self, host):
         results = await self.dns_query(host, 'MX')
         results = [(r.priority, r.host) for r in results]
         results.sort()
-        return results
+        for _, host in results:
+            yield host
 
     async def dns_query(self, host, qtype):
         try:

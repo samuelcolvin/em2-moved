@@ -1,4 +1,5 @@
 from aiohttp.web import Application, Response, json_response
+from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPNotFound  # NOQA
 
 
 async def auth(request):
@@ -10,7 +11,7 @@ CONV_DETAILS = {
     'details': {
         'creator': 'test@already-authenticated.com',
         'key': 'key123',
-        'published': False,
+        'published': True,
         'subject': 'Test Conversation',
         'ts': '2032-06-01T12:00:00.12345'
     },
@@ -33,7 +34,10 @@ CONV_DETAILS = {
 
 
 async def get(request):
-    return json_response(CONV_DETAILS)
+    if request.match_info['conv'] == 'key123':
+        return json_response(CONV_DETAILS)
+    else:
+        raise HTTPNotFound()
 
 
 async def act(request):

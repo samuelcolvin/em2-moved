@@ -6,7 +6,7 @@ from aiohttp import WSMsgType
 from aiohttp.web_ws import WebSocketResponse
 from pydantic import EmailStr, constr
 
-from em2.core import ApplyAction, GetConv, gen_random, generate_conv_key
+from em2.core import ApplyAction, GetConv, create_missing_recipients, gen_random, generate_conv_key
 from em2.utils.web import WebModel, json_response, raw_json_response
 
 from .common import View
@@ -50,7 +50,7 @@ class Create(View):
     VALUES ($1, $2, $3) RETURNING id
     """
     add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
-    add_message_sql = 'INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)'
+    add_message_sql = 'INSERT INTO messages (conv, key, body) VALUES ($1, $2, $3)'
 
     class ConvModel(WebModel):
         subject: constr(max_length=255) = ...
@@ -59,22 +59,17 @@ class Create(View):
 
     async def call(self, request):
         conv = self.ConvModel(**await self.request_json())
-        part_addresses = set(conv.participants)
-        part_ids = set()
-        if part_addresses:
-            for r in await self.conn.fetch(self.get_existing_recips_sql, part_addresses):
-                part_ids.add(r['id'])
-                part_addresses.remove(r['address'])
-
-            if part_addresses:
-                extra_ids = {r['id'] for r in await self.conn.fetch(self.set_missing_recips_sql, part_addresses)}
-                part_ids.update(extra_ids)
+        prt_ids = None
+        if conv.participants:
+            prt_ids = await create_missing_recipients(self.conn, conv.participants)
+            print(prt_ids)
+            prt_ids = set(prt_ids.values())
 
         key = gen_random('draft')
         conv_id = await self.conn.fetchval(self.create_conv_sql, key, self.session.recipient_id, conv.subject)
-        if part_ids:
-            await self.conn.executemany(self.add_participants_sql, {(conv_id, pid) for pid in part_ids})
-        await self.conn.execute(self.add_message_sql, gen_random('msg'), conv_id, conv.message)
+        if prt_ids:
+            await self.conn.executemany(self.add_participants_sql, {(conv_id, pid) for pid in prt_ids})
+        await self.conn.execute(self.add_message_sql, conv_id, gen_random('msg'), conv.message)
 
         return json_response(url=str(request.app.router['get'].url_for(conv=key)), status_=201)
 

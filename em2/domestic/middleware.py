@@ -1,6 +1,7 @@
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
 from cryptography.fernet import InvalidToken
 
+from em2.core import get_create_recipient
 from em2.utils.encoding import msg_decode, msg_encode
 from em2.utils.web import db_conn_middleware
 
@@ -34,9 +35,7 @@ ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id
 async def set_recipient(request):
     if request['session'].recipient_id:
         return
-    recipient_id = await request['conn'].fetchval(GET_RECIPIENT_ID, request['session'].address)
-    if recipient_id is None:
-        recipient_id = await request['conn'].fetchval(SET_RECIPIENT_ID, request['session'].address)
+    recipient_id = await get_create_recipient(request['conn'], request['session'].address)
     request['session'].recipient_id = recipient_id
     request['session_change'] = True
 

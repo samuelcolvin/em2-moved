@@ -127,7 +127,7 @@ async def test_add_message(cli, conv, url, db_conn):
         'verb': 'add',
         'component': 'message',
         'timestamp': CloseToNow(),
-        'actor': await db_conn.fetchval("SELECT id FROM participants"),
+        'actor': await db_conn.fetchval('SELECT id FROM participants'),
         'parent': None,
         'part': None,
         'message': await db_conn.fetchval("SELECT id FROM messages WHERE body = 'hello'"),

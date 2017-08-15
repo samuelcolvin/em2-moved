@@ -1,18 +1,21 @@
 import base64
 import hashlib
+import logging
 import os
 from datetime import datetime
 from enum import Enum, unique
-from typing import NamedTuple, Optional
+from typing import List, NamedTuple, Optional
 
 import asyncpg
 from aiohttp.web_exceptions import HTTPBadRequest
 from asyncpg.pool import Pool  # noqa
-from pydantic import EmailStr, NoneStr, constr
+from pydantic import BaseModel, EmailStr, NoneStr, ValidationError, constr
 
 from . import Settings
 from .utils.encoding import to_unix_ms
 from .utils.web import FetchOr404Mixin, WebModel
+
+logger = logging.getLogger('em2.core')
 
 
 def generate_conv_key(creator, ts, subject):
@@ -101,6 +104,41 @@ class Action(NamedTuple):
     body: str
     relationship: Relationships
     item: str
+
+
+GET_RECIPIENT_ID = 'SELECT id FROM recipients WHERE address = $1'
+# pointless update here should happen very rarely
+SET_RECIPIENT_ID = """
+INSERT INTO recipients (address) VALUES ($1)
+ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id
+"""
+
+
+async def get_create_recipient(conn, address):
+    recipient_id = await conn.fetchval(GET_RECIPIENT_ID, address)
+    if recipient_id is None:
+        recipient_id = await conn.fetchval(SET_RECIPIENT_ID, address)
+    return recipient_id
+
+
+GET_EXISTING_RECIPS_SQL = 'SELECT address, id FROM recipients WHERE address = any($1)'
+SET_MISSING_RECIPS_SQL = """
+INSERT INTO recipients (address) (SELECT unnest ($1::VARCHAR(255)[]))
+ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address
+RETURNING address, id
+"""
+
+
+async def create_missing_recipients(conn, addresses):
+    part_addresses = set(addresses)
+    prts = {}
+    for address, id in await conn.fetch(GET_EXISTING_RECIPS_SQL, part_addresses):
+        prts[address] = id
+        part_addresses.remove(address)
+
+    if part_addresses:
+        prts.update(dict(await conn.fetch(SET_MISSING_RECIPS_SQL, part_addresses)))
+    return prts
 
 
 class ApplyAction(FetchOr404Mixin):
@@ -387,3 +425,95 @@ class GetConv(FetchOr404Mixin):
             f'"actions":{actions or "null"}'
             '}'
         )
+
+
+class _ConvDetails(BaseModel):
+    key: constr(max_length=64)
+    creator: EmailStr
+    subject: constr(max_length=255)
+    ts: datetime  # TODO check this is less than now
+    published: bool  # not actually used, in foreign -> create conv, assumed true
+
+
+class _Participant(BaseModel):
+    address: EmailStr
+    readall: bool
+
+
+class _ConvMessage(BaseModel):
+    key: constr(min_length=20, max_length=20)
+    active: bool
+    body: str
+    after: Optional[constr(min_length=20, max_length=20)] = None
+    relationship: Optional[Relationships] = None
+
+
+class _Action(BaseModel):
+    key: constr(min_length=20, max_length=20)
+    verb: Verbs
+    component: Components
+    body: str
+    timestamp: datetime
+    actor: EmailStr
+    parent: Optional[constr(min_length=20, max_length=20)]
+    message: Optional[constr(min_length=20, max_length=20)]
+    participant: Optional[EmailStr]
+
+
+class FullConv(BaseModel):
+    details: _ConvDetails
+    participants: List[_Participant]
+    messages: List[_ConvMessage]
+    actions: Optional[_Action] = None
+
+
+class CreateForeignConv:
+    create_conv_sql = """
+    INSERT INTO conversations (key, creator, subject, timestamp, published)
+    VALUES ($1, $2, $3, $4, TRUE) RETURNING id
+    """
+    add_participants_sql = 'INSERT INTO participants (conv, recipient, readall) VALUES ($1, $2, $3)'
+    add_message_sql = """
+    INSERT INTO messages (conv, key, body, active, after, relationship)
+    VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+    """
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    async def run(self, data):
+        try:
+            conv = FullConv(**data)
+        except ValidationError as e:
+            return logger.warning('invalid conversation data:\n%s', e)
+
+        async with self.conn.transaction():
+            await self._trans(conv)
+
+    async def _trans(self, conv: FullConv):
+        deets = conv.details
+
+        recipient_id = await get_create_recipient(self.conn, deets.creator)
+        conv_id = await self.conn.fetchval(self.create_conv_sql, deets.key, recipient_id, deets.subject, deets.ts)
+        print(conv_id, recipient_id)
+
+        prt_ids = await create_missing_recipients(self.conn, [p.address for p in conv.participants])
+        await self.conn.executemany(
+            self.add_participants_sql,
+            {(conv_id, prt_ids[p.address], p.readall) for p in conv.participants}
+        )
+
+        after_msg_lookup = {}
+        for msg in conv.messages:
+            after_id = None
+            if msg.after:
+                try:
+                    after_id = after_msg_lookup[msg.after]
+                except KeyError:
+                    return logger.warning('no after message id for key %s', msg.after)
+            after_msg_lookup[msg.key] = await self.conn.fetchval(
+                self.add_message_sql,
+                conv_id, msg.key, msg.body, msg.active, after_id, msg.relationship
+            )
+
+        # TODO create actions
