@@ -109,7 +109,43 @@ async def test_conv_missing(cli, url):
         'em2-timestamp': '1',
         'em2-action-key': '123',
     })
-    assert r.status == 204
+    assert r.status == 404, await r.text()
+    assert 'conversation not found' == await r.text()
+
+
+async def test_create_conv(cli, url, foreign_server):
+    url_ = url('act', conv='123', component='participant', verb='add', item='testing@local.com')
+    r = await cli.post(url_, data='foobar', headers={
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-actor': 'test@already-authenticated.com',
+        'em2-timestamp': '1',
+        'em2-action-key': '123',
+    })
+    assert r.status == 204, await r.text()
+
+
+async def test_create_conv_no_address(cli, url):
+    url_ = url('act', conv='123', component='participant', verb='add', item='')
+    r = await cli.post(url_, data='foobar', headers={
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-actor': 'test@already-authenticated.com',
+        'em2-timestamp': '1',
+        'em2-action-key': '123',
+    })
+    assert r.status == 400, await r.text()
+    assert 'participant address (item) missing' == await r.text()
+
+
+async def test_create_conv_wrong_address(cli, url):
+    url_ = url('act', conv='123', component='participant', verb='add', item='foo@bar.com')
+    r = await cli.post(url_, data='foobar', headers={
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-actor': 'test@already-authenticated.com',
+        'em2-timestamp': '1',
+        'em2-action-key': '123',
+    })
+    assert r.status == 400, await r.text()
+    assert 'participant "foo@bar.com" not linked to this platform' == await r.text()
 
 
 async def test_wrong_conv(cli, conv, url):
@@ -194,7 +230,7 @@ async def test_authenticate_failed(cli, url):
     }
     r = await cli.post(url('authenticate'), headers=headers)
     assert r.status == 400
-    assert await r.text() == 'invalid signature\n'
+    assert await r.text() == 'Authenticate failed: invalid signature'
 
 
 async def test_mod_message(cli, conv, url, get_conv):

@@ -1,3 +1,6 @@
+from aiohttp.web_exceptions import HTTPBadRequest
+
+
 class Em2Exception(Exception):
     pass
 
@@ -10,15 +13,12 @@ class StartupException(Em2Exception):
     pass
 
 
-class Em2AuthException(Em2Exception):
-    pass
+class FailedInboundAuthentication(HTTPBadRequest, Em2Exception):
+    def __init__(self, text: str):
+        super().__init__(text='Authenticate failed: ' + text)
 
 
-class FailedInboundAuthentication(Em2AuthException):
-    pass
-
-
-class FailedOutboundAuthentication(Em2AuthException):
+class FailedOutboundAuthentication(Em2Exception):
     pass
 
 

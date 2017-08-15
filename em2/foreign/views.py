@@ -4,10 +4,10 @@ Views dedicated to propagation of data between platforms.
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
+from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPNotFound
 
-from em2.core import ApplyAction, GetConv
-from em2.exceptions import FailedInboundAuthentication
+from em2.core import ApplyAction, Components, GetConv, Verbs
+from em2.utils import get_domain
 from em2.utils.web import View, WebModel, raw_json_response
 
 logger = logging.getLogger('em2.foreign.views')
@@ -52,12 +52,8 @@ class Authenticate(ForeignView):
         headers = self.Headers(**request.headers)
         logger.info('authentication data: %s', headers)
 
-        try:
-            key = await self.auth.authenticate_platform(headers.platform, headers.timestamp, headers.signature)
-        except FailedInboundAuthentication as e:
-            logger.info('failed inbound authentication: %s', e)
-            raise HTTPBadRequest(text=e.args[0] + '\n') from e
-        return web.Response(text='ok\n', status=201, headers={'em2-key': key})
+        key = await self.auth.authenticate_platform(headers.platform, headers.timestamp, headers.signature)
+        return web.Response(status=201, headers={'em2-key': key})
 
 
 class Get(ForeignView):
@@ -65,7 +61,7 @@ class Get(ForeignView):
         platform = await self.auth.validate_platform_token(self.required_header('em2-auth'))
 
         prt_address = self.required_header('em2-participant')
-        _, prt_domain = prt_address.split('@', 1)
+        prt_domain = get_domain(prt_address)
         await self.auth.check_domain_platform(prt_domain, platform)
 
         conv_key = request.match_info['conv']
@@ -91,19 +87,31 @@ class Act(ForeignView):
         logger.info('action from %s', platform)
 
         actor_address = self.required_header('em2-actor')
-        _, address_domain = actor_address.split('@', 1)
+        address_domain = get_domain(actor_address)
 
         await self.auth.check_domain_platform(address_domain, platform)
 
         conv_key = request.match_info['conv']
+        component = request.match_info['component']
+        verb = request.match_info['verb']
+        item = request.match_info['item'] or None
         r = await self.conn.fetchrow(self.find_participant_sql, conv_key, actor_address)
         if not r:
             if await self.conn.fetchval(self.get_conv_sql, conv_key):
                 # if the conv already exists this actor is not a participant in it
                 raise HTTPForbidden(text=f'"{actor_address}" is not a participant in this conversation')
             else:
-                # TODO call create_cov
-                # we should make sure the action is add participant and that prt is on this node
+                if not (component == Components.PARTICIPANT and verb == Verbs.ADD):
+                    raise HTTPNotFound(text='conversation not found')
+
+                new_prt_domain = get_domain(item)
+                if not new_prt_domain:
+                    raise HTTPBadRequest(text='participant address (item) missing')
+
+                if not await self.pusher.domain_is_local(new_prt_domain):
+                    raise HTTPBadRequest(text=f'participant "{item}" not linked to this platform')
+
+                await self.pusher.create_conv(platform, conv_key)
                 return web.Response(status=204)
 
         conv_id, actor_id = r
@@ -115,9 +123,9 @@ class Act(ForeignView):
             conv=conv_id,
             actor=actor_id,
             timestamp=self.required_header('em2-timestamp'),
-            component=request.match_info['component'],
-            verb=request.match_info['verb'],
-            item=request.match_info['item'] or None,
+            component=component,
+            verb=verb,
+            item=item,
             parent=self.request.headers.get('em2-parent'),
             body=await request.text(),
             relationship=self.request.headers.get('em2-relationship'),

@@ -1,5 +1,6 @@
 from pathlib import Path
 from textwrap import wrap
+from typing import NamedTuple
 
 from aiodns.error import DNSError
 
@@ -71,15 +72,13 @@ class SimpleAuthenticator(Authenticator):
         return super()._valid_signature(signed_message, signature, public_key)
 
 
-class TXTQueryResult:
-    def __init__(self, text):
-        self.text = text
+class TXTQueryResult(NamedTuple):
+    text: str
 
 
-class MXQueryResult:
-    def __init__(self, priority, host):
-        self.priority = priority
-        self.host = host
+class MXQueryResult(NamedTuple):
+    priority: int
+    host: str
 
 
 class MockDNSResolver:
@@ -95,28 +94,28 @@ class MockDNSResolver:
             return self.get_other(host, qtype)
 
     def get_txt(self, host):
-        r = [TXTQueryResult('v=spf1 include:spf.example.com ?all')]
+        r = [TXTQueryResult(text='v=spf1 include:spf.example.com ?all')]
         if host == 'foobar.com':
             public_key = get_public_key()
             public_key = public_key.replace('-----BEGIN PUBLIC KEY-----', '')
             public_key = public_key.replace('-----END PUBLIC KEY-----', '').replace('\n', '')
             rows = wrap(public_key, width=250)
             rows[0] = 'v=em2key p=' + rows[0]
-            r += [TXTQueryResult(t) for t in rows]
+            r += [TXTQueryResult(text=t) for t in rows]
         elif host == 'badkey.com':
             r += [
-                TXTQueryResult('v=em2key p=123'),
-                TXTQueryResult('456'),
-                TXTQueryResult('789'),
+                TXTQueryResult(text='v=em2key p=123'),
+                TXTQueryResult(text='456'),
+                TXTQueryResult(text='789'),
             ]
-        r.append(TXTQueryResult('v=foobar'))
+        r.append(TXTQueryResult(text='v=foobar'))
         return r
 
     def get_mx(self, host):
         if host == 'local.com':
             return [
-                MXQueryResult(5, 'em2.local.com'),
-                MXQueryResult(10, 'mx.local.com'),
+                MXQueryResult(5, f'em2.platform.example.com:{self._port}'),
+                MXQueryResult(10, f'mx.platform.example.com:{self._port}'),
             ]
         elif host == 'nomx.com':
             return []
@@ -126,13 +125,13 @@ class MockDNSResolver:
             raise DNSError('snap')
         if host == 'fallback.com':
             return [
-                MXQueryResult(10, 'mx.local.com'),
+                MXQueryResult(priority=10, host='mx.local.com'),
             ]
         else:
             extra = f':{self._port}' if self._port else ''
             return [
-                MXQueryResult(10, f'mx.platform.{host}{extra}'),
-                MXQueryResult(5, f'em2.platform.{host}{extra}'),
+                MXQueryResult(priority=10, host=f'mx.platform.{host}{extra}'),
+                MXQueryResult(priority=5, host=f'em2.platform.{host}{extra}'),
             ]
 
     def get_other(self, host, qtype):

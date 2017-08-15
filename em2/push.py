@@ -7,6 +7,7 @@ from typing import Dict, Set, Tuple
 import aiodns
 import aiohttp
 from aiodns.error import DNSError
+from aiohttp import ClientError
 from arq import Actor, concurrent
 from arq.jobs import DatetimeJob
 from async_timeout import timeout
@@ -17,16 +18,10 @@ from Crypto.Signature import PKCS1_v1_5
 from . import Settings
 from .core import Action, gen_random
 from .exceptions import Em2ConnectionError, FailedOutboundAuthentication
+from .utils import get_domain
 from .utils.encoding import msg_encode, to_unix_ms
 
 logger = logging.getLogger('em2.push')
-
-
-def _get_domain(address):
-    """
-    Parse an address and return its domain.
-    """
-    return address[address.index('@') + 1:]
 
 
 class Pusher(Actor):
@@ -114,15 +109,30 @@ class Pusher(Actor):
     """
 
     @concurrent
-    async def create_conv(self, conv_key):
-        pass
+    async def create_conv(self, domain, conv_key):
+        logger.info('getting conv %.6s from %s', conv_key, domain)
+        token = await self.authenticate(domain)
+        url = f'{self.settings.COMMS_SCHEMA}://{domain}/get/{conv_key}/'
+
+        text = None
+        try:
+            async with self.session.get(url, headers={'em2-auth': token}, ) as r:
+                text = await r.text()
+                if r.status != 200:
+                    raise ClientError(f'status {r.status} not 200')
+                data = await r.json()
+        except (ValueError, ClientError) as e:
+            logger.warning('%s request failed: %s, text="%s"', url, e, text)
+            return
+
+        list(data.keys())
+        # FIXME process data here
 
     @concurrent
     async def push(self, action_id, transmit=True):
         async with self.db.acquire() as conn:
             *args, message_key, prt_address = await conn.fetchrow(self.action_detail_sql, action_id)
-            # TODO perhaps need to add "after" to action data here and any other fields required to understand the
-            # action
+            # TODO perhaps need to add other fields required to understand the action
             action = Action(*args, message_key or prt_address)
 
             parts = await conn.fetch(self.parts_sql, action.conv_id)  # TODO more info e.g. bcc etc.
@@ -234,7 +244,7 @@ class Pusher(Actor):
 
         async with await self.get_redis_conn() as redis:
             for recipient_id, address in parts:
-                d = _get_domain(address)
+                d = get_domain(address)
 
                 node = local_cache.get(d)
                 if not node:
@@ -303,6 +313,14 @@ class Pusher(Actor):
             raise Em2ConnectionError(f'cannot connect to "{url}"') from e
         key = r.headers['em2-key']
         return key
+
+    async def domain_is_local(self, domain: str) -> bool:
+        # TODO results should be cached
+        results = await self.mx_query(domain)
+        for _, host in results:
+            if host == self.settings.LOCAL_DOMAIN:
+                return True
+        return False
 
     @property
     def resolver(self):

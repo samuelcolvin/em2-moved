@@ -13,6 +13,8 @@ from pydantic.datetime_parse import parse_datetime
 from em2 import Settings
 from em2.cli.database import prepare_database
 
+from .fixture_classes.foreign_server import create_test_app
+
 THIS_DIR = Path(__file__).parent.resolve()
 
 
@@ -58,6 +60,14 @@ def url(request):
     return _url
 
 
+@pytest.fixture
+def foreign_server(loop, test_server, cli):
+    app = create_test_app(loop)
+    server = loop.run_until_complete(test_server(app))
+    cli.server.app['pusher'].set_foreign_port(server.port)
+    return server
+
+
 class ConvInfo(NamedTuple):
     id: int
     key: str
@@ -91,6 +101,17 @@ def redis(loop):
 
     redis.close()
     loop.run_until_complete(redis.wait_closed())
+
+
+async def startup_modify_app(app):
+    app['db'].conn = app['_conn']
+    app['pusher']._concurrency_enabled = False
+    await  app['pusher'].startup()
+    app['pusher'].db.conn = app['_conn']
+
+
+async def shutdown_modify_app(app):
+    await app['pusher'].session.close()
 
 
 class CloseToNow:
