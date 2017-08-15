@@ -111,7 +111,7 @@ async def test_add_message(cli, conv, url, db_conn):
         'conv_key': 'key123',
         'verb': 'add',
         'component': 'message',
-        'timestamp': timestamp_regex,
+        'ts': timestamp_regex,
         'parent': None,
         'relationship': None,
         'body': 'hello',
@@ -191,7 +191,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
                 'message': new_msg_key,
                 'parent': None,
                 'participant': None,
-                'timestamp': CloseToNow(),
+                'ts': CloseToNow(),
                 'verb': 'add'
             }
         ],
@@ -246,7 +246,7 @@ async def test_add_part_get(cli, conv, url, db_conn):
                 'message': None,
                 'parent': None,
                 'participant': 'other@example.com',
-                'timestamp': CloseToNow(),
+                'ts': CloseToNow(),
                 'verb': 'add'
             }
         ],

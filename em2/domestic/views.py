@@ -109,7 +109,7 @@ class Act(View):
             conv_key=conv_key,
             component=apply_action.data.component,
             verb=apply_action.data.verb,
-            timestamp=apply_action.action_timestamp,
+            ts=apply_action.action_timestamp,
             parent=apply_action.data.parent,
             relationship=apply_action.data.relationship,
             body=apply_action.data.body,

@@ -80,7 +80,7 @@ async def test_add_message_participant(cli, conv, url, get_conv):
                 'message': 'msg-secondmessagekey',
                 'parent': None,
                 'participant': None,
-                'timestamp': timestamp_regex,
+                'ts': timestamp_regex,
                 'verb': 'add'
             },
             {
@@ -91,7 +91,7 @@ async def test_add_message_participant(cli, conv, url, get_conv):
                 'message': None,
                 'parent': None,
                 'participant': 'foobar@example.com',
-                'timestamp': timestamp_regex,
+                'ts': timestamp_regex,
                 'verb': 'add'
             },
         ],
