@@ -4,9 +4,9 @@ import os
 import sys
 
 from em2 import VERSION, Settings
-from em2.cli.check import cli, command
-from em2.cli.database import prepare_database as _prepare_database
 from em2.logging import logger, setup_logging
+from em2.run.check import command, execute
+from em2.run.database import prepare_database as _prepare_database
 from em2.utils.network import wait_for_services
 
 
@@ -128,7 +128,7 @@ def main():
             shell()
     else:
         command_ = os.getenv('EM2_COMMAND', 'info')
-        cli(command_)
+        execute(command_)
 
 
 if __name__ == '__main__':

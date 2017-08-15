@@ -12,7 +12,7 @@ from aioredis import create_redis
 from pydantic.datetime_parse import parse_datetime
 
 from em2 import Settings
-from em2.cli.database import prepare_database
+from em2.run.database import prepare_database
 
 from .fixture_classes.foreign_server import create_test_app
 

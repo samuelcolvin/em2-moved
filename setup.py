@@ -29,8 +29,8 @@ setup(
     packages=find_packages(include=('em2*',)),
     entry_points="""
         [console_scripts]
-        em2=em2.cli.main:main
-        em2check=em2.cli.check:main
+        em2run=em2.run.main:main
+        em2check=em2.run.check:main
     """,
     zip_safe=True,
     package_data={

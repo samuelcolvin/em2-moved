@@ -27,7 +27,7 @@ def worker_check(settings):
     Worker.check_health(settings=settings) and exit(1)
 
 
-def cli(command_):
+def execute(command_):
     settings = Settings(COMMAND=command_)
     setup_logging(settings)
 
@@ -43,7 +43,7 @@ def main():
     command_ = os.getenv('EM2_COMMAND', 'web')
     # make sure web_check runs here when EM2_COMMAND is "web", also worker_check instead of "worker"
     command_ += '_check'
-    cli(command_)
+    execute(command_)
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ from em2.settings import Settings
 
 DB_EXISTS = 'SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=$1)'
 
-logger = logging.getLogger('cli.database')
+logger = logging.getLogger('run.database')
 
 
 async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool:
