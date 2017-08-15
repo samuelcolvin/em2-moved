@@ -7,7 +7,6 @@ async def auth(request):
 
 
 CONV_DETAILS = {
-    'actions': None,
     'details': {
         'creator': 'test@already-authenticated.com',
         'key': 'key123',
@@ -27,13 +26,33 @@ CONV_DETAILS = {
     'participants': [
         {
             'address': 'test@already-authenticated.com',
+            'readall': True
+        },
+        {
+            'address': 'testing@local.com',
             'readall': False
-        }
-    ]
+        },
+    ],
+    'actions': [
+        {
+            'actor': 'test@already-authenticated.com',
+            'body': None,
+            'component': 'participant',
+            'key': 'yyyyyyyyyyyyyyyyyyyy',
+            'message': None,
+            'parent': None,
+            'participant': 'foobar@example.com',
+            'timestamp': '2032-06-01T13:00:00.12345',
+            'verb': 'add'
+        },
+    ],
 }
 
 
 async def get(request):
+    assert request.headers['em2-auth']
+    participant = request.headers['em2-participant']
+    assert participant == 'testing@local.com'
     if request.match_info['conv'] == 'key123':
         return json_response(CONV_DETAILS)
     else:

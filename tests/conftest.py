@@ -7,6 +7,7 @@ from typing import NamedTuple
 
 import asyncpg
 import pytest
+from aiohttp.test_utils import teardown_test_loop
 from aioredis import create_redis
 from pydantic.datetime_parse import parse_datetime
 
@@ -36,6 +37,7 @@ def clean_db(settings):
     # loop fixture has function scope so can't be used here.
     loop = asyncio.new_event_loop()
     loop.run_until_complete(prepare_database(settings, True))
+    teardown_test_loop(loop)
 
 
 @pytest.yield_fixture

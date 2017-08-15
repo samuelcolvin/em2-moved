@@ -6,7 +6,7 @@ from ..conftest import ConvInfo, create_conversation, shutdown_modify_app, start
 
 
 @pytest.fixture
-def cli(loop, settings, db_conn, test_client):
+def cli(loop, settings, db_conn, test_client, redis):
     app = create_foreign_app(settings)
     app['_conn'] = db_conn
     app.on_startup.append(startup_modify_app)

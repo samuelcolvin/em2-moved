@@ -111,7 +111,7 @@ class Act(ForeignView):
                 if not await self.pusher.domain_is_local(new_prt_domain):
                     raise HTTPBadRequest(text=f'participant "{item}" not linked to this platform')
 
-                await self.pusher.create_conv(platform, conv_key)
+                await self.pusher.create_conv(platform, conv_key, item)
                 return web.Response(status=204)
 
         conv_id, actor_id = r

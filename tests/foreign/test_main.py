@@ -45,16 +45,31 @@ async def test_get_conv(cli, conv, url):
     } == obj
 
 
-async def test_add_message(cli, conv, url, get_conv):
-    url_ = url('act', conv=conv.key, component='message', verb='add', item='msg-secondmessagekey')
-    r = await cli.post(url_, data='foobar', headers={
-        'em2-auth': 'already-authenticated.com:123:whatever',
-        'em2-actor': conv.creator_address,
-        'em2-timestamp': datetime.now().strftime('%s'),
-        'em2-action-key': 'x' * 20,
-    })
+async def test_add_message_participant(cli, conv, url, get_conv):
+    r = await cli.post(
+        url('act', conv=conv.key, component='message', verb='add', item='msg-secondmessagekey'),
+        data='foobar',
+        headers={
+            'em2-auth': 'already-authenticated.com:123:whatever',
+            'em2-actor': conv.creator_address,
+            'em2-timestamp': datetime.now().strftime('%s'),
+            'em2-action-key': 'x' * 20,
+        }
+    )
+    assert r.status == 201, await r.text()
+    r = await cli.post(
+        url('act', conv=conv.key, component='participant', verb='add', item='foobar@example.com'),
+        data='foobar',
+        headers={
+            'em2-auth': 'already-authenticated.com:123:whatever',
+            'em2-actor': conv.creator_address,
+            'em2-timestamp': datetime.now().strftime('%s'),
+            'em2-action-key': 'y' * 20,
+        }
+    )
     assert r.status == 201, await r.text()
     obj = await get_conv(conv)
+    print(python_dict(obj))
     assert {
         'actions': [
             {
@@ -67,7 +82,18 @@ async def test_add_message(cli, conv, url, get_conv):
                 'participant': None,
                 'timestamp': timstamp_regex,
                 'verb': 'add'
-            }
+            },
+            {
+                'actor': 'test@already-authenticated.com',
+                'body': None,
+                'component': 'participant',
+                'key': 'yyyyyyyyyyyyyyyyyyyy',
+                'message': None,
+                'parent': None,
+                'participant': 'foobar@example.com',
+                'timestamp': timstamp_regex,
+                'verb': 'add'
+            },
         ],
         'details': {
             'creator': 'test@already-authenticated.com',
@@ -95,6 +121,10 @@ async def test_add_message(cli, conv, url, get_conv):
         'participants': [
             {
                 'address': 'test@already-authenticated.com',
+                'readall': False
+            },
+            {
+                'address': 'foobar@example.com',
                 'readall': False
             }
         ]

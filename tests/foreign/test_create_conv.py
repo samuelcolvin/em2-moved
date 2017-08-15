@@ -2,6 +2,7 @@ from tests.conftest import python_dict  # NOQA
 
 
 async def test_create(cli, url, foreign_server, get_conv):
+    assert foreign_server.app['request_log'] == []
     url_ = url('act', conv='key123', component='participant', verb='add', item='testing@local.com')
     r = await cli.post(url_, data='foobar', headers={
         'em2-auth': 'already-authenticated.com:123:whatever',
@@ -33,10 +34,18 @@ async def test_create(cli, url, foreign_server, get_conv):
         'participants': [
             {
                 'address': 'test@already-authenticated.com',
+                'readall': True
+            },
+            {
+                'address': 'testing@local.com',
                 'readall': False
-            }
+            },
         ]
     } == obj
+    assert foreign_server.app['request_log'] == [
+        'POST /authenticate > 201',
+        'GET /get/key123/ > 200',
+    ]
 
 
 async def test_conv_no_address(cli, url):

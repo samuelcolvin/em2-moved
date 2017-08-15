@@ -12,7 +12,7 @@ test_addr = 'testing@example.com'
 
 
 @pytest.fixture
-def cli(loop, settings, db_conn, test_client):
+def cli(loop, settings, db_conn, test_client, redis):
     data = {
         'address': test_addr
     }

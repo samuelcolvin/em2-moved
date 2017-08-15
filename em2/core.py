@@ -204,7 +204,7 @@ class ApplyAction(FetchOr404Mixin):
                 parent_id,
                 prt_id,
                 message_id,
-                self.data.body,
+                self.data.body if self.data.component == Components.MESSAGE else None,
             )
             if self._remote_action:
                 args += self.data.timestamp.replace(tzinfo=None),
@@ -452,7 +452,7 @@ class _Action(BaseModel):
     key: constr(min_length=20, max_length=20)
     verb: Verbs
     component: Components
-    body: str
+    body: NoneStr
     timestamp: datetime
     actor: EmailStr
     parent: Optional[constr(min_length=20, max_length=20)]
@@ -464,7 +464,7 @@ class FullConv(BaseModel):
     details: _ConvDetails
     participants: List[_Participant]
     messages: List[_ConvMessage]
-    actions: Optional[_Action] = None
+    actions: Optional[List[_Action]] = None
 
 
 class CreateForeignConv:
@@ -476,6 +476,11 @@ class CreateForeignConv:
     add_message_sql = """
     INSERT INTO messages (conv, key, body, active, after, relationship)
     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+    """
+    create_action_sql = """
+    INSERT INTO actions (key, conv, verb, component, actor, parent, part, message, body, timestamp)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING id
     """
 
     def __init__(self, conn):
@@ -493,27 +498,38 @@ class CreateForeignConv:
     async def _trans(self, conv: FullConv):
         deets = conv.details
 
-        recipient_id = await get_create_recipient(self.conn, deets.creator)
-        conv_id = await self.conn.fetchval(self.create_conv_sql, deets.key, recipient_id, deets.subject, deets.ts)
-        print(conv_id, recipient_id)
+        creator_recip_id = await get_create_recipient(self.conn, deets.creator)
+        conv_id = await self.conn.fetchval(self.create_conv_sql, deets.key, creator_recip_id, deets.subject, deets.ts)
 
-        prt_ids = await create_missing_recipients(self.conn, [p.address for p in conv.participants])
+        recip_id = await create_missing_recipients(self.conn, [p.address for p in conv.participants])
         await self.conn.executemany(
             self.add_participants_sql,
-            {(conv_id, prt_ids[p.address], p.readall) for p in conv.participants}
+            {(conv_id, recip_id[p.address], p.readall) for p in conv.participants}
         )
 
-        after_msg_lookup = {}
+        msg_lookup = {}
         for msg in conv.messages:
             after_id = None
             if msg.after:
-                try:
-                    after_id = after_msg_lookup[msg.after]
-                except KeyError:
-                    return logger.warning('no after message id for key %s', msg.after)
-            after_msg_lookup[msg.key] = await self.conn.fetchval(
+                # TODO deal with KeyError
+                after_id = msg_lookup[msg.after]
+            msg_lookup[msg.key] = await self.conn.fetchval(
                 self.add_message_sql,
                 conv_id, msg.key, msg.body, msg.active, after_id, msg.relationship
             )
 
-        # TODO create actions
+        # recip_id[deets.creator] = creator_recip_id
+        # action_lookup = {}
+        # for action in conv.actions:
+        #     args = (
+        #         action.key,
+        #         conv_id,
+        #         action.verb,
+        #         action.component,
+        #         recip_id[action.actor],  # FIXME this is wrong
+        #         action.parent and action_lookup[action.parent],
+        #         prt_id,
+        #         action.message and msg_lookup[action.message],
+        #         action.body if action.component == Components.MESSAGE else None,
+        #         action.timestamp
+        #     )

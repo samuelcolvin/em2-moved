@@ -61,7 +61,7 @@ class AwsFallbackHandler(SmtpFallbackHandler):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def shutdown(self):
-        self.session.close()
+        await self.session.close()
 
     @staticmethod
     def _now():

@@ -249,14 +249,17 @@ class Pusher(Actor):
         return remote_nodes, local_recipients, fallback_addresses
 
     @concurrent
-    async def create_conv(self, domain, conv_key):
+    async def create_conv(self, domain, conv_key, participant_address):
         logger.info('getting conv %.6s from %s', conv_key, domain)
-        token = await self.authenticate(domain)
-        url = f'{self.settings.COMMS_SCHEMA}://{domain}/get/{conv_key}/'
 
+        url = f'{self.settings.COMMS_SCHEMA}://{domain}/get/{conv_key}/'
+        headers = {
+            'em2-auth': await self.authenticate(domain),
+            'em2-participant': participant_address,
+        }
         text = None
         try:
-            async with self.session.get(url, headers={'em2-auth': token}, ) as r:
+            async with self.session.get(url, headers=headers) as r:
                 text = await r.text()
                 if r.status != 200:
                     raise ClientError(f'status {r.status} not 200')
