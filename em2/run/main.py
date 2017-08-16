@@ -17,7 +17,7 @@ def web(settings):
     import uvloop
     from aiohttp.web import run_app
     from em2 import create_app
-    print(settings.to_string(True), flush=True)
+    # print(settings.to_string(True), flush=True)
 
     asyncio.get_event_loop().close()
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -28,7 +28,7 @@ def web(settings):
 
     logger.info('starting server...')
     app = create_app(settings)
-    run_app(app, port=settings.WEB_PORT, loop=loop, print=lambda v: None, access_log=None)
+    run_app(app, port=settings.WEB_PORT, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
 
 
 @command

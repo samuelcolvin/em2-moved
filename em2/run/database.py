@@ -1,13 +1,36 @@
+import asyncio
 import logging
 
 import asyncpg
+from async_timeout import timeout
 from pydantic.utils import make_dsn
 
 from em2.settings import Settings
 
 DB_EXISTS = 'SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=$1)'
 
-logger = logging.getLogger('run.database')
+logger = logging.getLogger('em2.database')
+
+
+async def lenient_pg_connection(settings, _retry=0):
+    no_db_dsn = make_dsn(**{
+        **settings.pg_dsn_kwargs,
+        **{'name': None}
+    })
+
+    try:
+        with timeout(2):
+            conn = await asyncpg.connect(dsn=no_db_dsn)
+    except asyncpg.CannotConnectNowError as e:
+        if _retry < 5:
+            logger.warning('pg temporary connection error %s, %d retries remaining...', e, 5 - _retry)
+            await asyncio.sleep(2)
+            return await lenient_pg_connection(settings, _retry=_retry + 1)
+        else:
+            raise
+    version = await conn.fetchval('SELECT version()')
+    logger.info('pg connection successful, version: %s', version)
+    return conn
 
 
 async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool:
@@ -17,12 +40,7 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
     :param overwrite_existing: whether or not to drop an existing database if it exists
     :return: whether or not a database has been (re)created
     """
-    no_db_dsn = make_dsn(**{
-        **settings.pg_dsn_kwargs,
-        **{'name': None}
-    })
-
-    conn = await asyncpg.connect(dsn=no_db_dsn)
+    conn = await lenient_pg_connection(settings)
     try:
         db_exists = await conn.fetchval(DB_EXISTS, settings.PG_NAME)
         if db_exists:

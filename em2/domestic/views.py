@@ -27,7 +27,6 @@ class VList(View):
     """
 
     async def call(self, request):
-        logger.info('convs: %s', await self.conn.fetch('SELECT count(id) FROM conversations'))
         raw_json = await self.conn.fetchval(self.sql, request['session'].recipient_id)
         return raw_json_response(raw_json or '[]')
 
@@ -140,18 +139,18 @@ class Publish(View):
     """
 
     async def call(self, request):
-        conv_key = request.match_info['conv']
+        old_conv_key = request.match_info['conv']
         conv_id, subject = await self.fetchrow404(
             self.get_conv_sql,
-            conv_key,
+            old_conv_key,
             self.session.recipient_id
         )
         new_ts = datetime.utcnow()
-        new_conv_key = generate_conv_key(self.session.address, new_ts, subject)
+        conv_key = generate_conv_key(self.session.address, new_ts, subject)
         async with self.conn.transaction():
             await self.conn.execute(
                 self.update_conv_sql,
-                new_conv_key,
+                conv_key,
                 new_ts,
                 conv_id,
             )
@@ -164,30 +163,29 @@ class Publish(View):
                 conv_id,
                 self.session.recipient_id,
             )
-
+        logger.info('published %s, old key %s', conv_key, old_conv_key)
         await self.pusher.push(action_id)
-        return json_response(key=new_conv_key)
+        return json_response(key=conv_key)
 
 
 class Websocket(View):
-    ws_type_lookup = {k.value: v for v, k in WSMsgType.__members__.items()}
-
     async def call(self, request):
+        logger.info('ws connection %s', self.session)
         ws = WebSocketResponse()
         await ws.prepare(request)
-        logger.info('ws connection from %d', self.session)
         await self.app['background'].add_recipient(self.session.recipient_id, ws)
         try:
             async for msg in ws:
+                # TODO process messages
                 if msg.tp == WSMsgType.TEXT:
-                    logger.info('ws message: %s', msg.data)
+                    logger.info('ws message from %s: %s', self.session, msg.data)
                 elif msg.tp == WSMsgType.ERROR:
                     pass
                     logger.warning('ws connection closed with exception %s', ws.exception())
                 else:
                     pass
-                    logger.warning('unknown websocket message type %s, data: %s', self.ws_type_lookup[msg.tp], msg.data)
+                    logger.warning('unknown websocket message type %r, data: %s', msg.tp, msg.data)
         finally:
-            logger.debug('ws disconnection: %d', self.session)
+            logger.info('ws disconnection %s', self.session)
             await self.app['background'].remove_recipient(self.session.recipient_id)
         return ws

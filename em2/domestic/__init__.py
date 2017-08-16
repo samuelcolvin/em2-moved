@@ -45,11 +45,11 @@ def create_domestic_app(settings, app_name=None):
     app.router.add_get('/', VList.view(), name='list')
     app.router.add_post('/create/', Create.view(), name='create')
     app.router.add_get('/ws/', Websocket.view(), name='websocket')
-    app.router.add_post('/publish/{conv:[a-z0-9]+}/', Publish.view(), name='publish')
+    app.router.add_post('/publish/{conv:[a-z0-9\-]+}/', Publish.view(), name='publish')
 
     components = '|'.join(m.value for m in Components)
     verbs = '|'.join(m.value for m in Verbs)
-    pattern = '/act/{conv:[a-z0-9]+}/{component:%s}/{verb:%s}/' % (components, verbs)
+    pattern = '/act/{conv:[a-z0-9\-]+}/{component:%s}/{verb:%s}/' % (components, verbs)
     app.router.add_post(pattern, Act.view(), name='act')
 
     app.router.add_get(r'/c/{conv:[a-z0-9\-]+}/', Get.view(), name='get')

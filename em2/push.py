@@ -120,7 +120,7 @@ class Pusher(Actor):
 
             remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(*parts)
 
-            logger.info('%s.%s %.6s to %d participants on %d em2 nodes, local %d, fallback %d',
+            logger.info('%s.%s %.6s to %d participants: %d em2 nodes, local %d, fallback %d',
                         action.component, action.verb, action.conv_key,
                         len(parts), len(remote_nodes), len(local_recipients), len(fallback_addresses))
 
@@ -144,16 +144,22 @@ class Pusher(Actor):
                 redis.sadd(recipient_ids_key, *recipient_ids),
                 redis.expire(recipient_ids_key, 60),
             )
+            action_dict = action._asdict()
+            action_dict.pop('conv_id')
             frontends = await redis.keys(self.settings.FRONTEND_RECIPIENTS_BASE.format('*'), encoding='utf8')
             for frontend in frontends:
                 matching_recipient_ids = await redis.sinter(recipient_ids_key, frontend)
-                if not matching_recipient_ids:
-                    continue
                 _, name = frontend.rsplit(':', 1)
+                if not matching_recipient_ids:
+                    logger.info('%s.%s %.6s frontend %s: no matching recipients',
+                                action.component, action.verb, action.conv_key, name)
+                    continue
+                logger.info('%s.%s %.6s frontend %s: %d matching recipients',
+                            action.component, action.verb, action.conv_key, name, len(matching_recipient_ids))
                 job_name = self.settings.FRONTEND_JOBS_BASE.format(name)
                 job_data = {
                     'recipients': [int(rid) for rid in matching_recipient_ids],
-                    'action': action._asdict(),
+                    'action': action_dict,
                 }
                 await redis.lpush(job_name, msg_encode(job_data))
 
@@ -196,6 +202,9 @@ class Pusher(Actor):
         :return: node's domain or None if em2 is not enabled for this address
         """
         logger.info('looking for em2 node for "%s"', domain)
+        if self.settings.DEBUG and domain == 'localhost.example.com':
+            # special case for testing
+            return self.LOCAL
         async for host in self.mx_hosts(domain):
             node = None
             if host == self.settings.LOCAL_DOMAIN:
