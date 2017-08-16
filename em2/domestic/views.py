@@ -27,8 +27,9 @@ class VList(View):
     """
 
     async def call(self, request):
+        logger.info('convs: %s', await self.conn.fetch('SELECT count(id) FROM conversations'))
         raw_json = await self.conn.fetchval(self.sql, request['session'].recipient_id)
-        return raw_json_response(raw_json)
+        return raw_json_response(raw_json or '[]')
 
 
 class Get(View):

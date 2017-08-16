@@ -34,7 +34,7 @@ def settings():
         db_cls='tests.fixture_classes.TestDatabase',
         pusher_cls='tests.fixture_classes.DNSMockedPusher',
         PRIVATE_DOMAIN_KEY_FILE=str(THIS_DIR / 'fixture_classes/keys/private.pem'),
-        COMMS_SCHEMA='http',
+        COMMS_PROTO='http',
     )
 
 

@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
     # only ever change this during network testing!!!
-    COMMS_SCHEMA = 'https'
+    COMMS_PROTO = 'https'
     COMMS_DNS_IP: str = None
 
     pusher_cls: PyObject = 'em2.push.Pusher'

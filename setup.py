@@ -30,7 +30,6 @@ setup(
     packages=find_packages(include=('em2*',)),
     entry_points="""
         [console_scripts]
-        em2=em2.cli.main:cli
         em2run=em2.run.main:main
         em2check=em2.run.check:main
     """,
@@ -42,11 +41,4 @@ setup(
         ],
     },
     install_requires=requirements,
-    extras_require={
-        'cli': [
-            'click>=6.6',
-            'Pygments>=2.2.0',
-            'requests>=2.18',
-        ],
-    }
 )

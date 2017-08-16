@@ -24,6 +24,13 @@ async def test_valid_cookie_list_convs(cli, conv, url, db_conn):
     }] == obj
 
 
+async def test_list_no_convs(cli, url, db_conn):
+    r = await cli.get(url('list'))
+    assert r.status == 200, await r.text()
+    obj = await r.json()
+    assert [] == obj
+
+
 async def test_no_cookie(cli, url):
     cli.session.cookie_jar.clear()
     r = await cli.get(url('list'))

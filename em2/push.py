@@ -181,7 +181,7 @@ class Pusher(Actor):
         logger.info('posting to %s > %s', domain, path)
         token = await self.authenticate(domain)
         headers['em2-auth'] = token
-        url = f'{self.settings.COMMS_SCHEMA}://{domain}/{path}'
+        url = f'{self.settings.COMMS_PROTO}://{domain}/{path}'
 
         async with self.session.post(url, data=data, headers=headers) as r:
             if r.status != 201:
@@ -253,7 +253,7 @@ class Pusher(Actor):
     async def create_conv(self, domain, conv_key, participant_address):
         logger.info('getting conv %.6s from %s', conv_key, domain)
 
-        url = f'{self.settings.COMMS_SCHEMA}://{domain}/get/{conv_key}/'
+        url = f'{self.settings.COMMS_PROTO}://{domain}/get/{conv_key}/'
         headers = {
             'em2-auth': await self.authenticate(domain),
             'em2-participant': participant_address,
@@ -288,7 +288,7 @@ class Pusher(Actor):
         return token
 
     async def _authenticate_request(self, node_domain):
-        url = f'{self.settings.COMMS_SCHEMA}://{node_domain}/authenticate'
+        url = f'{self.settings.COMMS_PROTO}://{node_domain}/authenticate'
         # TODO more error checks
         headers = {f'em2-{k}': str(v) for k, v in self._auth_data()}
         try:
