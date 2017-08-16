@@ -7,12 +7,11 @@ from .views import Act, Authenticate, Get
 async def app_startup(app):
     settings = app['settings']
     app.update(
-        db=settings.db_cls(app.loop, settings),
+        db=settings.db_cls(settings=settings, loop=app.loop),
         authenticator=settings.authenticator_cls(settings=settings, loop=app.loop),
         pusher=settings.pusher_cls(settings),
     )
     await app['db'].startup()
-    await app['authenticator'].startup()
 
 
 async def app_cleanup(app):

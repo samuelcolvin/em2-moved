@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     COMMS_SCHEMA = 'https'
     COMMS_DNS_IP: str = None
 
-    # datastore_cls: PyObject = 'em2.ds.pg.PostgresDataStore'
     pusher_cls: PyObject = 'em2.push.Pusher'
     fallback_cls: PyObject = 'em2.fallback.FallbackHandler'
     db_cls: PyObject = 'em2.core.Database'

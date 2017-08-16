@@ -9,33 +9,26 @@ from em2.run.check import command, execute
 from em2.run.database import prepare_database as _prepare_database
 from em2.utils.network import wait_for_services
 
+# imports are local where possible so commands (especially check) are as fast to run as possible
+
 
 @command
 def web(settings):
-    from gunicorn.app.base import BaseApplication
+    import uvloop
+    from aiohttp.web import run_app
     from em2 import create_app
-    from em2.ds.pg.utils import prepare_database
+    print(settings.to_string(True), flush=True)
 
-    wait_for_services(settings)
-    prepare_database(settings, delete_existing=False)
+    asyncio.get_event_loop().close()
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    loop = asyncio.get_event_loop()
 
-    config = dict(
-        worker_class='aiohttp.worker.GunicornUVLoopWebWorker',
-        bind=f'0.0.0.0:{settings.WEB_PORT}',
-        max_requests=5000,
-        max_requests_jitter=500,
-        keepalive=30,
-    )
+    wait_for_services(settings, loop=loop)
+    loop.run_until_complete(_prepare_database(settings, overwrite_existing=False))
 
-    class Application(BaseApplication):
-        def load_config(self):
-            for k, v in config.items():
-                self.cfg.set(k, v)
-
-        def load(self):
-            return create_app(settings=settings)
-
-    Application().run()
+    logger.info('starting server...')
+    app = create_app(settings)
+    run_app(app, port=8000, loop=loop, print=lambda v: None, access_log=None)
 
 
 @command
@@ -47,10 +40,10 @@ def prepare_database(settings):
 @command
 def worker(settings):
     from arq import RunWorkerProcess
-    from em2.ds.pg.utils import check_database_exists
 
-    wait_for_services(settings)
-    check_database_exists(settings)
+    loop = asyncio.get_event_loop()
+    wait_for_services(settings, loop=loop)
+    loop.run_until_complete(_prepare_database(settings, overwrite_existing=False))
 
     RunWorkerProcess('em2.worker', 'Worker')
 
