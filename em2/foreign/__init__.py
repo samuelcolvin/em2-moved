@@ -1,7 +1,10 @@
+import logging
 from aiohttp.web import Application
 
 from em2.utils.web import db_conn_middleware
 from .views import Act, Authenticate, Get
+
+logger = logging.getLogger('em2.foreign')
 
 
 async def app_startup(app):
@@ -9,9 +12,10 @@ async def app_startup(app):
     app.update(
         db=settings.db_cls(settings=settings, loop=app.loop),
         authenticator=settings.authenticator_cls(settings=settings, loop=app.loop),
-        pusher=settings.pusher_cls(settings),
+        pusher=settings.pusher_cls(settings=settings, loop=app.loop, name='foreign'),
     )
     await app['db'].startup()
+    await app['pusher'].log_redis_info(logger.info)
 
 
 async def app_cleanup(app):

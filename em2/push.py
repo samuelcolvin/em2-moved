@@ -42,15 +42,17 @@ class Pusher(Actor):
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
 
-    def __init__(self, settings: Settings, loop=None, **kwargs):
+    def __init__(self, settings: Settings, loop=None, name=None, **kwargs):
         self.settings = settings
         self.loop = loop or asyncio.get_event_loop()
+        self.name = name
         logger.info('initialising pusher %s', self)
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.db = None
         self.session = None
         self.fallback = None
         self._resolver = None
+        kwargs['redis_settings'] = self.settings.redis
         super().__init__(**kwargs)
 
     async def startup(self):
@@ -71,7 +73,7 @@ class Pusher(Actor):
 
     async def shutdown(self):
         if self.db:
-            await self.db.shutdown()
+            await self.db.close()
             await self.fallback.shutdown()
             await self.session.close()
 
@@ -359,4 +361,4 @@ class Pusher(Actor):
         return to_unix_ms(datetime.utcnow())
 
     def __repr__(self):
-        return '{}<{}>'.format(self.__class__.__name__, self.settings.LOCAL_DOMAIN)
+        return '{}<{}:{}>'.format(self.__class__.__name__, self.settings.LOCAL_DOMAIN, self.name or '-')

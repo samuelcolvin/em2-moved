@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     db_cls: PyObject = 'em2.core.Database'
     authenticator_cls: PyObject = 'em2.foreign.auth.Authenticator'
 
-    # default address for webservers eg. gunicorn to bind to
     WEB_PORT = 8000
 
     PG_HOST = 'localhost'
@@ -53,7 +52,7 @@ class Settings(BaseSettings):
     R_PASSWORD: str = None
 
     COOKIE_NAME = 'em2session'
-    SECRET_KEY = b'i am not secure but 32 bits long'
+    SECRET_SESSION_KEY = b'you need to replace me with a real Fernet keyxxxxxxx='
     THIS_DIR = Path(__file__).resolve().parent
     FRONTEND_RECIPIENTS_BASE = 'frontend:recipients:{}'
     FRONTEND_JOBS_BASE = 'frontend:jobs:{}'

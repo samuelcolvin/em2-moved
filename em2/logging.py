@@ -35,10 +35,6 @@ def prepare_log_config(settings) -> dict:
                 'handlers': ['em2.default', 'sentry'],
                 'level': dft_log_level,
             },
-            'gunicorn.error': {
-                'handlers': ['sentry'],
-                'level': 'ERROR',
-            },
             'arq': {
                 'handlers': ['em2.default', 'sentry'],
                 'level': dft_log_level,

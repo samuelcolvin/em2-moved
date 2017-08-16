@@ -3,6 +3,7 @@ import re
 
 import click
 import requests
+from cryptography.fernet import Fernet
 from pydantic.datetime_parse import parse_datetime
 from pygments import highlight
 from pygments.formatters.terminal256 import Terminal256Formatter
@@ -47,16 +48,27 @@ def print_response(r, *, include=None, exclude=set()):
 
 @click.group()
 @click.pass_context
-@click.option('--platform', required=True, envvar='EM2_PLATFORM', help='required, env variable: EM2_PLATFORM')
-@click.option('--auth-token', required=True, envvar='EM2_AUTH_TOKEN', help='required, env variable: EM2_AUTH_TOKEN')
-def cli(ctx, platform, auth_token):
+@click.option('--platform', default='localhost:8000', envvar='EM2_LOCAL_DOMAIN', help='env variable: EM2_LOCAL_DOMAIN')
+@click.option('--session-key', default='testing', envvar='EM2_SECRET_SESSION_KEY',
+              help='env variable: EM2_SECRET_SESSION_KEY')
+def cli(ctx, platform, session_key):
     """
     Run em2 CLI.
     """
     ctx.obj = dict(
         platform=platform,
-        auth_token=auth_token,
+        session_key=session_key,
     )
+
+
+@cli.command()
+@click.pass_context
+def genkey(ctx):
+    print(f"""
+    New secret key:
+
+    export EM2_SECRET_SESSION_KEY="{Fernet.generate_key().decode()}"
+    """)
 
 
 @cli.command()

@@ -1,5 +1,5 @@
 import asyncio
-import base64
+import logging
 
 from aiohttp.web import Application
 from cryptography.fernet import Fernet
@@ -9,16 +9,19 @@ from .background import Background
 from .middleware import middleware
 from .views import Act, Create, Get, Publish, VList, Websocket
 
+logger = logging.getLogger('em2.domestic')
+
 
 async def app_startup(app):
     settings = app['settings']
     loop = app.loop or asyncio.get_event_loop()
     app.update(
-        db=settings.db_cls(settings, loop),
-        pusher=settings.pusher_cls(settings, loop),
+        db=settings.db_cls(settings=settings, loop=loop),
+        pusher=settings.pusher_cls(settings=settings, loop=loop, name='domestic'),
         background=Background(app, loop),
     )
     await app['db'].startup()
+    await app['pusher'].log_redis_info(logger.info)
 
 
 async def app_cleanup(app):
@@ -33,10 +36,9 @@ def create_domestic_app(settings, app_name=None):
     app.on_startup.append(app_startup)
     app.on_cleanup.append(app_cleanup)
 
-    secret_key = base64.urlsafe_b64encode(settings.SECRET_KEY)
     app.update(
         settings=settings,
-        fernet=Fernet(secret_key),
+        fernet=Fernet(settings.SECRET_SESSION_KEY),
         name=app_name or gen_random('d'),
     )
 

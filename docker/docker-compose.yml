@@ -34,7 +34,8 @@ services:
       EM2_PG_HOST: postgres
       EM2_PG_PASSWORD: docker
       EM2_R_HOST: redis
-      EM2_LOCAL_DOMAIN: local.com
+      EM2_LOCAL_DOMAIN: ${EM2_LOCAL_DOMAIN}
+      EM2_SECRET_SESSION_KEY: ${EM2_SECRET_SESSION_KEY}
     ports:
     - 8000:8000
     depends_on:
@@ -49,7 +50,8 @@ services:
       EM2_PG_HOST: postgres
       EM2_PG_PASSWORD: docker
       EM2_R_HOST: redis
-      EM2_LOCAL_DOMAIN: local.com
+      EM2_LOCAL_DOMAIN: ${EM2_LOCAL_DOMAIN}
+      EM2_SECRET_SESSION_KEY: ${EM2_SECRET_SESSION_KEY}
     depends_on:
     - postgres
     - redis

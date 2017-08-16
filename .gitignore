@@ -12,3 +12,4 @@ em2_tests
 /build
 /dist
 /em2.egg-info
+activate.sh

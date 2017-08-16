@@ -1,5 +1,3 @@
-import base64
-
 import pytest
 from cryptography.fernet import Fernet
 
@@ -17,7 +15,7 @@ def cli(loop, settings, db_conn, test_client, redis):
         'address': test_addr
     }
     data = msg_encode(data)
-    fernet = Fernet(base64.urlsafe_b64encode(settings.SECRET_KEY))
+    fernet = Fernet(settings.SECRET_SESSION_KEY)
     cookies = {
         settings.COOKIE_NAME: fernet.encrypt(data).decode()
     }

@@ -21,6 +21,7 @@ class Worker(BaseWorker):
         return dict(
             redis_settings=self.redis_settings,
             settings=self.settings,
+            worker=self,
             loop=self.loop,
             existing_pool=await self.get_redis_pool(),
         )

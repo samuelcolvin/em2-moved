@@ -28,7 +28,7 @@ def web(settings):
 
     logger.info('starting server...')
     app = create_app(settings)
-    run_app(app, port=8000, loop=loop, print=lambda v: None, access_log=None)
+    run_app(app, port=settings.WEB_PORT, loop=loop, print=lambda v: None, access_log=None)
 
 
 @command
