@@ -42,11 +42,10 @@ class Pusher(Actor):
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
 
-    def __init__(self, settings: Settings, loop=None, name=None, **kwargs):
+    def __init__(self, settings: Settings, loop=None, ref=None, **kwargs):
         self.settings = settings
         self.loop = loop or asyncio.get_event_loop()
-        self.name = name
-        logger.info('initialising pusher %s', self)
+        self.ref = ref
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.db = None
         self.session = None
@@ -54,6 +53,7 @@ class Pusher(Actor):
         self._resolver = None
         kwargs['redis_settings'] = self.settings.redis
         super().__init__(**kwargs)
+        logger.info('initialising pusher %s', self)
 
     async def startup(self):
         assert not self._concurrency_enabled or self.is_shadow, 'pusher db should only be started in shadow mode'
@@ -361,4 +361,5 @@ class Pusher(Actor):
         return to_unix_ms(datetime.utcnow())
 
     def __repr__(self):
-        return '{}<{}:{}>'.format(self.__class__.__name__, self.settings.LOCAL_DOMAIN, self.name or '-')
+        ref = self.ref or (self.is_shadow and 'worker') or '-'
+        return '{}<{}:{}>'.format(self.__class__.__name__, self.settings.LOCAL_DOMAIN, ref)

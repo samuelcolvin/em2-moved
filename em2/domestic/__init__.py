@@ -17,7 +17,7 @@ async def app_startup(app):
     loop = app.loop or asyncio.get_event_loop()
     app.update(
         db=settings.db_cls(settings=settings, loop=loop),
-        pusher=settings.pusher_cls(settings=settings, loop=loop, name='domestic'),
+        pusher=settings.pusher_cls(settings=settings, loop=loop, ref='domestic'),
         background=Background(app, loop),
     )
     await app['db'].startup()

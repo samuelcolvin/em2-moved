@@ -37,7 +37,7 @@ def prepare_log_config(settings) -> dict:
             },
             'arq': {
                 'handlers': ['em2.default', 'sentry'],
-                'level': dft_log_level,
+                'level': 'INFO',
             },
         },
     }

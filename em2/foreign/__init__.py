@@ -12,7 +12,7 @@ async def app_startup(app):
     app.update(
         db=settings.db_cls(settings=settings, loop=app.loop),
         authenticator=settings.authenticator_cls(settings=settings, loop=app.loop),
-        pusher=settings.pusher_cls(settings=settings, loop=app.loop, name='foreign'),
+        pusher=settings.pusher_cls(settings=settings, loop=app.loop, ref='foreign'),
     )
     await app['db'].startup()
     await app['pusher'].log_redis_info(logger.info)
