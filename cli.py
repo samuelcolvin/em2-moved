@@ -201,25 +201,19 @@ def _get_details(ctx, session, conversation):
 
 @cli.command()
 @click.pass_context
-@click.option('--item')
 @click.option('--parent')
 @click.argument('component', type=click.Choice(['message', 'participant']))
 @click.argument('conversation')
 @click.argument('body', default='This is another message')
-def add(ctx, item, parent, component, conversation, body):
+def add(ctx, parent, component, conversation, body):
     session = get_session(ctx)
     conv_details = None
     if component == 'message':
-        if not item:
-            conv_details = _get_details(ctx, session, conversation)
-            item = conv_details['messages'][-1]['key']
-
         if not parent:
             conv_details = conv_details or _get_details(ctx, session, conversation)
-            parent = next(a for a in reversed(conv_details['actions']) if a['message'] == item)['key']
+            parent = next(a for a in reversed(conv_details['actions']) if a['message'])['key']
 
     post_data = {
-        'item': None,
         'body': body,
         'parent': parent,
     }

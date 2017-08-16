@@ -61,8 +61,10 @@ CREATE TABLE actions (
   actor INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   parent INT REFERENCES actions,
-  part INT REFERENCES participants,
+
+  recipient INT REFERENCES recipients,
   message INT REFERENCES messages,
+
   body TEXT,
   UNIQUE (conv, key)
 );

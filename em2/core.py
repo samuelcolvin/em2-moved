@@ -157,12 +157,12 @@ class ApplyAction(FetchOr404Mixin):
         # TODO: add timezone event originally occurred in
 
     create_action_sql = """
-    INSERT INTO actions (key, conv, verb, component, actor, parent, part, message, body, timestamp)
+    INSERT INTO actions (key, conv, verb, component, actor, parent, recipient, message, body, timestamp)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING id
     """
     create_action_create_ts_sql = """
-    INSERT INTO actions (key, conv, verb, component, actor, parent, part, message, body)
+    INSERT INTO actions (key, conv, verb, component, actor, parent, recipient, message, body)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING id, to_json(timestamp)
     """
@@ -176,11 +176,13 @@ class ApplyAction(FetchOr404Mixin):
         self.action_timestamp = None
 
     async def run(self):
-        if self.data.component in (Components.MESSAGE, Components.PARTICIPANT) and not self.data.item:
-            # TODO replace with method validation on Data
-            raise HTTPBadRequest(text=f'item may not be null for {self.data.component} actions')
+        # TODO replace with method validation on Data
+        if self.data.verb == Verbs.MODIFY and not self.data.item:
+            raise HTTPBadRequest(text=f'item may not be null for modify actions')
+        if self._remote_action and not self.data.item:
+            raise HTTPBadRequest(text=f'item may not be null for remote actions')
 
-        self.item_key, prt_id, message_id, parent_id = None, None, None, None
+        self.item_key, recipient_id, message_id, parent_id = None, None, None, None
         async with self.conn.transaction():
             if self.data.component is Components.MESSAGE:
                 if self.data.verb is Verbs.ADD:
@@ -189,9 +191,9 @@ class ApplyAction(FetchOr404Mixin):
                     self.item_key, message_id, parent_id = await self._mod_message()
             elif self.data.component is Components.PARTICIPANT:
                 if self.data.verb is Verbs.ADD:
-                    self.item_key, prt_id = await self._add_participant()
+                    self.item_key, recipient_id = await self._add_participant()
                 else:
-                    self.item_key, prt_id = await self._mod_participant()
+                    self.item_key, recipient_id = await self._mod_participant()
             else:
                 raise NotImplementedError()
 
@@ -202,7 +204,7 @@ class ApplyAction(FetchOr404Mixin):
                 self.data.component,
                 self.data.actor,
                 parent_id,
-                prt_id,
+                recipient_id,
                 message_id,
                 self.data.body if self.data.component == Components.MESSAGE else None,
             )
@@ -310,20 +312,21 @@ class ApplyAction(FetchOr404Mixin):
 
     async def _add_participant(self):
         try:
-            part_address = EmailStr.validate(self.data.item)
+            address = EmailStr.validate(self.data.item)
         except (TypeError, ValueError):
             raise HTTPBadRequest(text='is not a valid email address')
 
-        recipient_id = await self.conn.fetchval(self._get_recipient_id_sql, part_address)
+        # TODO use get_create_recipient here
+        recipient_id = await self.conn.fetchval(self._get_recipient_id_sql, address)
         if recipient_id is None:
-            recipient_id = await self.conn.fetchval(self._set_recipient_id_sql, part_address)
+            recipient_id = await self.conn.fetchval(self._set_recipient_id_sql, address)
         prt_id = await self.conn.fetchval(self._add_participant_sql, self.data.conv, recipient_id)
         if prt_id is None:
             raise HTTPBadRequest(text='participant already exists on the conversation')
-        return part_address, prt_id
+        return address, recipient_id
 
     _find_participant_sql = """
-    SELECT p.id FROM participants AS p
+    SELECT p.id, r.id FROM participants AS p
     JOIN recipients AS r ON p.recipient = r.id
     WHERE p.conv = $1 AND r.address = $2
     """
@@ -331,15 +334,15 @@ class ApplyAction(FetchOr404Mixin):
 
     async def _mod_participant(self):
         # TODO check parent matches latest data.parent
-        part_address = self.data.item
-        prt_id = await self.fetchval404(self._find_participant_sql, self.data.conv, part_address)
+        address = self.data.item
+        prt_id, recipient_id = await self.fetchrow404(self._find_participant_sql, self.data.conv, address)
         if self.data.verb in (Verbs.DELETE, Verbs.RECOVER):
             await self.conn.execute(self._delete_participant_sql, self.data.verb == Verbs.RECOVER, prt_id)
         elif self.data.verb is Verbs.MODIFY:
             raise NotImplementedError()
         else:
             raise HTTPBadRequest(text=f'Invalid verb for participants, can only add, delete, recover or modify')
-        return part_address, prt_id
+        return address, recipient_id
 
 
 class GetConv(FetchOr404Mixin):
@@ -395,8 +398,7 @@ class GetConv(FetchOr404Mixin):
 
       JOIN recipients AS actor_recipient ON a.actor = actor_recipient.id
 
-      LEFT JOIN participants AS prt_prt ON a.part = prt_prt.id
-      LEFT JOIN recipients AS prt_recipient ON prt_prt.recipient = prt_recipient.id
+      LEFT JOIN recipients AS prt_recipient ON a.recipient = prt_recipient.id
       WHERE a.conv = $1
       ORDER BY a.id
     ) t;
@@ -476,14 +478,8 @@ class CreateForeignConv:
     INSERT INTO messages (conv, key, body, active, after, relationship)
     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
     """
-    get_participants_sql = """
-    SELECT r.address, p.id
-    FROM participants AS p
-    JOIN recipients AS r ON p.recipient = r.id
-    WHERE p.conv=$1
-    """
     create_action_sql = """
-    INSERT INTO actions (key, conv, verb, component, actor, parent, part, message, body, timestamp)
+    INSERT INTO actions (key, conv, verb, component, actor, parent, recipient, message, body, timestamp)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING id
     """
@@ -506,10 +502,10 @@ class CreateForeignConv:
         creator_recip_id = await get_create_recipient(self.conn, deets.creator)
         conv_id = await self.conn.fetchval(self.create_conv_sql, deets.key, creator_recip_id, deets.subject, deets.ts)
 
-        recip_id = await create_missing_recipients(self.conn, [p.address for p in conv.participants])
+        recip_lookup = await create_missing_recipients(self.conn, [p.address for p in conv.participants])
         await self.conn.executemany(
             self.add_participants_sql,
-            {(conv_id, recip_id[p.address], p.readall) for p in conv.participants}
+            {(conv_id, recip_lookup[p.address], p.readall) for p in conv.participants}
         )
 
         msg_lookup = {}
@@ -526,8 +522,7 @@ class CreateForeignConv:
         if conv.actions is None:
             return
 
-        prt_lookup = dict(await self.conn.fetch(self.get_participants_sql, conv_id))
-        recip_id[deets.creator] = creator_recip_id
+        recip_lookup[deets.creator] = creator_recip_id
         action_lookup = {}
         for action in conv.actions:
             action_lookup[action.key] = await self.conn.fetchval(
@@ -536,9 +531,9 @@ class CreateForeignConv:
                 conv_id,
                 action.verb,
                 action.component,
-                recip_id[action.actor],
+                recip_lookup[action.actor],
                 action.parent and action_lookup[action.parent],
-                action.participant and prt_lookup[action.participant],  # TODO what happens when prts get deleted?
+                action.participant and recip_lookup[action.participant],  # TODO could be other recipients
                 action.message and msg_lookup[action.message],
                 action.body if action.component == Components.MESSAGE else None,
                 action.timestamp

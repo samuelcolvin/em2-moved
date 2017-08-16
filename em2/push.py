@@ -90,8 +90,7 @@ class Pusher(Actor):
 
     LEFT JOIN messages AS m ON a.message = m.id
 
-    LEFT JOIN participants AS prt_prt ON a.part = prt_prt.id
-    LEFT JOIN recipients AS prt_recipient ON prt_prt.recipient = prt_recipient.id
+    LEFT JOIN recipients AS prt_recipient ON a.recipient = prt_recipient.id
 
     WHERE a.id = $1
     """

@@ -106,7 +106,6 @@ async def test_create_conv(cli, url, db_conn):
 
 async def test_add_message(cli, conv, url, db_conn):
     data = {
-        'item': 'msg-firstmessagekeyx',
         'body': 'hello',
     }
     url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
@@ -135,7 +134,7 @@ async def test_add_message(cli, conv, url, db_conn):
         'timestamp': CloseToNow(),
         'actor': await db_conn.fetchval('SELECT id FROM recipients'),
         'parent': None,
-        'part': None,
+        'recipient': None,
         'message': await db_conn.fetchval("SELECT id FROM messages WHERE body = 'hello'"),
         'body': 'hello',
     } == action
@@ -152,7 +151,6 @@ async def test_add_message_missing(cli, url):
 async def test_add_message_invalid_data_list(cli, conv, url):
     data = [
         'subject',
-        'item',
     ]
     url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
@@ -301,7 +299,7 @@ async def test_publish_conv(cli, conv, url, db_conn, redis):
         'timestamp': CloseToNow(),
         'actor': await db_conn.fetchval('SELECT id FROM recipients'),
         'parent': None,
-        'part': None,
+        'recipient': None,
         'message': None,
         'body': None,
     } == action
@@ -384,7 +382,7 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, redis):
         assert await db_conn.fetchval('SELECT published FROM conversations')
 
         got_message = False
-        with timeout(0.1):
+        with timeout(0.5):
             async for msg in ws:
                 assert msg.tp == WSMsgType.text
                 data = json.loads(msg.data)
