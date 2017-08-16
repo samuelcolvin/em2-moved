@@ -9,7 +9,7 @@ def prepare_log_config(settings) -> dict:
     dft_log_level = 'DEBUG' if settings.DEBUG else 'INFO'
     v = {
         'version': 1,
-        'disable_existing_loggers': False,
+        'disable_existing_loggers': True,
         'formatters': {
             'em2.default': {
                 'format': '%(name)20s %(asctime)s| %(message)s',

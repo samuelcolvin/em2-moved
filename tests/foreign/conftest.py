@@ -2,7 +2,7 @@ import pytest
 
 from em2.foreign import create_foreign_app
 
-from ..conftest import ConvInfo, create_conversation, shutdown_modify_app, startup_modify_app
+from ..conftest import ConvInfo, shutdown_modify_app, startup_modify_app
 
 
 @pytest.fixture
@@ -15,8 +15,8 @@ def cli(loop, settings, db_conn, test_client, redis):
 
 
 @pytest.fixture
-def conv(loop, db_conn):
-    return loop.run_until_complete(create_conversation(db_conn, 'test@already-authenticated.com'))
+def conv(loop, create_conv):
+    return loop.run_until_complete(create_conv(creator='test@already-authenticated.com'))
 
 
 GET_CONV_CREATOR = """

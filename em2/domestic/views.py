@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List
 
 from aiohttp import WSMsgType
-from aiohttp.web_ws import WebSocketResponse
+from aiohttp.web import WebSocketResponse
 from pydantic import EmailStr, constr
 
 from em2.core import ApplyAction, GetConv, create_missing_recipients, gen_random, generate_conv_key

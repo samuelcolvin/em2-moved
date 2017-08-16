@@ -22,7 +22,7 @@ async def test_get_conv(cli, conv, url):
         'actions': None,
         'details': {
             'creator': 'test@already-authenticated.com',
-            'key': 'key123',
+            'key': 'key12345678',
             'published': False,
             'subject': 'Test Conversation',
             'ts': timestamp_regex,
@@ -97,7 +97,7 @@ async def test_add_message_participant(cli, conv, url, get_conv):
         ],
         'details': {
             'creator': 'test@already-authenticated.com',
-            'key': 'key123',
+            'key': 'key12345678',
             'published': False,
             'subject': 'Test Conversation',
             'ts': timestamp_regex

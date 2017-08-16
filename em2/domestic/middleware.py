@@ -1,4 +1,4 @@
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden
+from aiohttp.web import HTTPBadRequest, HTTPForbidden
 from cryptography.fernet import InvalidToken
 
 from em2.core import get_create_recipient

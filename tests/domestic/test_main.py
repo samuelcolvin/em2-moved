@@ -82,11 +82,17 @@ async def test_get_conv(cli, conv, url):
     assert obj['details']['subject'] == 'Test Conversation'
     assert obj['messages'][0]['body'] == 'this is the message'
 
+    # should work when start of key
+    r = await cli.get(url('get', conv=conv.key[:-1]))
+    assert r.status == 200, await r.text()
+    obj = await r.json()
+    assert obj['details']['subject'] == 'Test Conversation'
+
 
 async def test_missing_conv(cli, conv, url):
     r = await cli.get(url('get', conv=conv.key + 'x'))
     assert r.status == 404, await r.text()
-    assert 'key123x not found' in await r.text()
+    assert 'key12345678x not found' in await r.text()
 
 
 async def test_create_conv(cli, url, db_conn):
@@ -114,7 +120,7 @@ async def test_add_message(cli, conv, url, db_conn):
     obj = await r.json()
     assert {
         'key': RegexStr('act-.*'),
-        'conv_key': 'key123',
+        'conv_key': 'key12345678',
         'verb': 'add',
         'component': 'message',
         'ts': timestamp_regex,
@@ -141,11 +147,11 @@ async def test_add_message(cli, conv, url, db_conn):
 
 
 async def test_add_message_missing(cli, url):
-    url_ = url('act', conv='xxx', component=Components.MESSAGE, verb=Verbs.ADD)
+    url_ = url('act', conv='x' * 20, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_)
     assert r.status == 404, await r.text()
     text = await r.text()
-    assert text.startswith('conversation xxx not found')
+    assert text.startswith('conversation xxxxxxxxxxxxxxxxxxxx not found')
 
 
 async def test_add_message_invalid_data_list(cli, conv, url):
@@ -202,7 +208,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
         ],
         'details': {
             'creator': conv.creator_address,
-            'key': 'key123',
+            'key': 'key12345678',
             'published': False,
             'subject': 'Test Conversation',
             'ts': CloseToNow()
@@ -257,7 +263,7 @@ async def test_add_part_get(cli, conv, url, db_conn):
         ],
         'details': {
             'creator': conv.creator_address,
-            'key': 'key123',
+            'key': 'key12345678',
             'published': False,
             'subject': 'Test Conversation',
             'ts': CloseToNow()
@@ -390,5 +396,17 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, redis):
                 assert data['verb'] == 'add'
                 assert data['actor'] == conv.creator_address
                 got_message = True
+                print('got message:', data)
                 break
         assert got_message
+
+
+async def test_get_latest_conv(cli, create_conv, url, db_conn):
+    # times will be identical here as CURRENT_TIMESTAMP doesn't change within a transaction, ordering will be on id
+    await create_conv(key='xxxxxxxxxxa', subject='conv1')
+    await create_conv(key='xxxxxxxxxxc', subject='conv3')
+    await create_conv(key='xxxxxxxxxxb', subject='conv2')
+    r = await cli.get(url('get', conv='x' * 8))
+    assert r.status == 200, await r.text()
+    obj = await r.json()
+    assert obj['details']['subject'] == 'conv2'

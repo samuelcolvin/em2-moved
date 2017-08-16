@@ -1,4 +1,4 @@
-from aiohttp.web_exceptions import HTTPBadRequest
+from aiohttp.web import HTTPBadRequest
 
 
 class Em2Exception(Exception):

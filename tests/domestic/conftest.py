@@ -4,7 +4,7 @@ from cryptography.fernet import Fernet
 from em2.domestic import create_domestic_app
 from em2.utils.encoding import msg_encode
 
-from ..conftest import create_conversation, shutdown_modify_app, startup_modify_app
+from ..conftest import shutdown_modify_app, startup_modify_app
 
 test_addr = 'testing@example.com'
 
@@ -27,5 +27,5 @@ def cli(loop, settings, db_conn, test_client, redis):
 
 
 @pytest.fixture
-def conv(loop, db_conn):
-    return loop.run_until_complete(create_conversation(db_conn, test_addr))
+def conv(loop, create_conv):
+    return loop.run_until_complete(create_conv(creator=test_addr))

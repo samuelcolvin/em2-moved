@@ -4,7 +4,7 @@ Views dedicated to propagation of data between platforms.
 import logging
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPNotFound
+from aiohttp.web import HTTPBadRequest, HTTPForbidden, HTTPNotFound
 
 from em2.core import ApplyAction, Components, GetConv, Verbs
 from em2.utils import get_domain

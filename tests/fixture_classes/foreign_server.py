@@ -9,7 +9,7 @@ async def auth(request):
 CONV_DETAILS = {
     'details': {
         'creator': 'test@already-authenticated.com',
-        'key': 'key123',
+        'key': 'key12345678',
         'published': True,
         'subject': 'Test Conversation',
         'ts': '2032-06-01T12:00:00.12345'
@@ -53,7 +53,7 @@ async def get(request):
     assert request.headers['em2-auth']
     participant = request.headers['em2-participant']
     assert participant == 'testing@local.com'
-    if request.match_info['conv'] == 'key123':
+    if request.match_info['conv'] == 'key12345678':
         return json_response(CONV_DETAILS)
     else:
         raise HTTPNotFound()

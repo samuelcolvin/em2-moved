@@ -12,6 +12,7 @@ from aioredis import create_redis
 from pydantic.datetime_parse import parse_datetime
 
 from em2 import Settings
+from em2.core import get_create_recipient
 from em2.run.database import prepare_database
 
 from .fixture_classes.foreign_server import create_test_app
@@ -83,17 +84,19 @@ class ConvInfo(NamedTuple):
     creator_address: str
 
 
-async def create_conversation(db_conn, creator):
-    recipient_id = await db_conn.fetchval('INSERT INTO recipients (address) VALUES ($1) RETURNING id', creator)
-    key = 'key123'
-    args = key, recipient_id, 'Test Conversation', 'test-conv'
-    conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref) '
-                                     'VALUES ($1, $2, $3, $4) RETURNING id', *args)
-    await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, recipient_id)
-    first_msg_key = 'msg-firstmessagekeyx'
-    args = first_msg_key, conv_id, 'this is the message'
-    await db_conn.execute('INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)', *args)
-    return ConvInfo(id=conv_id, key=key, first_msg_key=first_msg_key, creator_address=creator)
+@pytest.fixture
+def create_conv(db_conn):
+    async def create_conv_(*, creator='testing@example.com', key='key12345678', subject='Test Conversation'):
+        recipient_id = await get_create_recipient(db_conn, creator)
+        args = key, recipient_id, subject, 'test-conv'
+        conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref) '
+                                         'VALUES ($1, $2, $3, $4) RETURNING id', *args)
+        await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, recipient_id)
+        first_msg_key = 'msg-firstmessagekeyx'
+        args = first_msg_key, conv_id, 'this is the message'
+        await db_conn.execute('INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)', *args)
+        return ConvInfo(id=conv_id, key=key, first_msg_key=first_msg_key, creator_address=creator)
+    return create_conv_
 
 
 @pytest.yield_fixture

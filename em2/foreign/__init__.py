@@ -33,6 +33,6 @@ def create_foreign_app(settings):
 
     # TODO deal with domain routing
     app.router.add_post('/auth/', Authenticate.view(), name='authenticate')
-    app.router.add_get('/get/{conv:[a-z0-9]+}/', Get.view(), name='get')
+    app.router.add_get('/get/{conv:[a-z0-9]{8,}}/', Get.view(), name='get')
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', Act.view(), name='act')
     return app

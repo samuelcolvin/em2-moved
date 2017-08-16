@@ -7,7 +7,7 @@ from enum import Enum, unique
 from typing import List, NamedTuple, Optional
 
 import asyncpg
-from aiohttp.web_exceptions import HTTPBadRequest
+from aiohttp.web import HTTPBadRequest
 from asyncpg.pool import Pool  # noqa
 from pydantic import BaseModel, EmailStr, NoneStr, ValidationError, constr
 
@@ -106,18 +106,18 @@ class Action(NamedTuple):
     item: str
 
 
-GET_RECIPIENT_ID = 'SELECT id FROM recipients WHERE address = $1'
+GET_RECIPIENT_ID_SQL = 'SELECT id FROM recipients WHERE address = $1'
 # pointless update here should happen very rarely
-SET_RECIPIENT_ID = """
+SET_RECIPIENT_ID_SQL = """
 INSERT INTO recipients (address) VALUES ($1)
 ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id
 """
 
 
 async def get_create_recipient(conn, address):
-    recipient_id = await conn.fetchval(GET_RECIPIENT_ID, address)
+    recipient_id = await conn.fetchval(GET_RECIPIENT_ID_SQL, address)
     if recipient_id is None:
-        recipient_id = await conn.fetchval(SET_RECIPIENT_ID, address)
+        recipient_id = await conn.fetchval(SET_RECIPIENT_ID_SQL, address)
     return recipient_id
 
 
@@ -350,7 +350,9 @@ class GetConv(FetchOr404Mixin):
     SELECT c.id FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     JOIN recipients AS r ON p.recipient = r.id
-    WHERE r.address = $1 AND c.key = $2 AND p.active = True
+    WHERE r.address = $1 AND c.key LIKE $2 AND p.active = True
+    ORDER BY c.timestamp, c.id DESC
+    LIMIT 1
     """
 
     conv_details_sql = """
@@ -411,7 +413,7 @@ class GetConv(FetchOr404Mixin):
         conv_id = await self.fetchval404(
             self.get_conv_id_sql,
             participant_address,
-            conv_key,
+            conv_key + '%',
             msg=f'conversation {conv_key} not found'
         )
         details = await self.conn.fetchval(self.conv_details_sql, conv_id)

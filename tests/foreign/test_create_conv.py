@@ -3,7 +3,7 @@ from tests.conftest import python_dict  # NOQA
 
 async def test_create(cli, url, foreign_server, get_conv):
     assert foreign_server.app['request_log'] == []
-    url_ = url('act', conv='key123', component='participant', verb='add', item='testing@local.com')
+    url_ = url('act', conv='key12345678', component='participant', verb='add', item='testing@local.com')
     r = await cli.post(url_, data='foobar', headers={
         'em2-auth': 'already-authenticated.com:123:whatever',
         'em2-actor': 'test@already-authenticated.com',
@@ -11,7 +11,7 @@ async def test_create(cli, url, foreign_server, get_conv):
         'em2-action-key': '123',
     })
     assert r.status == 204, await r.text()
-    obj = await get_conv('key123')
+    obj = await get_conv('key12345678')
     print(python_dict(obj))
     assert {
         'actions': [
@@ -29,7 +29,7 @@ async def test_create(cli, url, foreign_server, get_conv):
         ],
         'details': {
             'creator': 'test@already-authenticated.com',
-            'key': 'key123',
+            'key': 'key12345678',
             'published': True,
             'subject': 'Test Conversation',
             'ts': '2032-06-01T12:00:00.12345'
@@ -56,7 +56,7 @@ async def test_create(cli, url, foreign_server, get_conv):
     } == obj
     assert foreign_server.app['request_log'] == [
         'POST /authenticate > 201',
-        'GET /get/key123/ > 200',
+        'GET /get/key12345678/ > 200',
     ]
 
 
