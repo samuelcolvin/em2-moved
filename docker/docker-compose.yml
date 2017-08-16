@@ -1,8 +1,8 @@
 version: '3.2'
 
 volumes:
-  pg_data: {}
-  redis_data: {}
+  postgres: {}
+  redis: {}
 
 services:
   logs:
@@ -21,13 +21,17 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: docker
     volumes:
-    - pg_data:/var/lib/postgresql/data
+    - postgres:/var/lib/postgresql/data
+    depends_on:
+    - logs
 
   redis:
     image: redis:3.0-alpine
     volumes:
-    - redis_data:/data
+    - redis:/data
     restart: always
+    depends_on:
+    - logs
 
   nginx:
     image: nginx:1.13-alpine
@@ -36,6 +40,8 @@ services:
     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
     - 8000:80
+    depends_on:
+    - logs
 
   web:
     image: em2
@@ -48,9 +54,11 @@ services:
       EM2_LOCAL_DOMAIN: ${EM2_LOCAL_DOMAIN}
       EM2_SECRET_SESSION_KEY: ${EM2_SECRET_SESSION_KEY}
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
+    restart: always
     depends_on:
     - postgres
     - redis
+    - logs
 
   worker:
     image: em2
@@ -63,7 +71,8 @@ services:
       EM2_LOCAL_DOMAIN: ${EM2_LOCAL_DOMAIN}
       EM2_SECRET_SESSION_KEY: ${EM2_SECRET_SESSION_KEY}
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
+    restart: always
     depends_on:
     - postgres
     - redis
-    - web
+    - logs

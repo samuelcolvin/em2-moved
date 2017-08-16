@@ -2,6 +2,7 @@
 import asyncio
 import os
 import sys
+from time import sleep
 
 from em2 import VERSION, Settings
 from em2.logging import logger, setup_logging
@@ -28,7 +29,11 @@ def web(settings):
 
     logger.info('starting server...')
     app = create_app(settings)
-    run_app(app, port=settings.WEB_PORT, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
+    try:
+        run_app(app, port=settings.WEB_PORT, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
+    finally:
+        logger.info('server shutdown')
+        sleep(0.01)  # time for the log message to propagate
 
 
 @command

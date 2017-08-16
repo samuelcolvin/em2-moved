@@ -7,8 +7,6 @@ from pydantic.utils import make_dsn
 
 from em2.settings import Settings
 
-DB_EXISTS = 'SELECT EXISTS (SELECT datname FROM pg_catalog.pg_database WHERE datname=$1)'
-
 logger = logging.getLogger('em2.database')
 
 
@@ -28,8 +26,7 @@ async def lenient_pg_connection(settings, _retry=0):
             return await lenient_pg_connection(settings, _retry=_retry + 1)
         else:
             raise
-    version = await conn.fetchval('SELECT version()')
-    logger.info('pg connection successful, version: %s', version)
+    logger.info('pg connection successful, version: %s', await conn.fetchval('SELECT version()'))
     return conn
 
 
@@ -42,17 +39,18 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
     """
     conn = await lenient_pg_connection(settings)
     try:
-        db_exists = await conn.fetchval(DB_EXISTS, settings.PG_NAME)
-        if db_exists:
+        logger.info('attempting to create database "%s"...', settings.PG_NAME)
+        try:
+            await conn.execute('CREATE DATABASE {}'.format(settings.PG_NAME))
+        except (asyncpg.DuplicateDatabaseError, asyncpg.UniqueViolationError):
             if not overwrite_existing:
-                logger.info('database "%s" already exists, skipping', settings.PG_NAME)
+                logger.info('database already exists, skipping')
                 return False
             else:
-                logger.info('database "%s" already exists...', settings.PG_NAME)
+                logger.info('database already exists...')
         else:
-            logger.info('database "%s" does not yet exist', settings.PG_NAME)
-            logger.info('creating database "%s"...', settings.PG_NAME)
-            await conn.execute('CREATE DATABASE {}'.format(settings.PG_NAME))
+            logger.info('database did not exist, now created')
+
         logging.info('settings db timezone to utc...')
         await conn.execute("ALTER DATABASE {} SET TIMEZONE TO 'UTC';".format(settings.PG_NAME))
     finally:
