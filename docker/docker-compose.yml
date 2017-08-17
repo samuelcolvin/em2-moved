@@ -4,6 +4,13 @@ volumes:
   postgres: {}
   redis: {}
 
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 172.20.0.0/16
+
 services:
   logs:
     image: gliderlabs/logspout
@@ -55,6 +62,9 @@ services:
       EM2_SECRET_SESSION_KEY: ${EM2_SECRET_SESSION_KEY}
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
     restart: always
+    networks:
+      default:
+        ipv4_address: 172.20.0.101
     depends_on:
     - postgres
     - redis

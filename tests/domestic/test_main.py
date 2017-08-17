@@ -379,7 +379,7 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, redis, foreign_s
     ]
 
 
-async def test_publish_domestic_push(cli, conv, url, db_conn, redis):
+async def test_publish_domestic_push(cli, conv, url, db_conn, redis, debug):
     async with cli.session.ws_connect(cli.make_url('/ws/')) as ws:
 
         assert not await db_conn.fetchval('SELECT published FROM conversations')
@@ -388,6 +388,7 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, redis):
         assert await db_conn.fetchval('SELECT published FROM conversations')
 
         got_message = False
+        # FIXME this fails occasionally with the ws message never being received
         with timeout(0.5):
             async for msg in ws:
                 assert msg.tp == WSMsgType.text
@@ -396,7 +397,6 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, redis):
                 assert data['verb'] == 'add'
                 assert data['actor'] == conv.creator_address
                 got_message = True
-                print('got message:', data)
                 break
         assert got_message
 

@@ -79,18 +79,18 @@ class Pusher(Actor):
 
     # see core.Action for order of returned values
     action_detail_sql = """
-    SELECT a.key, c.key, c.id, a.verb, a.component, r.address, a.timestamp, parent.key, a.body, m.relationship,
-    m.key, prt_recipient.address
+    SELECT a.key, c.key, c.id, a.verb, a.component, actor_r.address, a.timestamp, parent.key, a.body, m.relationship,
+    m.key, prt_r.address
     FROM actions AS a
     JOIN conversations AS c ON a.conv = c.id
 
-    JOIN recipients AS r ON a.actor = r.id
+    JOIN recipients AS actor_r ON a.actor = actor_r.id
 
     LEFT JOIN actions AS parent ON a.parent = parent.id
 
     LEFT JOIN messages AS m ON a.message = m.id
 
-    LEFT JOIN recipients AS prt_recipient ON a.recipient = prt_recipient.id
+    LEFT JOIN recipients AS prt_r ON a.recipient = prt_r.id
 
     WHERE a.id = $1
     """
@@ -136,8 +136,7 @@ class Pusher(Actor):
             # TODO save actions_status
 
     async def domestic_push(self, recipient_ids, action: Action):
-        pool = await self.get_redis_pool()
-        with await pool as redis:
+        async with await self.get_redis_conn() as redis:
             recipient_ids_key = gen_random('rid')
             await asyncio.gather(
                 redis.sadd(recipient_ids_key, *recipient_ids),

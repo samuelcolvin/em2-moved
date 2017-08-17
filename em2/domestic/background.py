@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from time import time
 
 from arq import Drain
@@ -8,14 +9,17 @@ from em2 import Settings  # noqa
 from em2.utils.encoding import msg_decode
 from em2.utils.web import Em2JsonEncoder
 
+logger = logging.getLogger('em2.domestic.bg')
+
 
 class Background:
     def __init__(self, app, loop):
         self.app = app
+        self.loop = loop
         self.settings: Settings = app['settings']
+        self.redis_pool = None  # set in _process_actions
         self.task = loop.create_task(self._process_actions())
         self.recipients_key = self.settings.FRONTEND_RECIPIENTS_BASE.format(self.app['name'])
-        self.redis_pool = None
         self._last_added_recipient = 0
         self.connections = {}
 
@@ -56,10 +60,13 @@ class Background:
             async for _, raw_data in drain.iter(jobs_key, pop_timeout=30):
                 if raw_data:
                     data = msg_decode(raw_data)
+                    logger.info('processing action: %s, current connections: %s', data, self.connections.keys())
                     send_data = json.dumps(data['action'], cls=Em2JsonEncoder)
                     for recipient_id in data['recipients']:
                         ws = self.connections.get(recipient_id)
                         if ws:
                             ws.send_str(send_data)
+                        else:
+                            logger.info('no ws connection for %d', recipient_id)
                 if (time() - self._last_added_recipient) >= 20:
                     await self.add_recipient(0)

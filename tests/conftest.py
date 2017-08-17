@@ -110,8 +110,10 @@ def redis(loop):
 
     yield redis
 
-    redis.close()
-    loop.run_until_complete(redis.wait_closed())
+    async def _close():
+        redis.close()
+        await redis.wait_closed()
+    loop.run_until_complete(_close())
 
 
 async def startup_modify_app(app):

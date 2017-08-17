@@ -7,7 +7,7 @@ from enum import Enum, unique
 from typing import List, NamedTuple, Optional
 
 import asyncpg
-from aiohttp.web import HTTPBadRequest
+from aiohttp.web import HTTPBadRequest, HTTPConflict
 from asyncpg.pool import Pool  # noqa
 from pydantic import BaseModel, EmailStr, NoneStr, ValidationError, constr
 
@@ -99,7 +99,7 @@ class Action(NamedTuple):
     verb: Verbs
     component: Components
     actor: str
-    timestamp: str
+    timestamp: datetime
     parent: str
     body: str
     relationship: Relationships
@@ -185,11 +185,13 @@ class ApplyAction(FetchOr404Mixin):
         self.item_key, recipient_id, message_id, parent_id = None, None, None, None
         async with self.conn.transaction():
             if self.data.component is Components.MESSAGE:
+
                 if self.data.verb is Verbs.ADD:
                     self.item_key, message_id = await self._add_message()
                 else:
                     self.item_key, message_id, parent_id = await self._mod_message()
             elif self.data.component is Components.PARTICIPANT:
+                self.data.body = None
                 if self.data.verb is Verbs.ADD:
                     self.item_key, recipient_id = await self._add_participant()
                 else:
@@ -206,7 +208,7 @@ class ApplyAction(FetchOr404Mixin):
                 parent_id,
                 recipient_id,
                 message_id,
-                self.data.body if self.data.component == Components.MESSAGE else None,
+                self.data.body,
             )
             if self._remote_action:
                 args += self.data.timestamp.replace(tzinfo=None),
@@ -322,7 +324,7 @@ class ApplyAction(FetchOr404Mixin):
             recipient_id = await self.conn.fetchval(self._set_recipient_id_sql, address)
         prt_id = await self.conn.fetchval(self._add_participant_sql, self.data.conv, recipient_id)
         if prt_id is None:
-            raise HTTPBadRequest(text='participant already exists on the conversation')
+            raise HTTPConflict(text='participant already exists on the conversation')
         return address, recipient_id
 
     _find_participant_sql = """

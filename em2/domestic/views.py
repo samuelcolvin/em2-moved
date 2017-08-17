@@ -22,7 +22,7 @@ class VList(View):
       FROM conversations AS c
       LEFT JOIN participants ON c.id = participants.conv
       WHERE participants.recipient = $1 AND participants.active = True
-      ORDER BY c.id DESC LIMIT 50
+      ORDER BY c.timestamp, c.id DESC LIMIT 50
     ) t;
     """
 
