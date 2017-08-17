@@ -25,9 +25,8 @@ CREATE TABLE participants (
   id SERIAL PRIMARY KEY,
   conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   recipient INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
-  readall BOOLEAN DEFAULT FALSE,
   active BOOLEAN DEFAULT TRUE,
-  -- TODO permissions, hidden, status
+  -- TODO permissions, hidden, status, has_seen/unread
   UNIQUE (conv, recipient)
 );
 

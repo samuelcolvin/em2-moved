@@ -39,7 +39,6 @@ async def test_get_conv(cli, conv, url):
         'participants': [
             {
                 'address': 'test@already-authenticated.com',
-                'readall': False
             }
         ]
     } == obj
@@ -121,11 +120,9 @@ async def test_add_message_participant(cli, conv, url, get_conv):
         'participants': [
             {
                 'address': 'test@already-authenticated.com',
-                'readall': False
             },
             {
                 'address': 'foobar@example.com',
-                'readall': False
             }
         ]
     } == obj

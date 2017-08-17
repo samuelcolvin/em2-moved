@@ -341,6 +341,7 @@ class ApplyAction(FetchOr404Mixin):
         if self.data.verb in (Verbs.DELETE, Verbs.RECOVER):
             await self.conn.execute(self._delete_participant_sql, self.data.verb == Verbs.RECOVER, prt_id)
         elif self.data.verb is Verbs.MODIFY:
+            # change permissions etc. when they're implemented
             raise NotImplementedError()
         else:
             raise HTTPBadRequest(text=f'Invalid verb for participants, can only add, delete, recover or modify')
@@ -380,7 +381,7 @@ class GetConv(FetchOr404Mixin):
     participants_sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT r.address AS address, p.readall AS readall
+      SELECT r.address AS address
       FROM participants AS p
       JOIN recipients AS r ON p.recipient = r.id
       WHERE p.conv = $1 AND p.active = True
@@ -442,7 +443,6 @@ class _ConvDetails(BaseModel):
 
 class _Participant(BaseModel):
     address: EmailStr
-    readall: bool
 
 
 class _ConvMessage(BaseModel):
@@ -477,7 +477,7 @@ class CreateForeignConv:
     INSERT INTO conversations (key, creator, subject, timestamp, published)
     VALUES ($1, $2, $3, $4, TRUE) RETURNING id
     """
-    add_participants_sql = 'INSERT INTO participants (conv, recipient, readall) VALUES ($1, $2, $3)'
+    add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
     add_message_sql = """
     INSERT INTO messages (conv, key, body, active, after, relationship)
     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
@@ -509,7 +509,7 @@ class CreateForeignConv:
         recip_lookup = await create_missing_recipients(self.conn, [p.address for p in conv.participants])
         await self.conn.executemany(
             self.add_participants_sql,
-            {(conv_id, recip_lookup[p.address], p.readall) for p in conv.participants}
+            {(conv_id, recip_lookup[p.address]) for p in conv.participants}
         )
 
         msg_lookup = {}

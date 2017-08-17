@@ -44,14 +44,8 @@ async def test_create(cli, url, foreign_server, get_conv):
             }
         ],
         'participants': [
-            {
-                'address': 'test@already-authenticated.com',
-                'readall': True
-            },
-            {
-                'address': 'testing@local.com',
-                'readall': False
-            },
+            {'address': 'test@already-authenticated.com'},
+            {'address': 'testing@local.com'},
         ]
     } == obj
     assert foreign_server.app['request_log'] == [

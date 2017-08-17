@@ -232,7 +232,6 @@ async def test_add_message_get(cli, conv, url, db_conn):
         'participants': [
             {
                 'address': conv.creator_address,
-                'readall': False
             }
         ]
     } == obj
@@ -278,8 +277,8 @@ async def test_add_part_get(cli, conv, url, db_conn):
             }
         ],
         'participants': [
-            {'address': conv.creator_address, 'readall': False},
-            {'address': 'other@example.com', 'readall': False}
+            {'address': conv.creator_address},
+            {'address': 'other@example.com'}
         ]
     } == obj
 

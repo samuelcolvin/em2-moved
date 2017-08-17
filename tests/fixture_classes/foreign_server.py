@@ -26,11 +26,9 @@ CONV_DETAILS = {
     'participants': [
         {
             'address': 'test@already-authenticated.com',
-            'readall': True
         },
         {
             'address': 'testing@local.com',
-            'readall': False
         },
     ],
     'actions': [
