@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from arq import RedisSettings
 from pydantic import BaseSettings, PyObject
 from pydantic.utils import make_dsn
+
+from arq import RedisSettings
 
 
 class Settings(BaseSettings):

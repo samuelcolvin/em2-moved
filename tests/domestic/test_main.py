@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 from asyncio import sleep
@@ -383,6 +384,7 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, redis, debug):
     async with cli.session.ws_connect(cli.make_url('/ws/')) as ws:
 
         assert not await db_conn.fetchval('SELECT published FROM conversations')
+        await asyncio.sleep(0.1)  # allow the front end time to connect
         r = await cli.post(url('publish', conv=conv.key))
         assert r.status == 200, await r.text()
         assert await db_conn.fetchval('SELECT published FROM conversations')

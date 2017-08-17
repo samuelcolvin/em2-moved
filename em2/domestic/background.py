@@ -9,7 +9,7 @@ from em2 import Settings  # noqa
 from em2.utils.encoding import msg_decode
 from em2.utils.web import Em2JsonEncoder
 
-logger = logging.getLogger('em2.domestic.bg')
+logger = logging.getLogger('em2.d.background')
 
 
 class Background:
@@ -53,20 +53,25 @@ class Background:
         drain = Drain(
             redis_pool=self.redis_pool,
             burst_mode=False,
-            max_concurrent_tasks=2,
+            max_concurrent_tasks=5,
             raise_task_exception=True,
         )
         async with drain:
+            logger.info('starting background drain loop...')
             async for _, raw_data in drain.iter(jobs_key, pop_timeout=30):
                 if raw_data:
-                    data = msg_decode(raw_data)
-                    logger.info('processing action: %s, current connections: %s', data, self.connections.keys())
-                    send_data = json.dumps(data['action'], cls=Em2JsonEncoder)
-                    for recipient_id in data['recipients']:
-                        ws = self.connections.get(recipient_id)
-                        if ws:
-                            ws.send_str(send_data)
-                        else:
-                            logger.info('no ws connection for %d', recipient_id)
+                    drain.add(self.send_action, raw_data)
                 if (time() - self._last_added_recipient) >= 20:
                     await self.add_recipient(0)
+
+    async def send_action(self, raw_data):
+        data = msg_decode(raw_data)
+        logger.info('processing action with %d recipients, %d current ws connections',
+                    len(data['recipients']), len(self.connections))
+        send_data = json.dumps(data['action'], cls=Em2JsonEncoder)
+        for recipient_id in data['recipients']:
+            ws = self.connections.get(recipient_id)
+            if ws:
+                ws.send_str(send_data)
+            else:
+                logger.warning('no ws connection for %d', recipient_id)

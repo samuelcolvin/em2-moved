@@ -11,7 +11,7 @@ from em2.utils.web import WebModel, json_response, raw_json_response
 
 from .common import View
 
-logger = logging.getLogger('em2.domestic.views')
+logger = logging.getLogger('em2.d.views')
 
 
 class VList(View):

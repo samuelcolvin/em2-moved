@@ -4,8 +4,8 @@ import os
 import sys
 from time import sleep
 
-from em2 import VERSION, Settings
-from em2.logging import logger, setup_logging
+from em2 import VERSION
+from em2.logging import logger
 from em2.run.check import command, execute
 from em2.run.database import prepare_database as _prepare_database
 from em2.utils.network import wait_for_services
@@ -37,9 +37,13 @@ def web(settings):
 
 
 @command
-def prepare_database(settings):
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(_prepare_database(settings, True))  # TODO require argument for force
+def reset_database(settings):
+    if not (os.getenv('CONFIRM_DATABASE_RESET') == 'confirm' or input('Confirm database reset? [yN] ') == 'y'):
+        logger.warning('cancelling')
+    else:
+        logger.info('resetting database...')
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(_prepare_database(settings, True))
 
 
 @command
@@ -67,19 +71,10 @@ def info(settings):
     logger.info(f'debug:    {settings.DEBUG}')
     logger.info(f'pg db:    {settings.PG_NAME}')
     logger.info(f'redis db: {settings.R_DATABASE}\n')
-    # try:
-    #     loop = asyncio.get_event_loop()
-    #     from em2.ds.pg.utils import check_database_exists
-    #     wait_for_services(settings, loop=loop)
-    #     check_database_exists(settings)
-    #
-    #     loop.run_until_complete(_list_conversations(settings, loop, logger))
-    # except Exception as e:
-    #     logger.warning(f'Error get conversation list {e.__class__.__name__}: {e}')
 
 
 @command
-def shell():
+def shell(settings):
     """
     Basic replica of django-extensions shell, ugly but very useful in development
     """
@@ -89,13 +84,10 @@ def shell():
         'from pathlib import Path',
         '',
         'from em2 import Settings',
-        'from em2.core import Controller',
         '',
         'loop = asyncio.get_event_loop()',
         'await_ = loop.run_until_complete',
         'settings = Settings()',
-        'ctrl = Controller(settings=settings, loop=loop)',
-        'await_(ctrl.startup())',
     ]
     EXEC_LINES += (
         ['print("\\n    Python {v.major}.{v.minor}.{v.micro}\\n".format(v=sys.version_info))'] +
@@ -114,19 +106,13 @@ def shell():
 
 def main():
     # special cases where we use arguments so you don't have to mess with env variables.
-    argument = sys.argv[-1]
-    if argument in ('info', 'shell'):
-        settings = Settings()
-        setup_logging(settings)
-        if argument == 'info':
-            logger.info('running info based on argument...')
-            info(settings)
-        else:
-            logger.info('running shell based on argument...')
-            shell()
-    else:
-        command_ = os.getenv('EM2_COMMAND', 'info')
-        execute(command_)
+    command = len(sys.argv) > 1 and sys.argv[1]
+    if command in ('info', 'reset_database', 'shell'):
+        print(f'using command line argument to set command EM2_COMMAND="{command}"', flush=True)
+        os.environ['EM2_COMMAND'] = command
+
+    command_ = os.getenv('EM2_COMMAND', 'info')
+    execute(command_)
 
 
 if __name__ == '__main__':

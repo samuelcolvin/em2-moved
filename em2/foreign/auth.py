@@ -19,7 +19,7 @@ from Crypto.Signature import PKCS1_v1_5
 from em2 import Settings
 from em2.exceptions import FailedInboundAuthentication
 
-logger = logging.getLogger('em2.foreign.auth')
+logger = logging.getLogger('em2.f.auth')
 
 
 class Authenticator(RedisMixin):

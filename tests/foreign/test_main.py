@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from arq.utils import to_unix_ms
-
 from em2 import Settings
 from em2.utils.network import check_server
 

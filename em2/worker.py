@@ -1,5 +1,4 @@
 from arq import BaseWorker
-
 from em2 import setup_logging
 from em2.push import Pusher
 from em2.settings import Settings

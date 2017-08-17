@@ -145,6 +145,7 @@ class Pusher(Actor):
             action_dict = action._asdict()
             action_dict.pop('conv_id')
             frontends = await redis.keys(self.settings.FRONTEND_RECIPIENTS_BASE.format('*'), encoding='utf8')
+            logger.info('%s.%s %.6s front ends: running: %s', action.component, action.verb, action.conv_key, frontends)
             for frontend in frontends:
                 matching_recipient_ids = await redis.sinter(recipient_ids_key, frontend)
                 _, name = frontend.rsplit(':', 1)
@@ -152,7 +153,7 @@ class Pusher(Actor):
                     logger.info('%s.%s %.6s frontend %s: no matching recipients',
                                 action.component, action.verb, action.conv_key, name)
                     continue
-                logger.info('%s.%s %.6s frontend %s: %d matching recipients',
+                logger.info('%s.%s %.6s frontend %s: %d matching recipients, pushing job',
                             action.component, action.verb, action.conv_key, name, len(matching_recipient_ids))
                 job_name = self.settings.FRONTEND_JOBS_BASE.format(name)
                 job_data = {
