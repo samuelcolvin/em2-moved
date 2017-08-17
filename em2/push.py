@@ -99,7 +99,7 @@ class Pusher(Actor):
     SELECT r.id, r.address
     FROM participants AS p
     JOIN recipients AS r ON p.recipient = r.id
-    WHERE p.conv = $1 AND p.active = TRUE
+    WHERE p.conv = $1
     """
 
     conv_subject_sql = """

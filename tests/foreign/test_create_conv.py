@@ -36,7 +36,7 @@ async def test_create(cli, url, foreign_server, get_conv):
         },
         'messages': [
             {
-                'active': True,
+                'deleted': False,
                 'after': None,
                 'body': 'this is the message',
                 'key': 'msg-firstmessagekeyx',

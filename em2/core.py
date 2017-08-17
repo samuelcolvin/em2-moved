@@ -273,7 +273,7 @@ class ApplyAction(FetchOr404Mixin):
     ORDER BY id DESC
     LIMIT 1
     """
-    _delete_recover_message_sql = 'UPDATE messages SET active = $1 WHERE id = $2'
+    _delete_recover_message_sql = 'UPDATE messages SET deleted = $1 WHERE id = $2'
     _modify_message_sql = 'UPDATE messages SET body = $1 WHERE id = $2'
 
     async def _mod_message(self):
@@ -294,7 +294,7 @@ class ApplyAction(FetchOr404Mixin):
         # * not modifying deleted messages
         # * not repeatedly recovering messages
         if self.data.verb in (Verbs.DELETE, Verbs.RECOVER):
-            await self.conn.execute(self._delete_recover_message_sql, self.data.verb == Verbs.RECOVER, message_id)
+            await self.conn.execute(self._delete_recover_message_sql, self.data.verb == Verbs.DELETE, message_id)
         elif self.data.verb == Verbs.MODIFY:
             if not self.data.body:
                 raise HTTPBadRequest(text='body can not be empty when modifying a message')
@@ -332,14 +332,14 @@ class ApplyAction(FetchOr404Mixin):
     JOIN recipients AS r ON p.recipient = r.id
     WHERE p.conv = $1 AND r.address = $2
     """
-    _delete_participant_sql = 'UPDATE participants SET active = $1 WHERE id = $2'
+    _delete_participant_sql = 'DELETE participants WHERE id = $2'
 
     async def _mod_participant(self):
         # TODO check parent matches latest data.parent
         address = self.data.item
         prt_id, recipient_id = await self.fetchrow404(self._find_participant_sql, self.data.conv, address)
-        if self.data.verb in (Verbs.DELETE, Verbs.RECOVER):
-            await self.conn.execute(self._delete_participant_sql, self.data.verb == Verbs.RECOVER, prt_id)
+        if self.data.verb == Verbs.DELETE:
+            await self.conn.execute(self._delete_participant_sql, prt_id)
         elif self.data.verb is Verbs.MODIFY:
             # change permissions etc. when they're implemented
             raise NotImplementedError()
@@ -353,7 +353,7 @@ class GetConv(FetchOr404Mixin):
     SELECT c.id FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     JOIN recipients AS r ON p.recipient = r.id
-    WHERE r.address = $1 AND c.key LIKE $2 AND p.active = True
+    WHERE r.address = $1 AND c.key LIKE $2
     ORDER BY c.timestamp, c.id DESC
     LIMIT 1
     """
@@ -371,10 +371,11 @@ class GetConv(FetchOr404Mixin):
     messages_sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT m1.key AS key, m2.key AS after, m1.relationship AS relationship, m1.active AS active, m1.body AS body
+      SELECT m1.key AS key, m2.key AS after, m1.relationship AS relationship, m1.body AS body, m1.deleted AS deleted
       FROM messages AS m1
       LEFT JOIN messages AS m2 ON m1.after = m2.id
-      WHERE m1.conv = $1 AND m1.active = True
+      WHERE m1.conv = $1
+      ORDER BY m1.id
     ) t;
     """
 
@@ -384,7 +385,7 @@ class GetConv(FetchOr404Mixin):
       SELECT r.address AS address
       FROM participants AS p
       JOIN recipients AS r ON p.recipient = r.id
-      WHERE p.conv = $1 AND p.active = True
+      WHERE p.conv = $1
     ) t;
     """
 
@@ -447,7 +448,7 @@ class _Participant(BaseModel):
 
 class _ConvMessage(BaseModel):
     key: constr(min_length=20, max_length=20)
-    active: bool
+    deleted: bool
     body: str
     after: Optional[constr(min_length=20, max_length=20)] = None
     relationship: Optional[Relationships] = None
@@ -479,7 +480,7 @@ class CreateForeignConv:
     """
     add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
     add_message_sql = """
-    INSERT INTO messages (conv, key, body, active, after, relationship)
+    INSERT INTO messages (conv, key, body, deleted, after, relationship)
     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
     """
     create_action_sql = """
@@ -520,7 +521,7 @@ class CreateForeignConv:
                 after_id = msg_lookup[msg.after]
             msg_lookup[msg.key] = await self.conn.fetchval(
                 self.add_message_sql,
-                conv_id, msg.key, msg.body, msg.active, after_id, msg.relationship
+                conv_id, msg.key, msg.body, msg.deleted, after_id, msg.relationship
             )
 
         if conv.actions is None:

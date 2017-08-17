@@ -21,7 +21,7 @@ class VList(View):
       SELECT c.key AS key, c.subject AS subject, c.timestamp AS ts, c.published AS published
       FROM conversations AS c
       LEFT JOIN participants ON c.id = participants.conv
-      WHERE participants.recipient = $1 AND participants.active = True
+      WHERE participants.recipient = $1
       ORDER BY c.timestamp, c.id DESC LIMIT 50
     ) t;
     """

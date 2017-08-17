@@ -29,7 +29,7 @@ async def test_get_conv(cli, conv, url):
         },
         'messages': [
             {
-                'active': True,
+                'deleted': False,
                 'after': None,
                 'body': 'this is the message',
                 'key': 'msg-firstmessagekeyx',
@@ -103,14 +103,14 @@ async def test_add_message_participant(cli, conv, url, get_conv):
         },
         'messages': [
             {
-                'active': True,
+                'deleted': False,
                 'after': None,
                 'body': 'this is the message',
                 'key': 'msg-firstmessagekeyx',
                 'relationship': None
             },
             {
-                'active': True,
+                'deleted': False,
                 'after': 'msg-firstmessagekeyx',
                 'body': 'foobar',
                 'key': 'msg-secondmessagekey',

@@ -25,7 +25,6 @@ CREATE TABLE participants (
   id SERIAL PRIMARY KEY,
   conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   recipient INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
-  active BOOLEAN DEFAULT TRUE,
   -- TODO permissions, hidden, status, has_seen/unread
   UNIQUE (conv, recipient)
 );
@@ -39,10 +38,9 @@ CREATE TABLE messages (
   conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   after INT REFERENCES messages,
   relationship RELATIONSHIP, -- TODO perhaps record depth to limit child replies
-  active BOOLEAN DEFAULT TRUE,
+  deleted BOOLEAN DEFAULT FALSE,
   body TEXT,
   UNIQUE (conv, key)
-  -- TODO deleted
 );
 CREATE INDEX message_key ON messages USING btree (key);
 

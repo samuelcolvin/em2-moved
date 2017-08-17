@@ -16,7 +16,7 @@ CONV_DETAILS = {
     },
     'messages': [
         {
-            'active': True,
+            'deleted': False,
             'after': None,
             'body': 'this is the message',
             'key': 'msg-firstmessagekeyx',

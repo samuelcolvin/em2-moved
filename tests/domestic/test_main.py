@@ -192,6 +192,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
     assert r.status == 200, await r.text()
     obj = await r.json()
     new_msg_key = await db_conn.fetchval("SELECT key FROM messages WHERE body = 'reply'")
+    print(python_dict(obj))
     assert {
         'actions': [
             {
@@ -215,14 +216,14 @@ async def test_add_message_get(cli, conv, url, db_conn):
         },
         'messages': [
             {
-                'active': True,
+                'deleted': False,
                 'after': None,
                 'body': 'this is the message',
                 'relationship': None,
                 'key': 'msg-firstmessagekeyx'
             },
             {
-                'active': True,
+                'deleted': False,
                 'after': 'msg-firstmessagekeyx',
                 'body': 'reply',
                 'relationship': 'sibling',
@@ -269,7 +270,7 @@ async def test_add_part_get(cli, conv, url, db_conn):
         },
         'messages': [
             {
-                'active': True,
+                'deleted': False,
                 'after': None,
                 'body': 'this is the message',
                 'relationship': None,
