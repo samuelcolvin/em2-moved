@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from em2.foreign import create_foreign_app
@@ -42,3 +44,27 @@ def get_conv(cli, url, db_conn):
         assert r.status == 200, await r.text()
         return await r.json()
     return _get_conv
+
+
+@pytest.fixture
+def act_headers(conv):
+    class ActHeaders:
+        def __init__(self):
+            self.key_id = 0
+            self.dft_actor = conv.creator_address
+            self.action_stack = []
+
+        def __call__(self, **kwargs):
+            self.key_id += 1
+            key = (str(self.key_id) + '-' * 20)[:20]
+            headers = {
+                'em2-auth': 'already-authenticated.com:123:whatever',
+                'em2-actor': self.dft_actor,
+                'em2-timestamp': datetime.now().strftime('%s'),
+                'em2-action-key': key,
+            }
+            headers.update({f'em2-{k.replace("_", "-")}': v for k, v in kwargs.items()})
+            self.action_stack.insert(0, key)
+            return headers
+
+    return ActHeaders()

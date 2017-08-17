@@ -7,7 +7,7 @@ from enum import Enum, unique
 from typing import List, NamedTuple, Optional
 
 import asyncpg
-from aiohttp.web import HTTPBadRequest, HTTPConflict
+from aiohttp.web import HTTPBadRequest, HTTPConflict, HTTPInternalServerError
 from asyncpg.pool import Pool  # noqa
 from pydantic import BaseModel, EmailStr, NoneStr, ValidationError, constr
 
@@ -174,6 +174,7 @@ class ApplyAction(FetchOr404Mixin):
         self.item_key = None
         self.action_id = None
         self.action_timestamp = None
+        self.body = None
 
     async def run(self):
         # TODO replace with method validation on Data
@@ -191,7 +192,6 @@ class ApplyAction(FetchOr404Mixin):
                 else:
                     self.item_key, message_id, parent_id = await self._mod_message()
             elif self.data.component is Components.PARTICIPANT:
-                self.data.body = None
                 if self.data.verb is Verbs.ADD:
                     self.item_key, recipient_id = await self._add_participant()
                 else:
@@ -208,7 +208,7 @@ class ApplyAction(FetchOr404Mixin):
                 parent_id,
                 recipient_id,
                 message_id,
-                self.data.body,
+                self.body,
             )
             if self._remote_action:
                 args += self.data.timestamp.replace(tzinfo=None),
@@ -241,6 +241,7 @@ class ApplyAction(FetchOr404Mixin):
 
     async def _add_message(self):
         if self.data.parent:
+            # TODO we should check the message is not deleted here
             after_id = await self.fetchval404(self._find_msg_by_action_sql, self.data.conv, self.data.parent)
         else:
             # the only valid case here is that there's no action for messages
@@ -253,11 +254,12 @@ class ApplyAction(FetchOr404Mixin):
 
         if not self.data.body:
             raise HTTPBadRequest(text='body can not be empty when adding a message')
+        self.body = self.data.body
         if self._remote_action:
             item_key = self.data.item
         else:
             item_key = gen_random('msg')
-        args = item_key, self.data.conv, after_id, self.data.relationship, self.data.body
+        args = item_key, self.data.conv, after_id, self.data.relationship, self.body
         message_id = await self.conn.fetchval(self._add_message_sql, *args)
         return item_key, message_id
 
@@ -279,26 +281,49 @@ class ApplyAction(FetchOr404Mixin):
     async def _mod_message(self):
         message_key = self.data.item
         message_id = await self.fetchval404(self._find_message_by_key_sql, self.data.conv, message_key)
-        parent_id, parent_key, parent_verb, parent_actor = await self.fetchrow404(
+
+        r = await self.conn.fetchrow(
             self._latest_message_action_sql,
             self.data.conv,
-            message_id
+            message_id,
         )
+        if r:
+            parent_id, parent_key, parent_verb, parent_actor = r
+        else:
+            if await self.conn.fetchval(self._check_msg_actions_sql, self.data.conv):
+                # This should never happen but let's leave the test in place in case something goes wrong
+                raise HTTPInternalServerError(text=f'no actions for message {message_key}, '
+                                                   f'but other message actions exist')
+            parent_id = None
+            parent_key = None
+            parent_verb = Verbs.ADD
+            parent_actor = Components.MESSAGE
+
         if self.data.parent != parent_key:
             raise HTTPBadRequest(text=f'parent does not match latest action on the message: {parent_key}')
 
         if parent_actor != self.data.actor and parent_verb == Verbs.LOCK:
-            raise HTTPBadRequest(text=f'message {self.data.item} is locked and cannot be updated')
-        # could do more validation here to enforce:
-        # * locking before modification
-        # * not modifying deleted messages
-        # * not repeatedly recovering messages
+            raise HTTPBadRequest(text='message is locked and cannot be updated')
+
+        if parent_verb == Verbs.DELETE and self.data.verb != Verbs.RECOVER:
+            raise HTTPBadRequest(text='message must be recovered before modification')
+
         if self.data.verb in (Verbs.DELETE, Verbs.RECOVER):
+            if self.data.verb == Verbs.RECOVER and parent_verb != Verbs.DELETE:
+                raise HTTPBadRequest(text='message cannot be recovered as it is not deleted')
             await self.conn.execute(self._delete_recover_message_sql, self.data.verb == Verbs.DELETE, message_id)
         elif self.data.verb == Verbs.MODIFY:
             if not self.data.body:
                 raise HTTPBadRequest(text='body can not be empty when modifying a message')
+            self.body = self.data.body
             await self.conn.execute(self._modify_message_sql, self.data.body, message_id)
+        elif self.data.verb in (Verbs.LOCK, Verbs.UNLOCK):
+            if parent_verb == self.data.verb:
+                raise HTTPBadRequest(text='you may not re-lock or re-unlock a message')
+            pass
+        else:
+            # change permissions etc. when they're implemented
+            raise NotImplementedError()
         # lock and unlock don't change the message
         return message_key, message_id, parent_id
 
@@ -332,7 +357,7 @@ class ApplyAction(FetchOr404Mixin):
     JOIN recipients AS r ON p.recipient = r.id
     WHERE p.conv = $1 AND r.address = $2
     """
-    _delete_participant_sql = 'DELETE participants WHERE id = $2'
+    _delete_participant_sql = 'DELETE FROM participants WHERE id = $1'
 
     async def _mod_participant(self):
         # TODO check parent matches latest data.parent

@@ -223,31 +223,3 @@ async def test_authenticate_failed(cli, url):
     r = await cli.post(url('authenticate'), headers=headers)
     assert r.status == 400
     assert await r.text() == 'Authenticate failed: invalid signature'
-
-
-async def test_mod_message(cli, conv, url, get_conv):
-    second_msg_key = 'msg-secondmessagekey'
-    second_msg_action = 'a' * 20
-    url_ = url('act', conv=conv.key, component='message', verb='add', item=second_msg_key)
-    r = await cli.post(url_, data='foobar', headers={
-        'em2-auth': 'already-authenticated.com:123:whatever',
-        'em2-actor': conv.creator_address,
-        'em2-timestamp': datetime.now().strftime('%s'),
-        'em2-action-key': second_msg_action,
-    })
-    assert r.status == 201, await r.text()
-    obj = await get_conv(conv)
-    assert obj['messages'][1]['body'] == 'foobar'
-
-    url_ = url('act', conv=conv.key, component='message', verb='modify', item=second_msg_key)
-    r = await cli.post(url_, data='different content', headers={
-        'em2-auth': 'already-authenticated.com:123:whatever',
-        'em2-actor': conv.creator_address,
-        'em2-timestamp': datetime.now().strftime('%s'),
-        'em2-parent': second_msg_action,
-        'em2-action-key': 'b' * 20,
-    })
-    assert r.status == 201, await r.text()
-    obj = await get_conv(conv)
-    assert len(obj['actions']) == 2
-    assert obj['messages'][1]['body'] == 'different content'
