@@ -119,3 +119,60 @@ class TestAct:
         # print(python_dict(obj))
         assert len(obj['participants']) == 1
         assert len(obj['actions']) == 3
+
+    async def test_add_child_message(self):
+        second_msg_key = 'msg-secondmessagekey'
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item=second_msg_key)
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers())
+        assert r.status == 201, await r.text()
+        m2_action_key = self.act_headers.action_stack[0]
+
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item='msg-third-messagekey')
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers(parent=m2_action_key))
+        assert r.status == 201, await r.text()
+
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item='msg-fourthmessagekey')
+        headers = self.act_headers(parent=m2_action_key, relationship='child')
+        r = await self.cli.post(url_, data='foobar', headers=headers)
+        assert r.status == 201, await r.text()
+        obj = await self.get_conv(self.conv)
+        print(python_dict(obj))
+        assert [
+            {
+                'after': None,
+                'body': 'this is the message',
+                'deleted': False,
+                'key': 'msg-firstmessagekeyx',
+                'relationship': None
+            },
+            {
+                'after': 'msg-firstmessagekeyx',
+                'body': 'foobar',
+                'deleted': False,
+                'key': 'msg-secondmessagekey',
+                'relationship': 'sibling'
+            },
+            {
+                'after': 'msg-secondmessagekey',
+                'body': 'foobar',
+                'deleted': False,
+                'key': 'msg-third-messagekey',
+                'relationship': 'sibling'
+            },
+            {
+                'after': 'msg-secondmessagekey',
+                'body': 'foobar',
+                'deleted': False,
+                'key': 'msg-fourthmessagekey',
+                'relationship': 'child'
+            }
+        ] == obj['messages']
+
+    async def test_msg_after_deleted(self):
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='delete', item=self.conv.first_msg_key)
+        r = await self.cli.post(url_, headers=self.act_headers())
+        assert r.status == 201, await r.text()
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item=self.conv.first_msg_key)
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers(parent=self.act_headers.action_stack[0]))
+        assert r.status == 400, await r.text()
+        assert 'you cannot add messages after a deleted message' == await r.text()

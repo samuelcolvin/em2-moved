@@ -3,6 +3,7 @@ from datetime import datetime
 from arq.utils import to_unix_ms
 
 from em2 import Settings
+from em2.core import Relationships
 from em2.utils.network import check_server
 
 from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict, timestamp_regex  # noqa
@@ -118,14 +119,14 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'after': None,
                 'body': 'this is the message',
                 'key': 'msg-firstmessagekeyx',
-                'relationship': None
+                'relationship': None,
             },
             {
                 'deleted': False,
                 'after': 'msg-firstmessagekeyx',
                 'body': 'foobar',
                 'key': 'msg-secondmessagekey',
-                'relationship': None
+                'relationship': Relationships.SIBLING,
             }
         ],
         'participants': [

@@ -67,8 +67,8 @@ class Verbs(str, Enum):
 
 @unique
 class Relationships(str, Enum):
-    sibling = 'sibling'
-    child = 'child'
+    SIBLING = 'sibling'
+    CHILD = 'child'
 
 
 class Database:
@@ -220,7 +220,7 @@ class ApplyAction(FetchOr404Mixin):
                 self.action_timestamp = action_timestamp[1:-1]
 
     _find_msg_by_action_sql = """
-    SELECT m.id
+    SELECT m.id, m.deleted
     FROM actions AS a
     JOIN messages AS m ON a.message = m.id
     WHERE a.conv = $1 AND a.key = $2
@@ -245,8 +245,9 @@ class ApplyAction(FetchOr404Mixin):
             raise HTTPBadRequest(text='extra messages cannot be added to draft conversations')
 
         if self.data.parent:
-            # TODO we should check the message is not deleted here
-            after_id = await self.fetchval404(self._find_msg_by_action_sql, self.data.conv, self.data.parent)
+            after_id, deleted = await self.fetchrow404(self._find_msg_by_action_sql, self.data.conv, self.data.parent)
+            if deleted:
+                raise HTTPBadRequest(text='you cannot add messages after a deleted message')
         else:
             # the only valid case here is that there's no action for messages
             if await self.conn.fetchval(self._check_msg_actions_sql, self.data.conv):
@@ -263,7 +264,7 @@ class ApplyAction(FetchOr404Mixin):
             item_key = self.data.item
         else:
             item_key = gen_random('msg')
-        args = item_key, self.data.conv, after_id, self.data.relationship, self.body
+        args = item_key, self.data.conv, after_id, self.data.relationship or Relationships.SIBLING, self.body
         message_id = await self.conn.fetchval(self._add_message_sql, *args)
         return item_key, message_id
 
