@@ -156,15 +156,15 @@ class TestAct:
                 'after': 'msg-secondmessagekey',
                 'body': 'foobar',
                 'deleted': False,
-                'key': 'msg-third-messagekey',
-                'relationship': 'sibling'
+                'key': 'msg-fourthmessagekey',
+                'relationship': 'child'
             },
             {
                 'after': 'msg-secondmessagekey',
                 'body': 'foobar',
                 'deleted': False,
-                'key': 'msg-fourthmessagekey',
-                'relationship': 'child'
+                'key': 'msg-third-messagekey',
+                'relationship': 'sibling'
             }
         ] == obj['messages']
 

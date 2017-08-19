@@ -37,7 +37,8 @@ CREATE TABLE messages (
   key CHAR(20) NOT NULL,
   conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   after INT REFERENCES messages,
-  relationship RELATIONSHIP, -- TODO perhaps record depth to limit child replies
+  relationship RELATIONSHIP,
+  position INT[] NOT NULL DEFAULT ARRAY[1],
   deleted BOOLEAN DEFAULT FALSE,
   body TEXT,
   UNIQUE (conv, key)

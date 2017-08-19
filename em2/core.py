@@ -220,7 +220,7 @@ class ApplyAction(FetchOr404Mixin):
                 self.action_timestamp = action_timestamp[1:-1]
 
     _find_msg_by_action_sql = """
-    SELECT m.id, m.deleted
+    SELECT m.id, m.deleted, m.position
     FROM actions AS a
     JOIN messages AS m ON a.message = m.id
     WHERE a.conv = $1 AND a.key = $2
@@ -236,7 +236,7 @@ class ApplyAction(FetchOr404Mixin):
     LIMIT 2
     """
     _add_message_sql = """
-    INSERT INTO messages (key, conv, after, relationship, body) VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO messages (key, conv, after, relationship, position, body) VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING id
     """
 
@@ -245,7 +245,8 @@ class ApplyAction(FetchOr404Mixin):
             raise HTTPBadRequest(text='extra messages cannot be added to draft conversations')
 
         if self.data.parent:
-            after_id, deleted = await self.fetchrow404(self._find_msg_by_action_sql, self.data.conv, self.data.parent)
+            after_id, deleted, position = await self.fetchrow404(self._find_msg_by_action_sql,
+                                                                 self.data.conv, self.data.parent)
             if deleted:
                 raise HTTPBadRequest(text='you cannot add messages after a deleted message')
         else:
@@ -256,6 +257,7 @@ class ApplyAction(FetchOr404Mixin):
             if len(msg_ids) != 1:
                 raise HTTPBadRequest(text=f'only one message should exist if parent is null: {len(msg_ids)}')
             after_id = msg_ids[0][0]
+            position = [1]
 
         if not self.data.body:
             raise HTTPBadRequest(text='body can not be empty when adding a message')
@@ -264,7 +266,13 @@ class ApplyAction(FetchOr404Mixin):
             item_key = self.data.item
         else:
             item_key = gen_random('msg')
-        args = item_key, self.data.conv, after_id, self.data.relationship or Relationships.SIBLING, self.body
+        relationship = self.data.relationship or Relationships.SIBLING
+        if relationship == Relationships.SIBLING:
+            position[-1] += 1
+        else:
+            # TODO maybe want to limit child depth here
+            position.append(1)
+        args = item_key, self.data.conv, after_id, relationship, position, self.body
         message_id = await self.conn.fetchval(self._add_message_sql, *args)
         return item_key, message_id
 
@@ -402,7 +410,7 @@ class GetConv(FetchOr404Mixin):
       FROM messages AS m1
       LEFT JOIN messages AS m2 ON m1.after = m2.id
       WHERE m1.conv = $1
-      ORDER BY m1.id
+      ORDER BY m1.position, m1.id
     ) t;
     """
 
