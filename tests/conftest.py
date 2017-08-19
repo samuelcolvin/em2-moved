@@ -87,11 +87,12 @@ class ConvInfo(NamedTuple):
 
 @pytest.fixture
 def create_conv(db_conn):
-    async def create_conv_(*, creator='testing@example.com', key='key12345678', subject='Test Conversation'):
+    async def create_conv_(*, creator='testing@example.com', key='key12345678',
+                           subject='Test Conversation', published=False):
         recipient_id = await get_create_recipient(db_conn, creator)
-        args = key, recipient_id, subject, 'test-conv'
-        conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref) '
-                                         'VALUES ($1, $2, $3, $4) RETURNING id', *args)
+        args = key, recipient_id, subject, 'test-conv', published
+        conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref, published) '
+                                         'VALUES ($1, $2, $3, $4, $5) RETURNING id', *args)
         await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, recipient_id)
         first_msg_key = 'msg-firstmessagekeyx'
         args = first_msg_key, conv_id, 'this is the message'

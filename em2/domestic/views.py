@@ -99,6 +99,7 @@ class Act(View):
             remote_action=False,
             action_key=gen_random('act'),
             conv=conv_id,
+            published=conv_published,
             actor=self.session.recipient_id,
             component=request.match_info['component'],
             verb=request.match_info['verb'],
@@ -127,7 +128,9 @@ class Publish(View):
     SELECT c.id, c.subject
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
-    WHERE c.published = False AND c.key = $1 AND c.creator = $2 AND p.recipient = $2
+    WHERE c.published = False AND c.key LIKE $1 AND c.creator = $2 AND p.recipient = $2
+    ORDER BY c.timestamp, c.id DESC
+    LIMIT 1
     """
     update_conv_sql = """
     UPDATE conversations SET key = $1, timestamp = $2, published = True
@@ -144,7 +147,7 @@ class Publish(View):
         old_conv_key = request.match_info['conv']
         conv_id, subject = await self.fetchrow404(
             self.get_conv_sql,
-            old_conv_key,
+            old_conv_key + '%',
             self.session.recipient_id
         )
         new_ts = datetime.utcnow()

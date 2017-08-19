@@ -7,7 +7,7 @@ from enum import Enum, unique
 from typing import List, NamedTuple, Optional
 
 import asyncpg
-from aiohttp.web import HTTPBadRequest, HTTPConflict, HTTPInternalServerError
+from aiohttp.web import HTTPBadRequest, HTTPConflict
 from asyncpg.pool import Pool  # noqa
 from pydantic import BaseModel, EmailStr, NoneStr, ValidationError, constr
 
@@ -145,6 +145,7 @@ class ApplyAction(FetchOr404Mixin):
     class Data(WebModel):
         action_key: constr(min_length=20, max_length=20)
         conv: int
+        published: bool
         verb: Verbs
         component: Components
         actor: int
@@ -240,6 +241,9 @@ class ApplyAction(FetchOr404Mixin):
     """
 
     async def _add_message(self):
+        if not self.data.published:
+            raise HTTPBadRequest(text='extra messages cannot be added to draft conversations')
+
         if self.data.parent:
             # TODO we should check the message is not deleted here
             after_id = await self.fetchval404(self._find_msg_by_action_sql, self.data.conv, self.data.parent)
@@ -290,10 +294,7 @@ class ApplyAction(FetchOr404Mixin):
         if r:
             parent_id, parent_key, parent_verb, parent_actor = r
         else:
-            if await self.conn.fetchval(self._check_msg_actions_sql, self.data.conv):
-                # This should never happen but let's leave the test in place in case something goes wrong
-                raise HTTPInternalServerError(text=f'no actions for message {message_key}, '
-                                                   f'but other message actions exist')
+            # this only happens when the first message which has no actions is modified
             parent_id = None
             parent_key = None
             parent_verb = Verbs.ADD

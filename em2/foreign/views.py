@@ -76,7 +76,7 @@ class Act(ForeignView):
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     JOIN recipients AS r ON p.recipient = r.id
-    WHERE c.key = $1 AND r.address = $2
+    WHERE c.key = $1 AND c.published = TRUE AND r.address = $2
     """
     get_conv_sql = """
     SELECT id FROM conversations WHERE key = $1
@@ -121,6 +121,7 @@ class Act(ForeignView):
             remote_action=True,
             action_key=self.required_header('em2-action-key'),
             conv=conv_id,
+            published=True,
             actor=actor_id,
             timestamp=self.required_header('em2-timestamp'),
             component=component,

@@ -199,66 +199,77 @@ def _get_details(ctx, session, conversation):
         raise
 
 
-@cli.command()
+@cli.group()
+@click.pass_context
+def add(ctx):
+    pass
+
+
+@add.command(name='message')
 @click.pass_context
 @click.option('--parent')
-@click.argument('component', type=click.Choice(['msg', 'message', 'prt', 'participant']))
 @click.argument('conversation')
 @click.argument('body')
-def add(ctx, parent, component, conversation, body):
+def add_message(ctx, parent, conversation, body):
     session = make_session(ctx)
-    component = {'msg': 'message',  'prt': 'participant'}.get(component, component)
-    if component == 'message':
-        if not parent:
-            conv_details = _get_details(ctx, session, conversation)
-            actions = conv_details['actions'] or []
-            try:
-                parent = next(a for a in reversed(actions) if a['message'])['key']
-            except StopIteration:
-                pass
+    if not parent:
+        conv_details = _get_details(ctx, session, conversation)
+        actions = conv_details['actions'] or []
+        try:
+            parent = next(a for a in reversed(actions) if a['message'])['key']
+        except StopIteration:
+            print('no parent found, assuming no actions have occurred')
 
-        post_data = {
-            'body': body,
-            'parent': parent,
-        }
-    else:
-        post_data = {
-            'item': body,
-        }
+    post_data = {
+        'body': body,
+        'parent': parent,
+    }
 
-    r = session.post(url(ctx, f'/d/act/{conversation}/{component}/add/'), json=post_data)
+    r = session.post(url(ctx, f'/d/act/{conversation}/message/add/'), json=post_data)
     print_response(r)
 
 
-@cli.command()
+@add.command(name='participant')
+@click.pass_context
+@click.argument('conversation')
+@click.argument('address')
+def add(ctx, conversation, address):
+    session = make_session(ctx)
+    post_data = {'item': address}
+
+    r = session.post(url(ctx, f'/d/act/{conversation}/participant/add/'), json=post_data)
+    print_response(r)
+
+
+@cli.group()
+@click.pass_context
+def modify(ctx):
+    pass
+
+
+@modify.command(name='message')
 @click.pass_context
 @click.option('--parent')
-@click.argument('component', type=click.Choice(['msg', 'message', 'prt', 'participant']))
 @click.argument('conversation')
+@click.argument('item')
 @click.argument('body')
-def modify(ctx, parent, component, conversation, body):
+def modify_message(ctx, parent, conversation, item, body):
     session = make_session(ctx)
-    conv_details = None
-    component = {'msg': 'message',  'prt': 'participant'}.get(component, component)
-    if component == 'message':
-        if not parent:
-            conv_details = conv_details or _get_details(ctx, session, conversation)
-            actions = conv_details['actions'] or []
-            try:
-                parent = next(a for a in reversed(actions) if a['message'])['key']
-            except StopIteration:
-                pass
+    if not parent:
+        conv_details = _get_details(ctx, session, conversation)
+        actions = conv_details['actions'] or []
+        try:
+            parent = next(a for a in reversed(actions) if a['message'] == item)['key']
+        except StopIteration:
+            print('no parent found, assuming no actions have occurred')
 
-        post_data = {
-            'body': body,
-            'parent': parent,
-        }
-    else:
-        post_data = {
-            'item': body,
-        }
+    post_data = {
+        'item': item,
+        'body': body,
+        'parent': parent,
+    }
 
-    r = session.post(url(ctx, f'/d/act/{conversation}/{component}/add/'), json=post_data)
+    r = session.post(url(ctx, f'/d/act/{conversation}/message/modify/'), json=post_data)
     print_response(r)
 
 

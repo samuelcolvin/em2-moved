@@ -5,9 +5,9 @@ from ..conftest import python_dict, timestamp_regex  # noqa
 
 class TestAct:
     @pytest.fixture(autouse=True)
-    def set_fixtures(self, cli, conv, url, get_conv, act_headers):
+    def set_fixtures(self, cli, pub_conv, url, get_conv, act_headers):
         self.cli = cli
-        self.conv = conv
+        self.conv = pub_conv
         self.url = url
         self.get_conv = get_conv
         self.act_headers = act_headers

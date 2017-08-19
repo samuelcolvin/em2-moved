@@ -112,17 +112,26 @@ async def test_create_conv(cli, url, db_conn):
     assert conv_key.startswith('dft-')
 
 
-async def test_add_message(cli, conv, url, db_conn):
-    data = {
-        'body': 'hello',
-    }
+async def test_add_message_not_published(cli, conv, url):
+    data = {'body': 'hello'}
     url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
+    assert r.status == 400, await r.text()
+    assert 'extra messages cannot be added until the conversation is published' == await r.text()
+
+
+async def test_add_message(cli, conv, url, db_conn):
+    r = await cli.post(url('publish', conv=conv.key))
+    assert r.status == 200, await r.text()
+    new_conv_key = (await r.json())['key']
+    data = {'body': 'hello'}
+    url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
     assert r.status == 201, await r.text()
     obj = await r.json()
     assert {
         'key': RegexStr('act-.*'),
-        'conv_key': 'key12345678',
+        'conv_key': new_conv_key,
         'verb': 'add',
         'component': 'message',
         'ts': timestamp_regex,
@@ -185,12 +194,15 @@ async def test_add_message_invalid_data_model_error(cli, conv, url):
 
 
 async def test_add_message_get(cli, conv, url, db_conn):
+    r = await cli.post(url('publish', conv=conv.key))
+    assert r.status == 200, await r.text()
+    new_conv_key = (await r.json())['key']
     data = {'item': 'msg-firstmessagekeyx', 'body': 'reply', 'relationship': 'sibling'}
-    url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
+    url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
     assert r.status == 201, await r.text()
 
-    r = await cli.get(url('get', conv=conv.key))
+    r = await cli.get(url('get', conv=new_conv_key))
     assert r.status == 200, await r.text()
     obj = await r.json()
     new_msg_key = await db_conn.fetchval("SELECT key FROM messages WHERE body = 'reply'")
@@ -198,10 +210,21 @@ async def test_add_message_get(cli, conv, url, db_conn):
     assert {
         'actions': [
             {
+                'actor': 'testing@example.com',
+                'body': None,
+                'component': 'participant',
+                'key': await db_conn.fetchval("SELECT key FROM actions WHERE component = 'participant'"),
+                'message': None,
+                'parent': None,
+                'participant': None,
+                'ts': CloseToNow(),
+                'verb': 'add'
+            },
+            {
                 'actor': conv.creator_address,
                 'body': 'reply',
                 'component': 'message',
-                'key': await db_conn.fetchval('SELECT key FROM actions'),
+                'key': await db_conn.fetchval("SELECT key FROM actions WHERE component = 'message'"),
                 'message': new_msg_key,
                 'parent': None,
                 'participant': None,
@@ -211,8 +234,8 @@ async def test_add_message_get(cli, conv, url, db_conn):
         ],
         'details': {
             'creator': conv.creator_address,
-            'key': 'key12345678',
-            'published': False,
+            'key': new_conv_key,
+            'published': True,
             'subject': 'Test Conversation',
             'ts': CloseToNow()
         },

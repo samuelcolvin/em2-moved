@@ -44,30 +44,30 @@ async def test_get_conv(cli, conv, url):
     } == obj
 
 
-async def test_add_message_participant(cli, conv, url, get_conv):
+async def test_add_message_participant(cli, pub_conv, url, get_conv):
     r = await cli.post(
-        url('act', conv=conv.key, component='message', verb='add', item='msg-secondmessagekey'),
+        url('act', conv=pub_conv.key, component='message', verb='add', item='msg-secondmessagekey'),
         data='foobar',
         headers={
             'em2-auth': 'already-authenticated.com:123:whatever',
-            'em2-actor': conv.creator_address,
+            'em2-actor': pub_conv.creator_address,
             'em2-timestamp': datetime.now().strftime('%s'),
             'em2-action-key': 'x' * 20,
         }
     )
     assert r.status == 201, await r.text()
     r = await cli.post(
-        url('act', conv=conv.key, component='participant', verb='add', item='foobar@example.com'),
+        url('act', conv=pub_conv.key, component='participant', verb='add', item='foobar@example.com'),
         data='foobar',
         headers={
             'em2-auth': 'already-authenticated.com:123:whatever',
-            'em2-actor': conv.creator_address,
+            'em2-actor': pub_conv.creator_address,
             'em2-timestamp': datetime.now().strftime('%s'),
             'em2-action-key': 'y' * 20,
         }
     )
     assert r.status == 201, await r.text()
-    obj = await get_conv(conv)
+    obj = await get_conv(pub_conv)
     print(python_dict(obj))
     assert {
         'actions': [
@@ -96,8 +96,8 @@ async def test_add_message_participant(cli, conv, url, get_conv):
         ],
         'details': {
             'creator': 'test@already-authenticated.com',
-            'key': 'key12345678',
-            'published': False,
+            'key': pub_conv.key,
+            'published': True,
             'subject': 'Test Conversation',
             'ts': timestamp_regex
         },

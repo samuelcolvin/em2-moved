@@ -21,6 +21,11 @@ def conv(loop, create_conv):
     return loop.run_until_complete(create_conv(creator='test@already-authenticated.com'))
 
 
+@pytest.fixture
+def pub_conv(loop, create_conv):
+    return loop.run_until_complete(create_conv(creator='test@already-authenticated.com', published=True))
+
+
 GET_CONV_CREATOR = """
 SELECT r.address FROM recipients AS r JOIN conversations AS c ON r.id = c.creator
 WHERE c.key = $1
@@ -47,11 +52,13 @@ def get_conv(cli, url, db_conn):
 
 
 @pytest.fixture
-def act_headers(conv):
+def act_headers(request):
+    conv_ = request.getfixturevalue('conv' if 'conv' in request.fixturenames else 'pub_conv')
+
     class ActHeaders:
         def __init__(self):
             self.key_id = 0
-            self.dft_actor = conv.creator_address
+            self.dft_actor = conv_.creator_address
             self.action_stack = []
 
         def __call__(self, **kwargs):
