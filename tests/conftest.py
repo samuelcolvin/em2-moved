@@ -29,6 +29,7 @@ def pytest_addoption(parser):
 @pytest.fixture(scope='session')
 def settings():
     return Settings(
+        DEBUG=True,  # needed for insecure cookies
         PG_NAME='em2_test',
         LOCAL_DOMAIN='em2.platform.example.com',
         authenticator_cls='tests.fixture_classes.FixedSimpleAuthenticator',
@@ -48,7 +49,7 @@ def clean_db(request, settings):
 
 
 @pytest.yield_fixture
-def db_conn(loop, settings, clean_db):
+def db_conn(loop, settings, clean_db, redis):
     await_ = loop.run_until_complete
     conn = await_(asyncpg.connect(dsn=settings.pg_dsn, loop=loop))
 

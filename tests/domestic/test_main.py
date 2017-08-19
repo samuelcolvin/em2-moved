@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import json
 from asyncio import sleep
@@ -54,7 +53,7 @@ async def test_invalid_cookie(cli, url, settings):
 
 async def test_session_update(cli, url):
     assert len(cli.session.cookie_jar) == 1
-    c1 = list(cli.session.cookie_jar)[-1]
+    c1 = list(cli.session.cookie_jar)[0]
 
     r = await cli.get(url('list'))
     assert r.status == 200, await r.text()
@@ -66,6 +65,8 @@ async def test_session_update(cli, url):
     assert len(cli.session.cookie_jar) == 2
     c3 = list(cli.session.cookie_jar)[-1]
     assert c1 != c2
+    print(c2)
+    print(c3)
     assert c2 == c3
 
 
@@ -108,7 +109,7 @@ async def test_create_conv(cli, url, db_conn):
     assert r.status == 201, await r.text()
     conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     assert {'url': f'/c/{conv_key}/'} == await r.json()
-    assert conv_key.startswith('draft-')
+    assert conv_key.startswith('dft-')
 
 
 async def test_add_message(cli, conv, url, db_conn):
@@ -285,7 +286,7 @@ async def test_add_part_get(cli, conv, url, db_conn):
     } == obj
 
 
-async def test_publish_conv(cli, conv, url, db_conn, redis):
+async def test_publish_conv(cli, conv, url, db_conn):
     published, ts1 = await db_conn.fetchrow('SELECT published, timestamp FROM conversations')
     assert not published
     await sleep(0.01)
@@ -312,7 +313,7 @@ async def test_publish_conv(cli, conv, url, db_conn, redis):
     } == action
 
 
-async def test_publish_conv_foreign_part(cli, conv, url, db_conn, redis, foreign_server):
+async def test_publish_conv_foreign_part(cli, conv, url, db_conn, foreign_server):
     url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json={'item': 'other@foreign.com'})
     assert r.status == 201, await r.text()
@@ -330,7 +331,7 @@ async def test_publish_conv_foreign_part(cli, conv, url, db_conn, redis, foreign
     ]
 
 
-async def test_publish_add_msg_conv(cli, conv, url, db_conn, redis, foreign_server):
+async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
     url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json={'item': 'other@foreign.com'})
     assert r.status == 201, await r.text()
@@ -355,7 +356,7 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, redis, foreign_serv
     ]
 
 
-async def test_publish_update_add_part(cli, conv, url, db_conn, redis, foreign_server):
+async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json={'item': 'other@foreign.com'})
     assert r.status == 201, await r.text()
@@ -380,11 +381,10 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, redis, foreign_s
     ]
 
 
-async def test_publish_domestic_push(cli, conv, url, db_conn, redis, debug):
+async def test_publish_domestic_push(cli, conv, url, db_conn, debug):
     async with cli.session.ws_connect(cli.make_url('/ws/')) as ws:
-
         assert not await db_conn.fetchval('SELECT published FROM conversations')
-        await asyncio.sleep(0.1)  # allow the front end time to connect
+        await cli.server.app['background'].ready.wait()
         r = await cli.post(url('publish', conv=conv.key))
         assert r.status == 200, await r.text()
         assert await db_conn.fetchval('SELECT published FROM conversations')

@@ -66,7 +66,7 @@ class Create(View):
             recip_ids = await create_missing_recipients(self.conn, conv.participants)
             recip_ids = set(recip_ids.values())
 
-        key = gen_random('draft')
+        key = gen_random('dft')
         conv_id = await self.conn.fetchval(self.create_conv_sql, key, self.session.recipient_id, conv.subject)
         if recip_ids:
             await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
@@ -80,14 +80,16 @@ class Act(View):
     SELECT c.id, c.published
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
-    WHERE c.key = $1 AND p.recipient = $2
+    WHERE c.key LIKE $1 AND p.recipient = $2
+    ORDER BY c.timestamp, c.id DESC
+    LIMIT 1
     """
 
     async def call(self, request):
         conv_key = request.match_info['conv']
         conv_id, conv_published = await self.fetchrow404(
             self.get_conv_part_sql,
-            conv_key,
+            conv_key + '%',
             self.session.recipient_id,
             msg=f'conversation {conv_key} not found'
         )

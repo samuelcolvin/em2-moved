@@ -160,7 +160,7 @@ class Pusher(Actor):
                     'recipients': [int(rid) for rid in matching_recipient_ids],
                     'action': action_dict,
                 }
-                await redis.lpush(job_name, msg_encode(job_data))
+                await redis.rpush(job_name, msg_encode(job_data))
 
     async def foreign_push(self, nodes, action: Action):
         """

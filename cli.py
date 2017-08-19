@@ -104,7 +104,7 @@ def get_cookie(ctx):
     return 'em2session', fernet.encrypt(data).decode()
 
 
-def get_session(ctx):
+def make_session(ctx):
     session = requests.Session()
     session.cookies.set(*get_cookie(ctx))
     return session
@@ -148,7 +148,7 @@ def genkey(ctx):
 @cli.command(name='list')
 @click.pass_context
 def list_(ctx):
-    session = get_session(ctx)
+    session = make_session(ctx)
     r = session.get(url(ctx, '/d/'))
     print_response(r)
 
@@ -166,7 +166,7 @@ def create(ctx, subject, body, participants):
         'message': body,
         'participants': list(participants),
     }
-    session = get_session(ctx)
+    session = make_session(ctx)
     r = session.post(url(ctx, '/d/create/'), json=data)
     print_response(r)
 
@@ -175,7 +175,7 @@ def create(ctx, subject, body, participants):
 @click.pass_context
 @click.argument('conversation')
 def get(ctx, conversation):
-    session = get_session(ctx)
+    session = make_session(ctx)
     r = session.get(url(ctx, f'/d/c/{conversation}/'))
     print_response(r)
 
@@ -184,7 +184,7 @@ def get(ctx, conversation):
 @click.pass_context
 @click.argument('conversation')
 def publish(ctx, conversation):
-    session = get_session(ctx)
+    session = make_session(ctx)
     r = session.post(url(ctx, f'/d/publish/{conversation}/'))
     print_response(r)
 
@@ -206,7 +206,38 @@ def _get_details(ctx, session, conversation):
 @click.argument('conversation')
 @click.argument('body')
 def add(ctx, parent, component, conversation, body):
-    session = get_session(ctx)
+    session = make_session(ctx)
+    component = {'msg': 'message',  'prt': 'participant'}.get(component, component)
+    if component == 'message':
+        if not parent:
+            conv_details = _get_details(ctx, session, conversation)
+            actions = conv_details['actions'] or []
+            try:
+                parent = next(a for a in reversed(actions) if a['message'])['key']
+            except StopIteration:
+                pass
+
+        post_data = {
+            'body': body,
+            'parent': parent,
+        }
+    else:
+        post_data = {
+            'item': body,
+        }
+
+    r = session.post(url(ctx, f'/d/act/{conversation}/{component}/add/'), json=post_data)
+    print_response(r)
+
+
+@cli.command()
+@click.pass_context
+@click.option('--parent')
+@click.argument('component', type=click.Choice(['msg', 'message', 'prt', 'participant']))
+@click.argument('conversation')
+@click.argument('body')
+def modify(ctx, parent, component, conversation, body):
+    session = make_session(ctx)
     conv_details = None
     component = {'msg': 'message',  'prt': 'participant'}.get(component, component)
     if component == 'message':

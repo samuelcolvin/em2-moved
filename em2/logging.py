@@ -12,7 +12,7 @@ def prepare_log_config(settings) -> dict:
         'disable_existing_loggers': True,
         'formatters': {
             'em2.default': {
-                'format': '%(name)20s %(asctime)s| %(message)s',
+                'format': '%(name)17s %(asctime)s| %(message)s',
                 'datefmt': '%H:%M:%S',
             },
         },
