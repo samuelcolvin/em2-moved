@@ -25,7 +25,7 @@ class TestAct:
                                 headers=self.act_headers(parent=self.act_headers.action_stack[0]))
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        assert len(obj['actions']) == 2
+        assert len(obj['actions']) == 3
         assert obj['messages'][1]['body'] == 'different content'
 
     async def test_lock_unlock_message(self):
@@ -33,7 +33,7 @@ class TestAct:
         r = await self.cli.post(url_, headers=self.act_headers())
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        assert len(obj['actions']) == 1
+        assert len(obj['actions']) == 2
         assert {
             'actor': 'test@already-authenticated.com',
             'body': None,
@@ -44,7 +44,7 @@ class TestAct:
             'participant': None,
             'ts': timestamp_regex,
             'verb': 'lock'
-        } == obj['actions'][0]
+        } == obj['actions'][1]
 
         url_ = self.url('act', conv=self.conv.key, component='message', verb='lock', item=self.conv.first_msg_key)
         r = await self.cli.post(url_, headers=self.act_headers(parent='1-------------------'))
@@ -54,17 +54,17 @@ class TestAct:
         r = await self.cli.post(url_, headers=self.act_headers(parent='1-------------------'))
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        assert len(obj['actions']) == 2
-        assert obj['actions'][1]['verb'] == 'unlock'
+        assert len(obj['actions']) == 3
+        assert obj['actions'][2]['verb'] == 'unlock'
 
     async def test_delete_recover_message(self):
         url_ = self.url('act', conv=self.conv.key, component='message', verb='delete', item=self.conv.first_msg_key)
         r = await self.cli.post(url_, headers=self.act_headers())
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        assert len(obj['actions']) == 1
-        assert obj['actions'][0]['message'] == self.conv.first_msg_key
-        assert obj['actions'][0]['verb'] == 'delete'
+        assert len(obj['actions']) == 2
+        assert obj['actions'][1]['message'] == self.conv.first_msg_key
+        assert obj['actions'][1]['verb'] == 'delete'
         assert len(obj['messages']) == 1
         assert obj['messages'][0]['deleted'] is True
         assert obj['messages'][0]['body'] == 'this is the message'
@@ -78,7 +78,7 @@ class TestAct:
         r = await self.cli.post(url_, headers=self.act_headers(parent=self.act_headers.action_stack[1]))
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        assert len(obj['actions']) == 2
+        assert len(obj['actions']) == 3
         assert len(obj['messages']) == 1
         assert obj['messages'][0]['deleted'] is False
         assert obj['messages'][0]['body'] == 'this is the message'
@@ -87,7 +87,7 @@ class TestAct:
         r = await self.cli.post(url_, data='foobar', headers=self.act_headers(parent=self.act_headers.action_stack[0]))
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        assert len(obj['actions']) == 3
+        assert len(obj['actions']) == 4
         assert len(obj['messages']) == 1
         assert obj['messages'][0]['deleted'] is False
         assert obj['messages'][0]['body'] == 'foobar'
@@ -108,7 +108,7 @@ class TestAct:
         obj = await self.get_conv(self.conv)
         # print(python_dict(obj))
         assert len(obj['participants']) == 2
-        assert len(obj['actions']) == 1
+        assert len(obj['actions']) == 2
         r = await self.cli.post(
             self.url('act', conv=self.conv.key, component='participant', verb='delete', item='foobar@example.com'),
             data='foobar',
@@ -118,4 +118,4 @@ class TestAct:
         obj = await self.get_conv(self.conv)
         # print(python_dict(obj))
         assert len(obj['participants']) == 1
-        assert len(obj['actions']) == 2
+        assert len(obj['actions']) == 3

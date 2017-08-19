@@ -97,6 +97,13 @@ def create_conv(db_conn):
         first_msg_key = 'msg-firstmessagekeyx'
         args = first_msg_key, conv_id, 'this is the message'
         await db_conn.execute('INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)', *args)
+        if published:
+            print(repr(conv_id), repr(creator))
+            await db_conn.execute("""
+                INSERT INTO actions (key, conv, actor, verb, component)
+                VALUES ($1, $2, $3, 'add', 'participant')
+                """, 'act-1234567890123456', conv_id, recipient_id)
+
         return ConvInfo(id=conv_id, key=key, first_msg_key=first_msg_key, creator_address=creator)
     return create_conv_
 

@@ -73,6 +73,17 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
         'actions': [
             {
                 'actor': 'test@already-authenticated.com',
+                'body': None,
+                'component': 'participant',
+                'key': 'act-1234567890123456',
+                'message': None,
+                'parent': None,
+                'participant': None,
+                'ts': timestamp_regex,
+                'verb': 'add'
+            },
+            {
+                'actor': 'test@already-authenticated.com',
                 'body': 'foobar',
                 'component': 'message',
                 'key': 'xxxxxxxxxxxxxxxxxxxx',

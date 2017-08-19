@@ -162,7 +162,7 @@ class ApplyAction(FetchOr404Mixin):
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING id
     """
-    create_action_create_ts_sql = """
+    create_action_auto_ts_sql = """
     INSERT INTO actions (key, conv, verb, component, actor, parent, recipient, message, body)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING id, to_json(timestamp)
@@ -215,7 +215,7 @@ class ApplyAction(FetchOr404Mixin):
                 args += self.data.timestamp.replace(tzinfo=None),
                 self.action_id = await self.conn.fetchval(self.create_action_sql, *args)
             else:
-                self.action_id, action_timestamp = await self.conn.fetchrow(self.create_action_create_ts_sql, *args)
+                self.action_id, action_timestamp = await self.conn.fetchrow(self.create_action_auto_ts_sql, *args)
                 # remove quotes added by to_json
                 self.action_timestamp = action_timestamp[1:-1]
 

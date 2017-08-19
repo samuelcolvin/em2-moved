@@ -117,7 +117,7 @@ async def test_add_message_not_published(cli, conv, url):
     url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
     assert r.status == 400, await r.text()
-    assert 'extra messages cannot be added until the conversation is published' == await r.text()
+    assert 'extra messages cannot be added to draft conversations' == await r.text()
 
 
 async def test_add_message(cli, conv, url, db_conn):
