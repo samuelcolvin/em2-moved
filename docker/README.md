@@ -2,9 +2,9 @@
 
 The directory contains files required to serve the basic em2 server with docker.
 
-To build (from repo root directory):
+To build:
 
-    docker build . -t em2 -f docker/Dockerfile
+    ./build/build.sh
 
 To run the compose example:
 
