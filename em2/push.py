@@ -128,7 +128,7 @@ class Pusher(Actor):
 
             if transmit:
                 if remote_nodes:
-                    await self.foreign_push(remote_nodes.keys(), action)
+                    await self.foreign_push(remote_nodes, action)
 
                 if fallback_addresses:
                     subject = await conn.fetch(self.conv_subject_sql, action.conv_id)
@@ -162,30 +162,37 @@ class Pusher(Actor):
                 }
                 await redis.rpush(job_name, msg_encode(job_data))
 
-    async def foreign_push(self, nodes, action: Action):
+    async def foreign_push(self, node_lookup, action: Action):
         """
         Push action to participants on remote nodes.
         """
         item = action.item or ''
         path = f'{action.conv_key}/{action.component}/{action.verb}/{item}'
-        headers = {
-            'content-type': 'text/plain',  # TODO is this necessary?
+        universal_headers = {
+            'content-type': 'application/em2',
             'em2-actor': action.actor,
             'em2-timestamp': str(to_unix_ms(action.timestamp)),
             'em2-action-key': action.action_key,
             'em2-parent': action.parent,
             'em2-relationship': action.relationship,
         }
-        headers = {k: v for k, v in headers.items() if v is not None}
+        universal_headers = {k: v for k, v in universal_headers.items() if v is not None}
         data = action.body and action.body.encode()
-        cos = [self._post(node, path, headers, data) for node in nodes]
+        cos = [
+            self._post(node, addresses.pop(), path, universal_headers, data)
+            for node, addresses in node_lookup.items()
+        ]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 
-    async def _post(self, domain, path, headers, data):
+    async def _post(self, domain, address, path, universal_headers, data):
         logger.info('posting to %s > %s', domain, path)
         token = await self.authenticate(domain)
-        headers['em2-auth'] = token
+        headers = {
+            'em2-auth': token,
+            'em2-participant': address,
+            **universal_headers
+        }
         url = f'{self.settings.COMMS_PROTO}://{domain}/{path}'
 
         async with self.session.post(url, data=data, headers=headers) as r:

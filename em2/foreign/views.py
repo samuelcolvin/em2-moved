@@ -71,7 +71,7 @@ class Get(ForeignView):
 
 
 class Act(ForeignView):
-    find_participant_sql = """
+    find_conv_sql = """
     SELECT c.id, r.id
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
@@ -95,7 +95,7 @@ class Act(ForeignView):
         component = request.match_info['component']
         verb = request.match_info['verb']
         item = request.match_info['item'] or None
-        r = await self.conn.fetchrow(self.find_participant_sql, conv_key, actor_address)
+        r = await self.conn.fetchrow(self.find_conv_sql, conv_key, actor_address)
         if not r:
             if await self.conn.fetchval(self.get_conv_sql, conv_key):
                 # if the conv already exists this actor is not a participant in it
@@ -104,15 +104,12 @@ class Act(ForeignView):
                 if not (component in (Components.PARTICIPANT, Components.MESSAGE) and verb == Verbs.ADD):
                     raise HTTPNotFound(text='conversation not found')
 
-                if component == Components.PARTICIPANT:
-                    new_prt_domain = get_domain(item)
-                    if not new_prt_domain:
-                        raise HTTPBadRequest(text='participant address (item) missing')
+                participant = self.required_header('em2-participant')
+                prt_domain = get_domain(participant)
+                if not await self.pusher.domain_is_local(prt_domain):
+                    raise HTTPBadRequest(text=f'participant "{participant}" not linked to this platform')
 
-                    if not await self.pusher.domain_is_local(new_prt_domain):
-                        raise HTTPBadRequest(text=f'participant "{item}" not linked to this platform')
-
-                await self.pusher.create_conv(platform, conv_key, item)
+                await self.pusher.create_conv(platform, conv_key, participant)
                 return web.Response(status=204)
 
         conv_id, actor_id = r
