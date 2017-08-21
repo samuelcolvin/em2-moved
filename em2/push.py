@@ -215,7 +215,7 @@ class Pusher(Actor):
             node = None
             if host == self.settings.LOCAL_DOMAIN:
                 node = self.LOCAL
-            elif host.startswith('em2.'):
+            elif host.startswith('em2'):
                 try:
                     await self.authenticate(host)
                 except Em2ConnectionError:

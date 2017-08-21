@@ -137,12 +137,6 @@ class Authenticator(RedisMixin):
             self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=nameservers)
         return self._resolver
 
-    async def mx_query(self, host):
-        results = await self.dns_query(host, 'MX')
-        results = [(r.priority, r.host) for r in results]
-        results.sort()
-        return results
-
     async def dns_query(self, host, qtype):
         try:
             with timeout(5, loop=self.loop):

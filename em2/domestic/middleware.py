@@ -1,6 +1,7 @@
-from aiohttp.web import HTTPBadRequest, HTTPForbidden
+from aiohttp.web import HTTPBadRequest, HTTPForbidden, Response
 from cryptography.fernet import InvalidToken
 
+from em2 import VERSION
 from em2.core import get_create_recipient
 from em2.utils.encoding import msg_decode, msg_encode
 from em2.utils.web import db_conn_middleware
@@ -12,6 +13,11 @@ from .common import Session
 
 async def user_middleware(app, handler):
     async def user_middleware_handler(request):
+        if request.raw_path == '/':
+            # index can be viewed without auth
+            # intercept here so later middleware can assume the user is authenticated and session exists
+            return Response(text=f'em2 v{VERSION} internal interface, domain: {app["settings"].LOCAL_DOMAIN}\n')
+
         token = request.cookies.get(app['settings'].COOKIE_NAME, '')
         try:
             raw_data = app['fernet'].decrypt(token.encode())

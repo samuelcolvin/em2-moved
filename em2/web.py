@@ -7,8 +7,7 @@ from .version import VERSION
 
 
 async def index(request):
-    domain = request.app['settings'].LOCAL_DOMAIN
-    return Response(text=f'em2 v{VERSION} HTTP api, domain: {domain}\n')
+    return Response(text=f'em2 v{VERSION} shared interface, domain: {request.app["settings"].LOCAL_DOMAIN}\n')
 
 
 def create_app(settings: Settings=None):
@@ -16,6 +15,7 @@ def create_app(settings: Settings=None):
     app = Application()
     app['settings'] = settings
 
+    # TODO deal with domain routing
     app.router.add_get('/', index)
 
     foreign_app = create_foreign_app(settings)

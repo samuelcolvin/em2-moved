@@ -2,7 +2,7 @@ from datetime import datetime
 
 from arq.utils import to_unix_ms
 
-from em2 import Settings
+from em2 import VERSION, Settings
 from em2.core import Relationships
 from em2.utils.network import check_server
 
@@ -154,9 +154,9 @@ async def test_wrong_conv(cli, conv, url):
 
 
 async def test_check_server(cli):
-    r = await check_server(Settings(WEB_PORT=cli.server.port), expected_status=404)
+    r = await check_server(Settings(WEB_PORT=cli.server.port), expected_status=200)
     assert r == 0
-    r = await check_server(Settings(WEB_PORT=cli.server.port + 1), expected_status=404)
+    r = await check_server(Settings(WEB_PORT=cli.server.port + 1), expected_status=200)
     assert r == 1
 
 
@@ -222,5 +222,11 @@ async def test_authenticate_failed(cli, url):
         'em2-signature': VALID_SIGNATURE
     }
     r = await cli.post(url('authenticate'), headers=headers)
-    assert r.status == 400
+    assert r.status == 400, await r.text()
     assert await r.text() == 'Authenticate failed: invalid signature'
+
+
+async def test_index(cli, url):
+    r = await cli.get(url('index'))
+    assert r.status == 200, await r.text()
+    assert f'em2 v{VERSION} external interface, domain: em2.platform.example.com\n' == await r.text()

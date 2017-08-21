@@ -42,7 +42,8 @@ def create_domestic_app(settings, app_name=None):
         name=app_name or gen_random('d'),
     )
 
-    app.router.add_get('/', VList.view(), name='list')
+    # index view is returned by middleware directly
+    app.router.add_get('/list/', VList.view(), name='list')
     app.router.add_post('/create/', Create.view(), name='create')
     app.router.add_get('/ws/', Websocket.view(), name='websocket')
     conv_match = '{conv:[a-z0-9\-]{8,}}'

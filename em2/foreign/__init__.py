@@ -1,10 +1,15 @@
 import logging
-from aiohttp.web import Application
+from aiohttp.web import Application, Response
 
+from em2 import VERSION
 from em2.utils.web import db_conn_middleware
 from .views import Act, Authenticate, Get
 
 logger = logging.getLogger('em2.foreign')
+
+
+async def index(request):
+    return Response(text=f'em2 v{VERSION} external interface, domain: {request.app["settings"].LOCAL_DOMAIN}\n')
 
 
 async def app_startup(app):
@@ -31,7 +36,7 @@ def create_foreign_app(settings):
     app.on_startup.append(app_startup)
     app.on_cleanup.append(app_cleanup)
 
-    # TODO deal with domain routing
+    app.router.add_get('/', index, name='index')
     app.router.add_post('/auth/', Authenticate.view(), name='authenticate')
     app.router.add_get('/get/{conv:[a-z0-9]{8,}}/', Get.view(), name='get')
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', Act.view(), name='act')

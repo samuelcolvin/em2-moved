@@ -23,98 +23,6 @@ except ImportError as e:
     sys.exit(1)
 
 
-def get_data(r):
-    try:
-        return r.json()
-    except ValueError:
-        raise RuntimeError(f'response not valid json: status={r.status_code} content="{r.text}"')
-
-
-formatter = Terminal256Formatter(style='vim')
-
-
-def replace_data(m):
-    dt = parse_datetime(m.group())
-    # WARNING: this means the output is not valid json, but is more readable
-    return f'{m.group()} ({dt:%a %Y-%m-%d %H:%M})'
-
-
-def highlight_data(data, fmt='json'):
-    if data is None:
-        return 'null'
-    if isinstance(data, bytes):
-        data = data.decode()
-
-    if fmt == 'json':
-        try:
-            data = json.loads(data)
-        except ValueError:
-            return f'"{data}"'
-
-    if fmt == 'html':
-        lexer = HtmlLexer()
-    else:
-        lexer = JsonLexer()
-
-    if not isinstance(data, str):
-        data = json.dumps(data, indent=2)
-        data = re.sub('14\d{8,11}', replace_data, data)
-    return highlight(data, lexer, formatter).rstrip('\n')
-
-
-def style(s, pad=0, limit=1000, fmt='{}', **kwargs):
-    s = fmt.format(s)
-    return click.style(str(s).ljust(pad)[:limit], **kwargs)
-
-
-green = partial(style, fg='green')
-blue = partial(style, fg='blue')
-red = partial(style, fg='red')
-magenta = partial(style, fg='magenta')
-yellow = partial(style, fg='yellow')
-dim = partial(style, fg='white', dim=True)
-
-
-def format_dict(d):
-    return '\n'.join(f'  {blue(k, fmt="{}:")} {red(v)}' for k, v in d.items())
-
-
-def print_response(r):
-    print(f"""\
-{dim('request url', fmt='{}:')}     {green(r.request.url)}
-{dim('request method', fmt='{}:')}  {green(r.request.method)}
-{dim('request headers', fmt='{}:')}
-{format_dict(r.request.headers)}
-{dim('request body', fmt='{}:')}
-{highlight_data(r.request.body)}
-{dim('request time', fmt='{}:')}    {green(r.elapsed.total_seconds() * 1000, fmt='{:.0f}ms')}
-
-{dim('response status', fmt='{}:')} {green(r.status_code)}
-{dim('response headers', fmt='{}:')}
-{format_dict(r.headers)}
-{dim('response content', fmt='{}:')}
-{highlight_data(r.text)}
-""")
-
-
-def get_cookie(ctx):
-    data = {'address': ctx.obj['address']}
-    data = msgpack.packb(data, use_bin_type=True)
-    fernet = Fernet(ctx.obj['session_key'])
-    return 'em2session', fernet.encrypt(data).decode()
-
-
-def make_session(ctx):
-    session = requests.Session()
-    session.cookies.set(*get_cookie(ctx))
-    return session
-
-
-def url(ctx, uri):
-    url = '{0[proto]}://{0[platform]}/'.format(ctx.obj)
-    return url + uri.lstrip('/')
-
-
 @click.group()
 @click.pass_context
 @click.option('--proto', default='https', envvar='EM2_COMMS_PROTO', help='env variable: EM2_COMMS_PROTO')
@@ -304,6 +212,98 @@ def watch(ctx):
         loop.run_until_complete(_watch(ctx))
     except KeyboardInterrupt:
         pass
+
+
+def get_data(r):
+    try:
+        return r.json()
+    except ValueError:
+        raise RuntimeError(f'response not valid json: status={r.status_code} content="{r.text}"')
+
+
+formatter = Terminal256Formatter(style='vim')
+
+
+def replace_data(m):
+    dt = parse_datetime(m.group())
+    # WARNING: this means the output is not valid json, but is more readable
+    return f'{m.group()} ({dt:%a %Y-%m-%d %H:%M})'
+
+
+def highlight_data(data, fmt='json'):
+    if data is None:
+        return 'null'
+    if isinstance(data, bytes):
+        data = data.decode()
+
+    if fmt == 'json':
+        try:
+            data = json.loads(data)
+        except ValueError:
+            return f'"{data}"'
+
+    if fmt == 'html':
+        lexer = HtmlLexer()
+    else:
+        lexer = JsonLexer()
+
+    if not isinstance(data, str):
+        data = json.dumps(data, indent=2)
+        data = re.sub('14\d{8,11}', replace_data, data)
+    return highlight(data, lexer, formatter).rstrip('\n')
+
+
+def style(s, pad=0, limit=1000, fmt='{}', **kwargs):
+    s = fmt.format(s)
+    return click.style(str(s).ljust(pad)[:limit], **kwargs)
+
+
+green = partial(style, fg='green')
+blue = partial(style, fg='blue')
+red = partial(style, fg='red')
+magenta = partial(style, fg='magenta')
+yellow = partial(style, fg='yellow')
+dim = partial(style, fg='white', dim=True)
+
+
+def format_dict(d):
+    return '\n'.join(f'  {blue(k, fmt="{}:")} {red(v)}' for k, v in d.items())
+
+
+def print_response(r):
+    print(f"""\
+{dim('request url', fmt='{}:')}     {green(r.request.url)}
+{dim('request method', fmt='{}:')}  {green(r.request.method)}
+{dim('request headers', fmt='{}:')}
+{format_dict(r.request.headers)}
+{dim('request body', fmt='{}:')}
+{highlight_data(r.request.body)}
+{dim('request time', fmt='{}:')}    {green(r.elapsed.total_seconds() * 1000, fmt='{:.0f}ms')}
+
+{dim('response status', fmt='{}:')} {green(r.status_code)}
+{dim('response headers', fmt='{}:')}
+{format_dict(r.headers)}
+{dim('response content', fmt='{}:')}
+{highlight_data(r.text)}
+""")
+
+
+def get_cookie(ctx):
+    data = {'address': ctx.obj['address']}
+    data = msgpack.packb(data, use_bin_type=True)
+    fernet = Fernet(ctx.obj['session_key'])
+    return 'em2session', fernet.encrypt(data).decode()
+
+
+def make_session(ctx):
+    session = requests.Session()
+    session.cookies.set(*get_cookie(ctx))
+    return session
+
+
+def url(ctx, uri):
+    url = '{0[proto]}://{0[platform]}/'.format(ctx.obj)
+    return url + uri.lstrip('/')
 
 
 if __name__ == '__main__':

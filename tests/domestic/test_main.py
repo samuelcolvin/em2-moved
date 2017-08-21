@@ -6,6 +6,7 @@ from aiohttp import WSMsgType
 from async_timeout import timeout
 from cryptography.fernet import Fernet
 
+from em2 import VERSION
 from em2.core import Components, Verbs
 from em2.utils.encoding import msg_encode
 
@@ -441,3 +442,16 @@ async def test_get_latest_conv(cli, create_conv, url, db_conn):
     assert r.status == 200, await r.text()
     obj = await r.json()
     assert obj['details']['subject'] == 'conv2'
+
+
+async def test_index_anon(cli):
+    cli.session.cookie_jar.clear()
+    r = await cli.get('/')
+    assert r.status == 200, await r.text()
+    assert f'em2 v{VERSION} internal interface, domain: em2.platform.example.com\n' == await r.text()
+
+
+async def test_index_auth(cli):
+    r = await cli.get('/')
+    assert r.status == 200, await r.text()
+    assert f'em2 v{VERSION} internal interface, domain: em2.platform.example.com\n' == await r.text()

@@ -53,18 +53,3 @@ async def check_server(settings: Settings, expected_status=200):
     else:
         logger.info('web check successful "%s", response %d', url, expected_status)
         return 0
-
-
-async def _list_conversations(settings, loop, logger):
-    ds = settings.datastore_cls(settings=settings, loop=loop)
-    await ds.startup()
-    logger.info('Conversations:')
-    try:
-        c = 0
-        async for conv in ds.all_conversations():
-            conv_id = conv.pop('conv_id')
-            logger.info(f'  id={conv_id:.6} ' + ' '.join(f'{k}="{str(v):.40}"' for k, v in sorted(conv.items())))
-            c += 1
-        logger.info(f'total {c} conversations')
-    finally:
-        await ds.shutdown()
