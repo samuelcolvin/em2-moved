@@ -229,4 +229,4 @@ async def test_authenticate_failed(cli, url):
 async def test_index(cli, url):
     r = await cli.get(url('index'))
     assert r.status == 200, await r.text()
-    assert f'em2 v{VERSION} external interface, domain: em2.platform.example.com\n' == await r.text()
+    assert f'em2 v{VERSION} foreign interface, domain: em2.platform.example.com\n' == await r.text()

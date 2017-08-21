@@ -31,7 +31,8 @@ def settings():
     return Settings(
         DEBUG=True,  # needed for insecure cookies
         PG_NAME='em2_test',
-        LOCAL_DOMAIN='em2.platform.example.com',
+        DOMESTIC_DOMAIN='platform.example.com',
+        FOREIGN_DOMAIN='em2.platform.example.com',
         authenticator_cls='tests.fixture_classes.FixedSimpleAuthenticator',
         db_cls='tests.fixture_classes.TestDatabase',
         pusher_cls='tests.fixture_classes.DNSMockedPusher',

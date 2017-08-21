@@ -213,7 +213,7 @@ class Pusher(Actor):
             return self.LOCAL
         async for host in self.mx_hosts(domain):
             node = None
-            if host == self.settings.LOCAL_DOMAIN:
+            if host == self.settings.FOREIGN_DOMAIN:
                 node = self.LOCAL
             elif host.startswith('em2'):
                 try:
@@ -319,12 +319,12 @@ class Pusher(Actor):
         return key
 
     def _auth_data(self):
-        yield 'platform', self.settings.LOCAL_DOMAIN
+        yield 'platform', self.settings.FOREIGN_DOMAIN
 
         timestamp = self._now_unix()
         yield 'timestamp', timestamp
 
-        msg = '{}:{}'.format(self.settings.LOCAL_DOMAIN, timestamp)
+        msg = '{}:{}'.format(self.settings.FOREIGN_DOMAIN, timestamp)
         h = SHA256.new(msg.encode())
 
         key = RSA.importKey(self.settings.private_domain_key)
@@ -335,7 +335,7 @@ class Pusher(Actor):
     async def domain_is_local(self, domain: str) -> bool:
         # TODO results should be cached
         async for host in self.mx_hosts(domain):
-            if host == self.settings.LOCAL_DOMAIN:
+            if host == self.settings.FOREIGN_DOMAIN:
                 return True
         return False
 
@@ -377,4 +377,4 @@ class Pusher(Actor):
 
     def __repr__(self):
         ref = self.ref or (self.is_shadow and 'worker') or '-'
-        return '{}<{}:{}>'.format(self.__class__.__name__, self.settings.LOCAL_DOMAIN, ref)
+        return '{}<{}:{}>'.format(self.__class__.__name__, self.settings.DOMESTIC_DOMAIN, ref)

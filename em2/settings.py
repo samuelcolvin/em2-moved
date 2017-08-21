@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     PG_POOL_MINSIZE = 1
     PG_POOL_MAXSIZE = 10
 
-    LOCAL_DOMAIN = 'no-domain-set'
+    DOMESTIC_DOMAIN = 'no-domestic-domain-set'
+    FOREIGN_DOMAIN = 'no-foreign-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
 
     TIMEZONE = 'utc'
