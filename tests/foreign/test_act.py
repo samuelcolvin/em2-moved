@@ -1,6 +1,6 @@
 import pytest
 
-from ..conftest import python_dict, timestamp_regex  # noqa
+from ..conftest import CloseToNow, python_dict  # noqa
 
 
 class TestAct:
@@ -42,7 +42,7 @@ class TestAct:
             'message': self.conv.first_msg_key,
             'parent': None,
             'participant': None,
-            'ts': timestamp_regex,
+            'ts': CloseToNow(),
             'verb': 'lock'
         } == obj['actions'][1]
 

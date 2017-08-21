@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 from em2.core import Components, Verbs
 from em2.utils.encoding import msg_encode
 
-from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict, timestamp_regex  # noqa
+from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict  # noqa
 
 
 async def test_valid_cookie_list_convs(cli, conv, url, db_conn):
@@ -134,7 +134,7 @@ async def test_add_message(cli, conv, url, db_conn):
         'conv_key': new_conv_key,
         'verb': 'add',
         'component': 'message',
-        'ts': timestamp_regex,
+        'ts': CloseToNow(),
         'parent': None,
         'relationship': None,
         'body': 'hello',

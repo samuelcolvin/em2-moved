@@ -195,9 +195,6 @@ class RegexStr:
             return repr(self.v)
 
 
-timestamp_regex = RegexStr(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:.\d{1,6})?')
-
-
 CHANGES = [
     ('"', "'"),
     (' false', ' False'),

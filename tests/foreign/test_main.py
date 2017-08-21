@@ -6,7 +6,7 @@ from em2 import Settings
 from em2.core import Relationships
 from em2.utils.network import check_server
 
-from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict, timestamp_regex  # noqa
+from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict  # noqa
 from ..fixture_classes import PLATFORM, TIMESTAMP, VALID_SIGNATURE
 
 
@@ -26,7 +26,7 @@ async def test_get_conv(cli, conv, url):
             'key': 'key12345678',
             'published': False,
             'subject': 'Test Conversation',
-            'ts': timestamp_regex,
+            'ts': CloseToNow(),
         },
         'messages': [
             {
@@ -69,7 +69,6 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
     )
     assert r.status == 201, await r.text()
     obj = await get_conv(pub_conv)
-    print(python_dict(obj))
     assert {
         'actions': [
             {
@@ -80,7 +79,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'message': None,
                 'parent': None,
                 'participant': None,
-                'ts': timestamp_regex,
+                'ts': CloseToNow(),
                 'verb': 'add'
             },
             {
@@ -91,7 +90,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'message': 'msg-secondmessagekey',
                 'parent': None,
                 'participant': None,
-                'ts': timestamp_regex,
+                'ts': CloseToNow(),
                 'verb': 'add'
             },
             {
@@ -102,7 +101,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'message': None,
                 'parent': None,
                 'participant': 'foobar@example.com',
-                'ts': timestamp_regex,
+                'ts': CloseToNow(),
                 'verb': 'add'
             },
         ],
@@ -111,7 +110,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
             'key': pub_conv.key,
             'published': True,
             'subject': 'Test Conversation',
-            'ts': timestamp_regex
+            'ts': CloseToNow()
         },
         'messages': [
             {

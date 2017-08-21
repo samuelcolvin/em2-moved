@@ -233,7 +233,7 @@ def add_message(ctx, parent, conversation, body):
 @click.pass_context
 @click.argument('conversation')
 @click.argument('address')
-def add(ctx, conversation, address):
+def add_participant(ctx, conversation, address):
     session = make_session(ctx)
     post_data = {'item': address}
 
