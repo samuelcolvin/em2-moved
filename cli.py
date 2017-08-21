@@ -207,10 +207,11 @@ def add(ctx):
 
 @add.command(name='message')
 @click.pass_context
-@click.option('--parent')
+@click.option('--parent', '-p')
+@click.option('--relationship', '-r', type=click.Choice(['sibling', 'child']))
 @click.argument('conversation')
 @click.argument('body')
-def add_message(ctx, parent, conversation, body):
+def add_message(ctx, parent, relationship, conversation, body):
     session = make_session(ctx)
     if not parent:
         conv_details = _get_details(ctx, session, conversation)
@@ -223,6 +224,7 @@ def add_message(ctx, parent, conversation, body):
     post_data = {
         'body': body,
         'parent': parent,
+        'relationship': relationship,
     }
 
     r = session.post(url(ctx, f'/d/act/{conversation}/message/add/'), json=post_data)
@@ -249,7 +251,7 @@ def modify(ctx):
 
 @modify.command(name='message')
 @click.pass_context
-@click.option('--parent')
+@click.option('--parent', '-p')
 @click.argument('conversation')
 @click.argument('item')
 @click.argument('body')

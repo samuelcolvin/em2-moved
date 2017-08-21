@@ -225,16 +225,6 @@ class ApplyAction(FetchOr404Mixin):
     JOIN messages AS m ON a.message = m.id
     WHERE a.conv = $1 AND a.key = $2
     """
-    _check_msg_actions_sql = """
-    SELECT id FROM actions
-    WHERE conv = $1 and message IS NOT NULL
-    LIMIT 1
-    """
-    _get_first_msg_sql = """
-    SELECT id FROM messages
-    WHERE conv = $1
-    LIMIT 2
-    """
     _add_message_sql = """
     INSERT INTO messages (key, conv, after, relationship, position, body) VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING id
@@ -244,20 +234,13 @@ class ApplyAction(FetchOr404Mixin):
         if not self.data.published:
             raise HTTPBadRequest(text='extra messages cannot be added to draft conversations')
 
-        if self.data.parent:
-            after_id, deleted, position = await self.fetchrow404(self._find_msg_by_action_sql,
-                                                                 self.data.conv, self.data.parent)
-            if deleted:
-                raise HTTPBadRequest(text='you cannot add messages after a deleted message')
-        else:
-            # the only valid case here is that there's no action for messages
-            if await self.conn.fetchval(self._check_msg_actions_sql, self.data.conv):
-                raise HTTPBadRequest(text='parent may not be null if actions already exist')
-            msg_ids = await self.conn.fetch(self._get_first_msg_sql, self.data.conv)
-            if len(msg_ids) != 1:
-                raise HTTPBadRequest(text=f'only one message should exist if parent is null: {len(msg_ids)}')
-            after_id = msg_ids[0][0]
-            position = [1]
+        if not self.data.parent:
+            raise HTTPBadRequest(text='parent may not be null when adding a message')
+
+        after_id, deleted, position = await self.fetchrow404(self._find_msg_by_action_sql,
+                                                             self.data.conv, self.data.parent)
+        if deleted:
+            raise HTTPBadRequest(text='you cannot add messages after a deleted message')
 
         if not self.data.body:
             raise HTTPBadRequest(text='body can not be empty when adding a message')

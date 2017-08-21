@@ -1,7 +1,7 @@
 from tests.conftest import python_dict  # NOQA
 
 
-async def test_create(cli, url, foreign_server, get_conv):
+async def test_add_participant(cli, url, foreign_server, get_conv):
     assert foreign_server.app['request_log'] == []
     url_ = url('act', conv='key12345678', component='participant', verb='add', item='testing@local.com')
     r = await cli.post(url_, data='foobar', headers={
@@ -54,7 +54,38 @@ async def test_create(cli, url, foreign_server, get_conv):
     ]
 
 
-async def test_conv_no_address(cli, url):
+# async def test_publish(cli, url, foreign_server, get_conv):
+#     assert foreign_server.app['request_log'] == []
+#     url_ = url('act', conv='key12345678', component='message', verb='add', item='')
+#     r = await cli.post(url_, data='foobar', headers={
+#         'em2-auth': 'already-authenticated.com:123:whatever',
+#         'em2-actor': 'test@already-authenticated.com',
+#         'em2-timestamp': '1',
+#         'em2-action-key': '123',
+#     })
+#     assert r.status == 204, await r.text()
+#     obj = await get_conv('key12345678')
+#     print(python_dict(obj))
+#     assert foreign_server.app['request_log'] == [
+#         'POST /authenticate > 201',
+#         'GET /get/key12345678/ > 200',
+#     ]
+
+
+async def test_conv_missing(cli, url, foreign_server):
+    url_ = url('act', conv='123', component='message', verb='modify', item='')
+    r = await cli.post(url_, data='foobar', headers={
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-actor': 'test@already-authenticated.com',
+        'em2-timestamp': '1',
+        'em2-action-key': '123',
+    })
+    assert r.status == 404, await r.text()
+    assert 'conversation not found' == await r.text()
+    assert foreign_server.app['request_log'] == []
+
+
+async def test_conv_no_address(cli, url, foreign_server):
     url_ = url('act', conv='123', component='participant', verb='add', item='')
     r = await cli.post(url_, data='foobar', headers={
         'em2-auth': 'already-authenticated.com:123:whatever',
@@ -64,9 +95,10 @@ async def test_conv_no_address(cli, url):
     })
     assert r.status == 400, await r.text()
     assert 'participant address (item) missing' == await r.text()
+    assert foreign_server.app['request_log'] == []
 
 
-async def test_conv_wrong_address(cli, url):
+async def test_conv_wrong_address(cli, url, foreign_server):
     url_ = url('act', conv='123', component='participant', verb='add', item='foo@bar.com')
     r = await cli.post(url_, data='foobar', headers={
         'em2-auth': 'already-authenticated.com:123:whatever',
@@ -76,3 +108,4 @@ async def test_conv_wrong_address(cli, url):
     })
     assert r.status == 400, await r.text()
     assert 'participant "foo@bar.com" not linked to this platform' == await r.text()
+    assert foreign_server.app['request_log'] == []

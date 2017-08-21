@@ -53,6 +53,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
             'em2-auth': 'already-authenticated.com:123:whatever',
             'em2-actor': pub_conv.creator_address,
             'em2-timestamp': datetime.now().strftime('%s'),
+            'em2-parent': 'pub-add-message-1234',
             'em2-action-key': 'x' * 20,
         }
     )
@@ -69,14 +70,15 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
     )
     assert r.status == 201, await r.text()
     obj = await get_conv(pub_conv)
+    print(python_dict(obj))
     assert {
         'actions': [
             {
                 'actor': 'test@already-authenticated.com',
                 'body': None,
-                'component': 'participant',
-                'key': 'act-1234567890123456',
-                'message': None,
+                'component': 'message',
+                'key': 'pub-add-message-1234',
+                'message': 'msg-firstmessagekeyx',
                 'parent': None,
                 'participant': None,
                 'ts': CloseToNow(),
@@ -137,18 +139,6 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
             }
         ]
     } == obj
-
-
-async def test_conv_missing(cli, url):
-    url_ = url('act', conv='123', component='message', verb='add', item='')
-    r = await cli.post(url_, data='foobar', headers={
-        'em2-auth': 'already-authenticated.com:123:whatever',
-        'em2-actor': 'test@already-authenticated.com',
-        'em2-timestamp': '1',
-        'em2-action-key': '123',
-    })
-    assert r.status == 404, await r.text()
-    assert 'conversation not found' == await r.text()
 
 
 async def test_wrong_conv(cli, conv, url):

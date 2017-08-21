@@ -101,15 +101,16 @@ class Act(ForeignView):
                 # if the conv already exists this actor is not a participant in it
                 raise HTTPForbidden(text=f'"{actor_address}" is not a participant in this conversation')
             else:
-                if not (component == Components.PARTICIPANT and verb == Verbs.ADD):
+                if not (component in (Components.PARTICIPANT, Components.MESSAGE) and verb == Verbs.ADD):
                     raise HTTPNotFound(text='conversation not found')
 
-                new_prt_domain = get_domain(item)
-                if not new_prt_domain:
-                    raise HTTPBadRequest(text='participant address (item) missing')
+                if component == Components.PARTICIPANT:
+                    new_prt_domain = get_domain(item)
+                    if not new_prt_domain:
+                        raise HTTPBadRequest(text='participant address (item) missing')
 
-                if not await self.pusher.domain_is_local(new_prt_domain):
-                    raise HTTPBadRequest(text=f'participant "{item}" not linked to this platform')
+                    if not await self.pusher.domain_is_local(new_prt_domain):
+                        raise HTTPBadRequest(text=f'participant "{item}" not linked to this platform')
 
                 await self.pusher.create_conv(platform, conv_key, item)
                 return web.Response(status=204)

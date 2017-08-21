@@ -138,8 +138,11 @@ class Publish(View):
     """
     delete_actions_sql = 'DELETE FROM actions WHERE conv = $1'
     create_action_sql = """
-    INSERT INTO actions (key, conv, actor, verb, component)
-    VALUES ($1, $2, $3, 'add', 'participant')
+    INSERT INTO actions (key, conv, actor, verb, component, message)
+    SELECT $1, $2, $3, 'add', 'message', m.id
+    FROM messages as m
+    WHERE m.conv = $2
+    LIMIT 1
     RETURNING id, timestamp
     """
 
@@ -161,6 +164,7 @@ class Publish(View):
             )
             # might need to not delete these actions, just mark them as draft somehow
             await self.conn.execute(self.delete_actions_sql, conv_id)
+
             action_key = gen_random('pub')
             action_id, action_timestamp = await self.conn.fetchrow(
                 self.create_action_sql,

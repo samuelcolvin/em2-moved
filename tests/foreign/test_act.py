@@ -15,7 +15,7 @@ class TestAct:
     async def test_mod_message(self):
         second_msg_key = 'msg-secondmessagekey'
         url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item=second_msg_key)
-        r = await self.cli.post(url_, data='foobar', headers=self.act_headers())
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers(parent='pub-add-message-1234'))
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
         assert obj['messages'][1]['body'] == 'foobar'
@@ -28,9 +28,15 @@ class TestAct:
         assert len(obj['actions']) == 3
         assert obj['messages'][1]['body'] == 'different content'
 
+    async def test_no_parent(self):
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item='msg-secondmessagekey')
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers())
+        assert r.status == 400, await r.text()
+        assert 'parent may not be null when adding a message' == await r.text()
+
     async def test_lock_unlock_message(self):
         url_ = self.url('act', conv=self.conv.key, component='message', verb='lock', item=self.conv.first_msg_key)
-        r = await self.cli.post(url_, headers=self.act_headers())
+        r = await self.cli.post(url_, headers=self.act_headers(parent='pub-add-message-1234'))
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
         assert len(obj['actions']) == 2
@@ -40,7 +46,7 @@ class TestAct:
             'component': 'message',
             'key': '1-------------------',
             'message': self.conv.first_msg_key,
-            'parent': None,
+            'parent': 'pub-add-message-1234',
             'participant': None,
             'ts': CloseToNow(),
             'verb': 'lock'
@@ -59,7 +65,7 @@ class TestAct:
 
     async def test_delete_recover_message(self):
         url_ = self.url('act', conv=self.conv.key, component='message', verb='delete', item=self.conv.first_msg_key)
-        r = await self.cli.post(url_, headers=self.act_headers())
+        r = await self.cli.post(url_, headers=self.act_headers(parent='pub-add-message-1234'))
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
         assert len(obj['actions']) == 2
@@ -94,7 +100,7 @@ class TestAct:
 
     async def test_recover_not_deleted(self):
         url_ = self.url('act', conv=self.conv.key, component='message', verb='recover', item=self.conv.first_msg_key)
-        r = await self.cli.post(url_, headers=self.act_headers())
+        r = await self.cli.post(url_, headers=self.act_headers(parent='pub-add-message-1234'))
         assert r.status == 400, await r.text()
         assert 'message cannot be recovered as it is not deleted' == await r.text()
 
@@ -102,7 +108,7 @@ class TestAct:
         r = await self.cli.post(
             self.url('act', conv=self.conv.key, component='participant', verb='add', item='foobar@example.com'),
             data='foobar',
-            headers=self.act_headers()
+            headers=self.act_headers(parent='pub-add-message-1234')
         )
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
@@ -123,7 +129,35 @@ class TestAct:
     async def test_add_child_message(self):
         second_msg_key = 'msg-secondmessagekey'
         url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item=second_msg_key)
-        r = await self.cli.post(url_, data='foobar', headers=self.act_headers())
+        r = await self.cli.post(
+            url_,
+            data='foobar',
+            headers=self.act_headers(parent='pub-add-message-1234', relationship='child')
+        )
+        assert r.status == 201, await r.text()
+        obj = await self.get_conv(self.conv)
+        assert len(obj['actions']) == 2
+        assert [
+            {
+                'after': None,
+                'body': 'this is the message',
+                'deleted': False,
+                'key': 'msg-firstmessagekeyx',
+                'relationship': None
+            },
+            {
+                'after': 'msg-firstmessagekeyx',
+                'body': 'foobar',
+                'deleted': False,
+                'key': 'msg-secondmessagekey',
+                'relationship': 'child'
+            }
+        ] == obj['messages']
+
+    async def test_add_multiple_child_message(self):
+        second_msg_key = 'msg-secondmessagekey'
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item=second_msg_key)
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers(parent='pub-add-message-1234'))
         assert r.status == 201, await r.text()
         m2_action_key = self.act_headers.action_stack[0]
 
@@ -170,7 +204,7 @@ class TestAct:
 
     async def test_msg_after_deleted(self):
         url_ = self.url('act', conv=self.conv.key, component='message', verb='delete', item=self.conv.first_msg_key)
-        r = await self.cli.post(url_, headers=self.act_headers())
+        r = await self.cli.post(url_, headers=self.act_headers(parent='pub-add-message-1234'))
         assert r.status == 201, await r.text()
         url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item=self.conv.first_msg_key)
         r = await self.cli.post(url_, data='foobar', headers=self.act_headers(parent=self.act_headers.action_stack[0]))
