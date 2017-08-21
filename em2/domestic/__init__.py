@@ -1,15 +1,20 @@
 import asyncio
 import logging
 
-from aiohttp.web import Application
+from aiohttp.web import Application, Response
 from cryptography.fernet import Fernet
 
+from em2 import VERSION
 from em2.core import Components, Verbs, gen_random
 from .background import Background
 from .middleware import middleware
 from .views import Act, Create, Get, Publish, VList, Websocket
 
 logger = logging.getLogger('em2.domestic')
+
+
+async def index(request):
+    return Response(text=f'em2 v{VERSION} internal interface, domain: {request.app["settings"].LOCAL_DOMAIN}\n')
 
 
 async def app_startup(app):
@@ -42,7 +47,6 @@ def create_domestic_app(settings, app_name=None):
         name=app_name or gen_random('d'),
     )
 
-    # index view is returned by middleware directly
     app.router.add_get('/list/', VList.view(), name='list')
     app.router.add_post('/create/', Create.view(), name='create')
     app.router.add_get('/ws/', Websocket.view(), name='websocket')
@@ -55,4 +59,5 @@ def create_domestic_app(settings, app_name=None):
     app.router.add_post(pattern, Act.view(), name='act')
 
     app.router.add_get(r'/c/%s/' % conv_match, Get.view(), name='get')
+    app.router.add_get('/', index, name='index')
     return app

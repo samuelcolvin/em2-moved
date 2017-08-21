@@ -16,7 +16,6 @@ def create_app(settings: Settings=None):
     app['settings'] = settings
 
     # TODO deal with domain routing
-    app.router.add_get('/', index)
 
     foreign_app = create_foreign_app(settings)
     app.add_subapp('/f/', foreign_app)
@@ -25,4 +24,6 @@ def create_app(settings: Settings=None):
     domestic_app = create_domestic_app(settings)
     app.add_subapp('/d/', domestic_app)
     app['dapp'] = domestic_app
+
+    app.router.add_get('/', index)
     return app

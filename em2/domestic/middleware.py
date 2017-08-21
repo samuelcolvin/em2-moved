@@ -1,7 +1,6 @@
-from aiohttp.web import HTTPBadRequest, HTTPForbidden, Response
+from aiohttp.web import HTTPBadRequest, HTTPForbidden
 from cryptography.fernet import InvalidToken
 
-from em2 import VERSION
 from em2.core import get_create_recipient
 from em2.utils.encoding import msg_decode, msg_encode
 from em2.utils.web import db_conn_middleware
@@ -13,10 +12,9 @@ from .common import Session
 
 async def user_middleware(app, handler):
     async def user_middleware_handler(request):
-        if request.raw_path == '/':
+        if request.match_info.route.name in ('index', 'index-head'):
             # index can be viewed without auth
-            # intercept here so later middleware can assume the user is authenticated and session exists
-            return Response(text=f'em2 v{VERSION} internal interface, domain: {app["settings"].LOCAL_DOMAIN}\n')
+            return await handler(request)
 
         token = request.cookies.get(app['settings'].COOKIE_NAME, '')
         try:
@@ -34,7 +32,8 @@ async def user_middleware(app, handler):
 
 async def update_session_middleware(app, handler):
     async def _handler(request):
-        update_session = not bool(request['session'].recipient_id)
+        session = request.get('session')
+        update_session = session and not bool(session.recipient_id)
         if update_session:
             recipient_id = await get_create_recipient(request['conn'], request['session'].address)
             request['session'].recipient_id = recipient_id

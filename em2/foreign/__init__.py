@@ -36,8 +36,8 @@ def create_foreign_app(settings):
     app.on_startup.append(app_startup)
     app.on_cleanup.append(app_cleanup)
 
-    app.router.add_get('/', index, name='index')
     app.router.add_post('/auth/', Authenticate.view(), name='authenticate')
     app.router.add_get('/get/{conv:[a-z0-9]{8,}}/', Get.view(), name='get')
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', Act.view(), name='act')
+    app.router.add_get('/', index, name='index')
     return app

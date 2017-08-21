@@ -444,14 +444,19 @@ async def test_get_latest_conv(cli, create_conv, url, db_conn):
     assert obj['details']['subject'] == 'conv2'
 
 
-async def test_index_anon(cli):
+async def test_index_anon(cli, url):
     cli.session.cookie_jar.clear()
-    r = await cli.get('/')
+    r = await cli.get(url('index'))
     assert r.status == 200, await r.text()
     assert f'em2 v{VERSION} internal interface, domain: em2.platform.example.com\n' == await r.text()
 
 
-async def test_index_auth(cli):
-    r = await cli.get('/')
+async def test_index_auth(cli, url):
+    r = await cli.get(url('index'))
     assert r.status == 200, await r.text()
     assert f'em2 v{VERSION} internal interface, domain: em2.platform.example.com\n' == await r.text()
+
+
+async def test_missing_url(cli):
+    r = await cli.get('/foobar/')
+    assert r.status == 404, await r.text()
