@@ -2,7 +2,8 @@
 from asyncio import Future, TimeoutError, new_event_loop
 import aiohttp
 
-from .auth import SimpleAuthenticator, PLATFORM, TIMESTAMP, VALID_SIGNATURE, get_private_key_file
+from .auth import SimpleAuthenticator
+from .dns_resolver import PLATFORM, TIMESTAMP, VALID_SIGNATURE, get_private_key_file
 from .db import TestDatabase
 from .push import DNSMockedPusher
 

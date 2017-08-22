@@ -10,6 +10,9 @@ RUN apk --update --no-cache add postgresql-dev gcc g++ musl-dev libuv make libff
 ADD ./docker-requirements.txt /home/root/
 RUN pip install -r /home/root/docker-requirements.txt
 
+# install these before em2-requirements.txt just makes builds faster
+RUN pip install uvloop asyncpg cryptography
+
 # the next two lines are just to make repeat builds quicker, they are completely duplicated by "pip install ..." below
 ADD ./em2/extras/requirements.txt /home/root/em2-requirements.txt
 RUN pip install -r /home/root/em2-requirements.txt

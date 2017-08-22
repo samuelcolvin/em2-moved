@@ -215,7 +215,7 @@ class Pusher(Actor):
             node = None
             if host == self.settings.FOREIGN_DOMAIN:
                 node = self.LOCAL
-            elif host.startswith('em2'):
+            elif await self._is_em2_node(host):
                 try:
                     await self.authenticate(host)
                 except Em2ConnectionError:
@@ -229,6 +229,11 @@ class Pusher(Actor):
                 return node
         logger.info('no em2 node found for %s, falling back', domain)
         return self.FALLBACK
+
+    async def _is_em2_node(self, host):
+        # see if any of the hosts TXT records start with with the prefix for em2 public keys
+        dns_results = await self.dns_query(host, 'TXT')
+        return any(r.text.decode().startswith('v=em2key') for r in dns_results)
 
     async def categorise_addresses(self, *parts: str) -> Tuple[Dict[str, Set[str]], Set[str], Set[str]]:
         remote_nodes = {}

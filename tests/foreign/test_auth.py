@@ -4,8 +4,8 @@ from aiohttp.web_exceptions import HTTPForbidden
 
 from em2.exceptions import FailedInboundAuthentication
 from em2.foreign.auth import Authenticator
-from tests.fixture_classes.auth import (TIMESTAMP, VALID_SIGNATURE, DnsMockAuthenticator, FixedDnsMockAuthenticator,
-                                        get_public_key)
+from tests.fixture_classes.auth import TIMESTAMP, DnsMockAuthenticator, FixedDnsMockAuthenticator, get_public_key
+from tests.fixture_classes.dns_resolver import VALID_SIGNATURE
 
 
 async def test_valid_public_key(settings, loop, redis):
