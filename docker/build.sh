@@ -17,5 +17,5 @@ rsync -i -a ../setup.py tmp/
 rsync -i -a Dockerfile tmp/
 
 echo "building docker image..."
-docker build tmp -t em2
+docker build tmp -t em2 --build-arg EM2_COMMIT=`git rev-parse --short HEAD`
 echo "done."

@@ -26,21 +26,19 @@ except ImportError as e:
 @click.group()
 @click.pass_context
 @click.option('--proto', default='https', envvar='EM2_COMMS_PROTO', help='env variable: EM2_COMMS_PROTO')
-@click.option('--platform', default='localhost:8000', envvar='EM2_LOCAL_DOMAIN', help='env variable: EM2_LOCAL_DOMAIN')
+@click.option('--routing', default='subdirectory', type=click.Choice(['subdirectory', 'subdomain']),
+              envvar='EM2_ROUTING', help='env variable: EM2_ROUTING')
+@click.option('--platform', default='localhost:8000', envvar='EM2_DOMESTIC_DOMAIN',
+              help='env variable: EM2_DOMESTIC_DOMAIN')
 @click.option('--session-key', default='testing', envvar='EM2_SECRET_SESSION_KEY',
               help='env variable: EM2_SECRET_SESSION_KEY')
 @click.option('--address', default='testing@localhost.example.com', envvar='USER_ADDRESS',
               help='env variable: USER_ADDRESS')
-def cli(ctx, platform, proto, session_key, address):
+def cli(ctx, **kwargs):
     """
     Run em2 CLI.
     """
-    ctx.obj = dict(
-        proto=proto,
-        platform=platform,
-        session_key=session_key,
-        address=address,
-    )
+    ctx.obj = kwargs
 
 
 @cli.command()
@@ -57,7 +55,7 @@ def genkey(ctx):
 @click.pass_context
 def list_(ctx):
     session = make_session(ctx)
-    r = session.get(url(ctx, '/d/'))
+    r = session.get(url(ctx, '/list/'))
     print_response(r)
 
 
@@ -75,7 +73,7 @@ def create(ctx, subject, body, participants):
         'participants': list(participants),
     }
     session = make_session(ctx)
-    r = session.post(url(ctx, '/d/create/'), json=data)
+    r = session.post(url(ctx, '/create/'), json=data)
     print_response(r)
 
 
@@ -84,7 +82,7 @@ def create(ctx, subject, body, participants):
 @click.argument('conversation')
 def get(ctx, conversation):
     session = make_session(ctx)
-    r = session.get(url(ctx, f'/d/c/{conversation}/'))
+    r = session.get(url(ctx, f'/c/{conversation}/'))
     print_response(r)
 
 
@@ -93,12 +91,12 @@ def get(ctx, conversation):
 @click.argument('conversation')
 def publish(ctx, conversation):
     session = make_session(ctx)
-    r = session.post(url(ctx, f'/d/publish/{conversation}/'))
+    r = session.post(url(ctx, f'/publish/{conversation}/'))
     print_response(r)
 
 
 def _get_details(ctx, session, conversation):
-    r = session.get(url(ctx, f'/d/c/{conversation}/'))
+    r = session.get(url(ctx, f'/c/{conversation}/'))
     try:
         assert r.status_code == 200
         return r.json()
@@ -135,7 +133,7 @@ def add_message(ctx, parent, relationship, conversation, body):
         'relationship': relationship,
     }
 
-    r = session.post(url(ctx, f'/d/act/{conversation}/message/add/'), json=post_data)
+    r = session.post(url(ctx, f'/act/{conversation}/message/add/'), json=post_data)
     print_response(r)
 
 
@@ -147,7 +145,7 @@ def add_participant(ctx, conversation, address):
     session = make_session(ctx)
     post_data = {'item': address}
 
-    r = session.post(url(ctx, f'/d/act/{conversation}/participant/add/'), json=post_data)
+    r = session.post(url(ctx, f'/act/{conversation}/participant/add/'), json=post_data)
     print_response(r)
 
 
@@ -179,7 +177,7 @@ def modify_message(ctx, parent, conversation, item, body):
         'parent': parent,
     }
 
-    r = session.post(url(ctx, f'/d/act/{conversation}/message/modify/'), json=post_data)
+    r = session.post(url(ctx, f'/act/{conversation}/message/modify/'), json=post_data)
     print_response(r)
 
 
@@ -189,7 +187,7 @@ async def _watch(ctx):
         while True:
             try:
                 print(f'connecting to ws...')
-                async with session.ws_connect(url(ctx, '/d/ws/')) as ws:
+                async with session.ws_connect(url(ctx, '/ws/')) as ws:
                     print('websocket connected, waiting for messages...')
                     async for msg in ws:
                         if msg.tp == aiohttp.WSMsgType.ERROR:
@@ -303,6 +301,8 @@ def make_session(ctx):
 
 def url(ctx, uri):
     url = '{0[proto]}://{0[platform]}/'.format(ctx.obj)
+    if ctx.obj['routing'] == 'subdirectory':
+        url += 'd/'
     return url + uri.lstrip('/')
 
 

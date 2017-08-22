@@ -14,7 +14,8 @@ logger = logging.getLogger('em2.domestic')
 
 
 async def index(request):
-    return Response(text=f'em2 v{VERSION} domestic interface, domain: {request.app["settings"].DOMESTIC_DOMAIN}\n')
+    s = request.app['settings']
+    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} domestic interface, domain: {s.DOMESTIC_DOMAIN}\n')
 
 
 async def app_startup(app):

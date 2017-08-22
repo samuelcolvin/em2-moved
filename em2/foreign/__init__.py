@@ -9,7 +9,8 @@ logger = logging.getLogger('em2.foreign')
 
 
 async def index(request):
-    return Response(text=f'em2 v{VERSION} foreign interface, domain: {request.app["settings"].FOREIGN_DOMAIN}\n')
+    s = request.app['settings']
+    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} foreign interface, domain: {s.FOREIGN_DOMAIN}\n')
 
 
 async def app_startup(app):

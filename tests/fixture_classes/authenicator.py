@@ -112,7 +112,6 @@ class MockDNSResolver:
         return r
 
     def get_mx(self, host):
-        debug(host)
         if host == 'local.com':
             return [
                 MXQueryResult(5, f'em2.platform.example.com:{self._port}'),

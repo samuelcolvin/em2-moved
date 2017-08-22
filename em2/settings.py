@@ -8,6 +8,8 @@ from pydantic.utils import make_dsn
 class Settings(BaseSettings):
     DEBUG = False
     COMMAND = 'info'
+    LOG_TIMES = True
+    COMMIT: str = None
 
     COMMS_HEAD_REQUEST_TIMEOUT = 0.8
     COMMS_DOMAIN_CACHE_TIMEOUT = 86400
@@ -17,7 +19,7 @@ class Settings(BaseSettings):
     COMMS_PUSH_TOKEN_EARLY_EXPIRY = 10
     COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
-    # only ever change this during network testing!!!
+    # only ever change this during testing!!!
     COMMS_PROTO = 'https'
     COMMS_DNS_IP: str = None
 
@@ -40,8 +42,6 @@ class Settings(BaseSettings):
     DOMESTIC_DOMAIN = 'no-domestic-domain-set'
     FOREIGN_DOMAIN = 'no-foreign-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
-
-    TIMEZONE = 'utc'
 
     FALLBACK_USERNAME: str = None
     FALLBACK_PASSWORD: str = None

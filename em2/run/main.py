@@ -4,7 +4,9 @@ import os
 import sys
 from time import sleep
 
-from em2 import VERSION
+from arq import RedisMixin
+
+from em2 import VERSION, Settings
 from em2.logging import logger
 from em2.run.check import command, execute
 from em2.run.database import prepare_database as _prepare_database
@@ -14,7 +16,7 @@ from em2.utils.network import wait_for_services
 
 
 @command
-def web(settings):
+def web(settings: Settings):
     import uvloop
     from aiohttp.web import run_app
     from em2 import create_app
@@ -37,17 +39,34 @@ def web(settings):
 
 
 @command
-def reset_database(settings):
+def reset_database(settings: Settings):
     if not (os.getenv('CONFIRM_DATABASE_RESET') == 'confirm' or input('Confirm database reset? [yN] ') == 'y'):
         logger.warning('cancelling')
     else:
         logger.info('resetting database...')
         loop = asyncio.get_event_loop()
         loop.run_until_complete(_prepare_database(settings, True))
+        logger.info('done.')
+
+
+async def _flush_redis(redis_mixin: RedisMixin):
+    async with await redis_mixin.get_redis_conn() as redis:
+        await redis.flushdb()
 
 
 @command
-def worker(settings):
+def flush_redis(settings: Settings):
+    if not (os.getenv('CONFIRM_REDIS_FLUSH') == 'confirm' or input('Confirm redis flush? [yN] ') == 'y'):
+        logger.warning('cancelling')
+    else:
+        logger.info('flushing redis...')
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(_flush_redis(RedisMixin(loop=loop, redis_settings=settings.redis)))
+        logger.info('done.')
+
+
+@command
+def worker(settings: Settings):
     from arq import RunWorkerProcess
 
     loop = asyncio.get_event_loop()
@@ -58,7 +77,7 @@ def worker(settings):
 
 
 @command
-def info(settings):
+def info(settings: Settings):
     import aiohttp
     import arq
     logger.info(f'em2')
@@ -74,7 +93,7 @@ def info(settings):
 
 
 @command
-def shell(settings):
+def shell(settings: Settings):
     """
     Basic replica of django-extensions shell, ugly but very useful in development
     """
@@ -107,7 +126,7 @@ def shell(settings):
 def main():
     # special cases where we use arguments so you don't have to mess with env variables.
     command = len(sys.argv) > 1 and sys.argv[1]
-    if command in ('info', 'reset_database', 'shell'):
+    if command:
         print(f'using command line argument to set command EM2_COMMAND="{command}"', flush=True)
         os.environ['EM2_COMMAND'] = command
 

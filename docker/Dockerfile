@@ -17,6 +17,8 @@ RUN pip install -r /home/root/em2-requirements.txt
 ADD ./em2 /home/root/src/em2
 ADD ./setup.py /home/root/src/
 RUN pip install -e /home/root/src/
+ARG EM2_COMMIT
+ENV EM2_COMMIT ${EM2_COMMIT}
 
 WORKDIR /home/root
 HEALTHCHECK --interval=20s --timeout=10s --retries=2 CMD em2check

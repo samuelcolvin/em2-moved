@@ -448,13 +448,13 @@ async def test_index_anon(cli, url):
     cli.session.cookie_jar.clear()
     r = await cli.get(url('index'))
     assert r.status == 200, await r.text()
-    assert f'em2 v{VERSION} domestic interface, domain: platform.example.com\n' == await r.text()
+    assert f'em2 v{VERSION}:- domestic interface, domain: platform.example.com\n' == await r.text()
 
 
 async def test_index_auth(cli, url):
     r = await cli.get(url('index'))
     assert r.status == 200, await r.text()
-    assert f'em2 v{VERSION} domestic interface, domain: platform.example.com\n' == await r.text()
+    assert f'em2 v{VERSION}:- domestic interface, domain: platform.example.com\n' == await r.text()
 
 
 async def test_missing_url(cli):

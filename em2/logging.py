@@ -12,7 +12,7 @@ def prepare_log_config(settings) -> dict:
         'disable_existing_loggers': True,
         'formatters': {
             'em2.default': {
-                'format': '%(name)17s %(asctime)s| %(message)s',
+                'format': '%(name)17s %(asctime)s| %(message)s' if settings.LOG_TIMES else '%(name)17s: %(message)s',
                 'datefmt': '%H:%M:%S',
             },
         },
@@ -26,7 +26,7 @@ def prepare_log_config(settings) -> dict:
                 'level': 'WARNING',
                 'class': 'raven.handlers.logging.SentryHandler',
                 'dsn': os.getenv('RAVEN_DSN', None),
-                'release': os.getenv('COMMIT', None),
+                'release': settings.COMMIT,
                 'name': os.getenv('SERVER_NAME', '-')
             },
         },
