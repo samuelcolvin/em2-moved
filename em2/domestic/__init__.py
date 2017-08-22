@@ -15,7 +15,7 @@ logger = logging.getLogger('em2.domestic')
 
 async def index(request):
     s = request.app['settings']
-    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} domestic interface, domain: {s.DOMESTIC_DOMAIN}\n')
+    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} domestic interface\n')
 
 
 async def app_startup(app):
@@ -23,7 +23,7 @@ async def app_startup(app):
     loop = app.loop or asyncio.get_event_loop()
     app.update(
         db=settings.db_cls(settings=settings, loop=loop),
-        pusher=settings.pusher_cls(settings=settings, loop=loop, ref='domestic'),
+        pusher=settings.pusher_cls(settings=settings, loop=loop),
         background=Background(app, loop),
     )
     await app['db'].startup()

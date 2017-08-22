@@ -25,11 +25,7 @@ except ImportError as e:
 
 @click.group()
 @click.pass_context
-@click.option('--proto', default='https', envvar='EM2_COMMS_PROTO', help='env variable: EM2_COMMS_PROTO')
-@click.option('--routing', default='subdirectory', type=click.Choice(['subdirectory', 'subdomain']),
-              envvar='EM2_ROUTING', help='env variable: EM2_ROUTING')
-@click.option('--platform', default='localhost:8000', envvar='EM2_DOMESTIC_DOMAIN',
-              help='env variable: EM2_DOMESTIC_DOMAIN')
+@click.option('--url', default='http://localhost:8000/d/', envvar='EM2_URL', help='env variable: EM2_URL')
 @click.option('--session-key', default='testing', envvar='EM2_SECRET_SESSION_KEY',
               help='env variable: EM2_SECRET_SESSION_KEY')
 @click.option('--address', default='testing@localhost.example.com', envvar='USER_ADDRESS',
@@ -300,10 +296,7 @@ def make_session(ctx):
 
 
 def url(ctx, uri):
-    url = '{0[proto]}://{0[platform]}/'.format(ctx.obj)
-    if ctx.obj['routing'] == 'subdirectory':
-        url += 'd/'
-    return url + uri.lstrip('/')
+    return ctx.obj['url'].rstrip('/') + '/' + uri.lstrip('/')
 
 
 if __name__ == '__main__':

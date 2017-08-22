@@ -28,7 +28,7 @@ class DNSMockedPusher(Pusher):
 
     def set_foreign_port(self, port):
         self._foreign_port = port
-        self.settings.FOREIGN_DOMAIN += f':{port}'
+        self.settings.EXTERNAL_DOMAIN += f':{port}'
         self.session.connector._resolver.mock_resolve_port = port
 
 

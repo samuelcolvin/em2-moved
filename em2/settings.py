@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     PG_POOL_MINSIZE = 1
     PG_POOL_MAXSIZE = 10
 
-    DOMESTIC_DOMAIN = 'no-domestic-domain-set'
-    FOREIGN_DOMAIN = 'no-foreign-domain-set'
+    # the domain at which other platforms connect to this node, eg. the "foreign" app's endpoint
+    EXTERNAL_DOMAIN = 'em2-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
 
     FALLBACK_USERNAME: str = None

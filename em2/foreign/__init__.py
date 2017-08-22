@@ -10,7 +10,7 @@ logger = logging.getLogger('em2.foreign')
 
 async def index(request):
     s = request.app['settings']
-    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} foreign interface, domain: {s.FOREIGN_DOMAIN}\n')
+    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} foreign interface, domain: {s.EXTERNAL_DOMAIN}\n')
 
 
 async def app_startup(app):
@@ -18,7 +18,7 @@ async def app_startup(app):
     app.update(
         db=settings.db_cls(settings=settings, loop=app.loop),
         authenticator=settings.authenticator_cls(settings=settings, loop=app.loop),
-        pusher=settings.pusher_cls(settings=settings, loop=app.loop, ref='foreign'),
+        pusher=settings.pusher_cls(settings=settings, loop=app.loop),
     )
     await app['db'].startup()
     await app['pusher'].log_redis_info(logger.info)

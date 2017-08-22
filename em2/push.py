@@ -42,10 +42,9 @@ class Pusher(Actor):
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
 
-    def __init__(self, settings: Settings, loop=None, ref=None, **kwargs):
+    def __init__(self, settings: Settings, loop=None, **kwargs):
         self.settings = settings
         self.loop = loop or asyncio.get_event_loop()
-        self.ref = ref
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.db = None
         self.session = None
@@ -213,7 +212,7 @@ class Pusher(Actor):
             return self.LOCAL
         async for host in self.mx_hosts(domain):
             node = None
-            if host == self.settings.FOREIGN_DOMAIN:
+            if host == self.settings.EXTERNAL_DOMAIN:
                 node = self.LOCAL
             elif await self._is_em2_node(host):
                 try:
@@ -324,12 +323,12 @@ class Pusher(Actor):
         return key
 
     def _auth_data(self):
-        yield 'platform', self.settings.FOREIGN_DOMAIN
+        yield 'platform', self.settings.EXTERNAL_DOMAIN
 
         timestamp = self._now_unix()
         yield 'timestamp', timestamp
 
-        msg = '{}:{}'.format(self.settings.FOREIGN_DOMAIN, timestamp)
+        msg = '{}:{}'.format(self.settings.EXTERNAL_DOMAIN, timestamp)
         h = SHA256.new(msg.encode())
 
         key = RSA.importKey(self.settings.private_domain_key)
@@ -340,7 +339,7 @@ class Pusher(Actor):
     async def domain_is_local(self, domain: str) -> bool:
         # TODO results should be cached
         async for host in self.mx_hosts(domain):
-            if host == self.settings.FOREIGN_DOMAIN:
+            if host == self.settings.EXTERNAL_DOMAIN:
                 return True
         return False
 
@@ -380,5 +379,5 @@ class Pusher(Actor):
         return to_unix_ms(datetime.utcnow())
 
     def __repr__(self):
-        ref = self.ref or (self.is_shadow and 'worker') or '-'
-        return '{}<{}:{}>'.format(self.__class__.__name__, self.settings.DOMESTIC_DOMAIN, ref)
+        ref = 'shadow' if self.is_shadow else 'frontend'
+        return f'<{self.__class__.__name__}:{self.settings.EXTERNAL_DOMAIN}:{ref}>'

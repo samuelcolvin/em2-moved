@@ -85,7 +85,7 @@ def info(settings: Settings):
     logger.info(f'em2:      {VERSION}')
     logger.info(f'aiohttp:  {aiohttp.__version__}')
     logger.info(f'arq:      {arq.VERSION}\n')
-    logger.info(f'domain:   {settings.DOMESTIC_DOMAIN}')
+    logger.info(f'domain:   {settings.EXTERNAL_DOMAIN}')
     logger.info(f'command:  {settings.COMMAND}')
     logger.info(f'debug:    {settings.DEBUG}')
     logger.info(f'pg db:    {settings.PG_NAME}')
