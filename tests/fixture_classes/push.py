@@ -4,7 +4,7 @@ from aiohttp import AsyncResolver
 
 from em2.push import Pusher
 
-from .authenicator import MockDNSResolver
+from .auth import MockDNSResolver
 
 
 class DNSMockedPusher(Pusher):

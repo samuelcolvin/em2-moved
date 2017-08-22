@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     COMMS_HTTP_TIMEOUT = 4
     # only ever change this during testing!!!
     COMMS_PROTO = 'https'
-    COMMS_DNS_IP: str = None
+    COMMS_DNS_IPS = ['8.8.8.8', '8.8.4.4']
 
     pusher_cls: PyObject = 'em2.push.Pusher'
     fallback_cls: PyObject = 'em2.fallback.FallbackHandler'

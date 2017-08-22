@@ -41,27 +41,23 @@ def get_private_key_file():
 class SimpleAuthenticator(Authenticator):
     def __init__(self, settings, **kwargs):
         super().__init__(settings, **kwargs)
-        self._cache = {
-            'already-authenticated.com:123:whatever': 2461449700
-        }
+        self.key_added = False
         self.public_key_value = get_public_key()
         self.valid_signature_override = None
 
-    async def startup(self):
-        pass
+    async def _set_key(self):
+        if not self.key_added:
+            self.key_added = True
+            async with await self.get_redis_conn() as redis:
+                await redis.set('already-authenticated.com:123:whatever', 2461449700)
 
-    async def shutdown(self):
-        pass
-
-    async def key_exists(self, platform_key):
-        exp = self._cache.get(platform_key, 1)
-        return exp > self._now_unix()
+    async def validate_platform_token(self, token):
+        # set the dummy key on the first validation
+        await self._set_key()
+        return await super().validate_platform_token(token)
 
     async def _get_public_key(self, platform):
         return self.public_key_value
-
-    async def _store_platform_token(self, key, expires_at):
-        self._cache[key] = expires_at
 
     async def _check_domain_uses_platform(self, domain, platform_domain):
         return platform_domain.endswith(domain)
@@ -70,6 +66,20 @@ class SimpleAuthenticator(Authenticator):
         if isinstance(self.valid_signature_override, bool):
             return self.valid_signature_override
         return super()._valid_signature(signed_message, signature, public_key)
+
+    def _now_unix(self):
+        return TIMESTAMP
+
+
+class DnsMockAuthenticator(Authenticator):
+    @property
+    def resolver(self):
+        return MockDNSResolver()
+
+
+class FixedDnsMockAuthenticator(DnsMockAuthenticator):
+    def _now_unix(self):
+        return 2461449600
 
 
 class TXTQueryResult(NamedTuple):
@@ -82,7 +92,7 @@ class MXQueryResult(NamedTuple):
 
 
 class MockDNSResolver:
-    def __init__(self, port):
+    def __init__(self, port=0):
         self._port = port
 
     async def query(self, host, qtype):
@@ -100,13 +110,19 @@ class MockDNSResolver:
             public_key = public_key.replace('-----BEGIN PUBLIC KEY-----', '')
             public_key = public_key.replace('-----END PUBLIC KEY-----', '').replace('\n', '')
             rows = wrap(public_key, width=250)
-            rows[0] = 'v=em2key p=' + rows[0]
+            rows[0] = 'v=em2key ' + rows[0]
             r += [TXTQueryResult(text=t) for t in rows]
-        elif host == 'badkey.com':
+        elif host == 'badkey1.com':
             r += [
-                TXTQueryResult(text='v=em2key p=123'),
+                TXTQueryResult(text='v=em2key 123'),
                 TXTQueryResult(text='456'),
                 TXTQueryResult(text='789'),
+            ]
+        elif host == 'badkey2.com':
+            r += [
+                TXTQueryResult(text='v=em2key 123'),
+                TXTQueryResult(text='456'),
+                TXTQueryResult(text='789='),
             ]
         r.append(TXTQueryResult(text='v=foobar'))
         return r
@@ -136,8 +152,3 @@ class MockDNSResolver:
 
     def get_other(self, host, qtype):
         raise NotImplemented()
-
-
-class FixedSimpleAuthenticator(SimpleAuthenticator):
-    def _now_unix(self):
-        return 2461449600

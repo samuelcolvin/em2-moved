@@ -62,8 +62,9 @@ class Authenticator(RedisMixin):
         return platform_token
 
     async def validate_platform_token(self, token):
-        if not await self.key_exists(token):
-            raise HTTPForbidden(text='invalid token')
+        async with await self.get_redis_conn() as redis:
+            if not await redis.exists(token.encode()):
+                raise HTTPForbidden(text='invalid token')
         return token.split(':', 1)[0]
 
     async def check_domain_platform(self, domain, platform):
@@ -71,18 +72,19 @@ class Authenticator(RedisMixin):
             raise HTTPForbidden(text=f'"{domain}" does not use "{platform}"')
 
     async def _get_public_key(self, platform: str):
-        dns_results = await self.dns_query(platform, 'TXT')
+        dns_results = await self._dns_query(platform, 'TXT')
         logger.info('got %d TXT records for %s', len(dns_results), platform)
         key_data = self._get_public_key_from_dns(dns_results)
         # return the key in a format openssl / RSA.importKey can cope with
-        return '-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n'.format('\n'.join(wrap(key_data, width=65)))
+        return '-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n'.format('\n'.join(wrap(key_data, width=64)))
 
-    def _get_public_key_from_dns(self, dns_results: tuple):
+    @classmethod
+    def _get_public_key_from_dns(cls, dns_results: tuple):
         results = (r.text for r in dns_results)
         for r in results:
             if r.lower().startswith('v=em2key'):
-                # [8:] removes the v=em2key, [2:] remove the p=
-                key = r[8:].strip()[2:]
+                # [8:] removes the "v=em2key"
+                key = r[8:].strip()
                 if key.endswith('='):
                     return key
                 else:
@@ -97,7 +99,11 @@ class Authenticator(RedisMixin):
 
     async def _store_platform_token(self, token: str, expires_at: int):
         async with await self.get_redis_conn() as redis:
-            await self.set_exat(redis, token.encode(), self._dft_value, expires_at)
+            key = token.encode()
+            await asyncio.gather(
+                redis.set(key, self._dft_value),
+                redis.expireat(key, expires_at),
+            )
 
     async def _check_domain_uses_platform(self, domain: str, platform_domain: str):
         cache_key = b'pl:%s' % domain.encode()
@@ -105,8 +111,7 @@ class Authenticator(RedisMixin):
             cache_p = await redis.get(cache_key)
             if cache_p and cache_p.decode() == platform_domain:
                 return True
-            results = await self.mx_query(domain)
-            for _, host in results:
+            async for host in self._mx_hosts(domain):
                 if host == platform_domain:
                     await redis.setex(cache_key, self._domain_timeout, host.encode())
                     return True
@@ -133,11 +138,10 @@ class Authenticator(RedisMixin):
     @property
     def resolver(self):
         if self._resolver is None:
-            nameservers = [self.settings.COMMS_DNS_IP] if self.settings.COMMS_DNS_IP else None
-            self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=nameservers)
+            self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=self.settings.COMMS_DNS_IPS)
         return self._resolver
 
-    async def dns_query(self, host, qtype):
+    async def _dns_query(self, host, qtype):
         try:
             with timeout(5, loop=self.loop):
                 return await self.resolver.query(host, qtype)
@@ -145,12 +149,9 @@ class Authenticator(RedisMixin):
             logger.warning('%s query error on %s, %s %s', qtype, host, e.__class__.__name__, e)
             return []
 
-    async def set_exat(self, redis, key: bytes, value: str, expires_at: int):
-        pipe = redis.pipeline()
-        pipe.set(key, value)
-        pipe.expireat(key, expires_at)
-        await pipe.execute()
-
-    async def key_exists(self, platform_token: str):
-        async with await self.get_redis_conn() as redis:
-            return bool(await redis.exists(platform_token.encode()))
+    async def _mx_hosts(self, host):
+        results = await self._dns_query(host, 'MX')
+        results = [(r.priority, r.host) for r in results]
+        results.sort()
+        for _, host in results:
+            yield host

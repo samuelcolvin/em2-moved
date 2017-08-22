@@ -33,7 +33,7 @@ def settings():
         PG_NAME='em2_test',
         DOMESTIC_DOMAIN='platform.example.com',
         FOREIGN_DOMAIN='em2.platform.example.com',
-        authenticator_cls='tests.fixture_classes.FixedSimpleAuthenticator',
+        authenticator_cls='tests.fixture_classes.SimpleAuthenticator',
         db_cls='tests.fixture_classes.TestDatabase',
         pusher_cls='tests.fixture_classes.DNSMockedPusher',
         PRIVATE_DOMAIN_KEY_FILE=str(THIS_DIR / 'fixture_classes/keys/private.pem'),

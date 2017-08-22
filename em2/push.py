@@ -342,8 +342,7 @@ class Pusher(Actor):
     @property
     def resolver(self):
         if self._resolver is None:
-            nameservers = [self.settings.COMMS_DNS_IP] if self.settings.COMMS_DNS_IP else None
-            self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=nameservers)
+            self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=self.settings.COMMS_DNS_IPS)
         return self._resolver
 
     async def mx_hosts(self, host):
