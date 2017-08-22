@@ -59,8 +59,8 @@ class Pusher(Actor):
         self.db = self.settings.db_cls(self.settings, self.loop)
 
         resolver = self._get_http_resolver()
-        connector = aiohttp.TCPConnector(resolver=resolver)
-        self.session = aiohttp.ClientSession(loop=self.loop, connector=connector)
+        connector = aiohttp.TCPConnector(resolver=resolver, verify_ssl=self.settings.COMMS_VERIFY_SSL)
+        self.session = aiohttp.ClientSession(loop=self.loop, connector=connector, read_timeout=10, conn_timeout=10)
 
         self.fallback = self.settings.fallback_cls(self.settings, self.loop)
         await self.db.startup()
@@ -185,7 +185,6 @@ class Pusher(Actor):
         await asyncio.gather(*cos, loop=self.loop)
 
     async def _post(self, domain, address, path, universal_headers, data):
-        logger.info('posting to %s > %s', domain, path)
         token = await self.authenticate(domain)
         headers = {
             'em2-auth': token,
@@ -193,9 +192,10 @@ class Pusher(Actor):
             **universal_headers
         }
         url = f'{self.settings.COMMS_PROTO}://{domain}/{path}'
+        logger.info('posting to %s', url)
 
         async with self.session.post(url, data=data, headers=headers) as r:
-            if r.status != 201:
+            if r.status not in (201, 204):
                 text = await r.text()
                 logger.warning('%s POST failed %d: %s', url, r.status, text)
 
@@ -263,13 +263,15 @@ class Pusher(Actor):
                 elif node == self.FALLBACK:
                     fallback_addresses.add(address)
                 elif node in remote_nodes:
-                    remote_nodes[node].add(d)
+                    remote_nodes[node].add(address)
                 else:
-                    remote_nodes[node] = {d}
+                    remote_nodes[node] = {address}
         return remote_nodes, local_recipients, fallback_addresses
 
+    get_action_id_sql = 'SELECT a.id FROM actions AS a WHERE a.conv = $1 AND a.key = $2'
+
     @concurrent
-    async def create_conv(self, domain, conv_key, participant_address):
+    async def create_conv(self, domain, conv_key, participant_address, trigger_action_key):
         logger.info('getting conv %.6s from %s', conv_key, domain)
 
         url = f'{self.settings.COMMS_PROTO}://{domain}/get/{conv_key}/'
@@ -285,11 +287,17 @@ class Pusher(Actor):
                     raise ClientError(f'status {r.status} not 200')
                 data = await r.json()
         except (ValueError, ClientError) as e:
-            return logger.warning('%s request failed: %s, text="%s"', url, e, text)
+            logger.warning('%s request failed: %s, text="%s"', url, e, text)
+            return 1
 
         async with self.db.acquire() as conn:
             creator = CreateForeignConv(conn)
-            await creator.run(data)
+            conv_id = await creator.run(trigger_action_key, data)
+            if not conv_id:
+                return 1
+            action_id = await conn.fetchval(self.get_action_id_sql, conv_id, trigger_action_key)
+        await self.push.direct(action_id, transmit=False)
+        return 0
 
     async def authenticate(self, node_domain: str) -> str:
         logger.debug('authenticating with %s', node_domain)
@@ -307,7 +315,7 @@ class Pusher(Actor):
         return token
 
     async def _authenticate_request(self, node_domain):
-        url = f'{self.settings.COMMS_PROTO}://{node_domain}/authenticate'
+        url = f'{self.settings.COMMS_PROTO}://{node_domain}/auth/'
         # TODO more error checks
         headers = {f'em2-{k}': str(v) for k, v in self._auth_data()}
         try:
@@ -344,7 +352,7 @@ class Pusher(Actor):
         return False
 
     @cron(hour=3, minute=0, run_at_startup=True)
-    async def setup_check(self):
+    async def setup_check(self, _retry=0, _retry_delay=2):
         """
         Check whether this node has the correct dns settings.
         """
@@ -352,24 +360,26 @@ class Pusher(Actor):
         foreign_app_url = f'{self.settings.COMMS_PROTO}://{self.settings.EXTERNAL_DOMAIN}/'
         try:
             async with self.session.get(foreign_app_url) as r:
-                if r.status != 200:
-                    logger.warning('setup check: %s response %d not 200', foreign_app_url, r.status)
-                else:
+                if r.status == 200:
                     data = await r.json()
                     if data['domain'] == self.settings.EXTERNAL_DOMAIN:
                         http_pass = True
                     else:
                         logger.warning('setup check: http domain mismatch: "%s" vs. "%s"',
                                        data['domain'], self.settings.EXTERNAL_DOMAIN)
+                else:
+                    raise aiohttp.ClientError(f'setup check: {foreign_app_url} response {r.status} not 200')
         except (aiohttp.ClientError, ValueError) as e:
+            if _retry < 5:
+                logger.info('setup check: error checking http, retrying...')
+                await asyncio.sleep(_retry_delay)
+                return await self.setup_check.direct(_retry=_retry + 1, _retry_delay=_retry_delay)
             logger.warning('setup check: error checking http %s: %s', e.__class__.__name__, e)
 
         authenticator = self.settings.authenticator_cls(self.settings, loop=self.loop)
         try:
             public_key = await authenticator.get_public_key(self.settings.EXTERNAL_DOMAIN)
             auth_data = dict(self._auth_data())
-            debug(self.settings.EXTERNAL_DOMAIN)
-            debug(public_key)
             signed_message = '{}:{}'.format(self.settings.EXTERNAL_DOMAIN, auth_data['timestamp'])
             if authenticator.valid_signature(signed_message, auth_data['signature'], public_key):
                 dns_pass = True

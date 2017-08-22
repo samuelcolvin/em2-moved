@@ -90,7 +90,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'component': 'message',
                 'key': 'xxxxxxxxxxxxxxxxxxxx',
                 'message': 'msg-secondmessagekey',
-                'parent': None,
+                'parent': 'pub-add-message-1234',
                 'participant': None,
                 'ts': CloseToNow(),
                 'verb': 'add'

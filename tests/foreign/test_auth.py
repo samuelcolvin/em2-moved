@@ -44,10 +44,10 @@ async def test_timstamp_wrong(settings, loop, redis):
 
 async def test_real_valid_public_key(settings, loop, redis):
     auth = Authenticator(settings, loop=loop)
-    key = await auth.get_public_key('test.imber.io')
+    key = await auth.get_public_key('unittest.imber.io')
     assert key == get_public_key()
     # repeat check
-    key = await auth.get_public_key('test.imber.io')
+    key = await auth.get_public_key('unittest.imber.io')
     await auth.close()
     assert key == get_public_key()
 
@@ -110,7 +110,7 @@ async def test_setup_check_fail(settings, loop, cli):
     })
     pusher = Pusher(settings, loop=loop, worker=True)
     await pusher.startup()
-    http_pass, dns_pass = await pusher.setup_check.direct()
+    http_pass, dns_pass = await pusher.setup_check.direct(_retry=3, _retry_delay=0.01)
     assert http_pass is False
     assert dns_pass is False
 

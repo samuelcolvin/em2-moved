@@ -1,21 +1,21 @@
 from tests.conftest import python_dict  # NOQA
 
 
-async def test_publish(cli, url, foreign_server, get_conv):
+async def test_publish(cli, url, foreign_server, get_conv, debug):
     assert foreign_server.app['request_log'] == []
     url_ = url('act', conv='key12345678', component='message', verb='add', item='')
     r = await cli.post(url_, data='foobar', headers={
         'em2-auth': 'already-authenticated.com:123:whatever',
         'em2-actor': 'test@already-authenticated.com',
         'em2-timestamp': '1',
-        'em2-action-key': '123',
+        'em2-action-key': 'yyyyyyyyyyyyyyyyyyyy',
         'em2-participant': 'testing@local.com',
     })
     assert r.status == 204, await r.text()
     obj = await get_conv('key12345678')
     assert obj['details']['subject'] == 'Test Conversation'
     assert foreign_server.app['request_log'] == [
-        'POST /authenticate > 201',
+        'POST /auth/ > 201',
         'GET /get/key12345678/ > 200',
     ]
 
@@ -27,7 +27,7 @@ async def test_add_participant(cli, url, foreign_server, get_conv):
         'em2-auth': 'already-authenticated.com:123:whatever',
         'em2-actor': 'test@already-authenticated.com',
         'em2-timestamp': '1',
-        'em2-action-key': '123',
+        'em2-action-key': 'yyyyyyyyyyyyyyyyyyyy',
         'em2-participant': 'testing@local.com',
     })
     assert r.status == 204, await r.text()
@@ -69,7 +69,7 @@ async def test_add_participant(cli, url, foreign_server, get_conv):
         ]
     } == obj
     assert foreign_server.app['request_log'] == [
-        'POST /authenticate > 201',
+        'POST /auth/ > 201',
         'GET /get/key12345678/ > 200',
     ]
 

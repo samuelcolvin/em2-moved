@@ -40,7 +40,7 @@ CONV_DETAILS = {
             'message': None,
             'parent': None,
             'participant': 'testing@local.com',
-            'timestamp': '2032-06-01T13:00:00.12345',
+            'ts': '2032-06-01T13:00:00.12345',
             'verb': 'add'
         },
     ],
@@ -74,7 +74,7 @@ async def logging_middleware(app, handler):
 def create_test_app(loop):
     app = Application(middlewares=[logging_middleware])
 
-    app.router.add_post('/authenticate', auth)
+    app.router.add_post('/auth/', auth)
     app.router.add_get('/get/{conv:[a-z0-9]+}/', get)
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', act)
 

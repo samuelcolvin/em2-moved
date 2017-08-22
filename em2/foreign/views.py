@@ -95,6 +95,7 @@ class Act(ForeignView):
         component = request.match_info['component']
         verb = request.match_info['verb']
         item = request.match_info['item'] or None
+        action_key = self.required_header('em2-action-key')
         r = await self.conn.fetchrow(self.find_conv_sql, conv_key, actor_address)
         if not r:
             if await self.conn.fetchval(self.get_conv_sql, conv_key):
@@ -106,10 +107,10 @@ class Act(ForeignView):
 
                 participant = self.required_header('em2-participant')
                 prt_domain = get_domain(participant)
-                if not await self.pusher.domain_is_local(prt_domain):
+                if not prt_domain or not await self.pusher.domain_is_local(prt_domain):
                     raise HTTPBadRequest(text=f'participant "{participant}" not linked to this platform')
 
-                await self.pusher.create_conv(platform, conv_key, participant)
+                await self.pusher.create_conv(platform, conv_key, participant, action_key)
                 return web.Response(status=204)
 
         conv_id, actor_id = r
@@ -117,7 +118,7 @@ class Act(ForeignView):
         apply_action = ApplyAction(
             self.conn,
             remote_action=True,
-            action_key=self.required_header('em2-action-key'),
+            action_key=action_key,
             conv=conv_id,
             published=True,
             actor=actor_id,

@@ -12,15 +12,17 @@ class Settings(BaseSettings):
     COMMIT: str = None
 
     COMMS_HEAD_REQUEST_TIMEOUT = 0.8
-    COMMS_DOMAIN_CACHE_TIMEOUT = 86400
-    COMMS_PLATFORM_TOKEN_TIMEOUT = 86400
+    COMMS_DOMAIN_CACHE_TIMEOUT = 86_400
+    COMMS_PLATFORM_TOKEN_TIMEOUT = 86_400
     COMMS_PLATFORM_TOKEN_LENGTH = 64
-    COMMS_AUTHENTICATION_TS_LENIENCY: list = (-10, 1)
+    COMMS_AUTHENTICATION_TS_LENIENCY: list = (-10_000, 2_000)
     COMMS_PUSH_TOKEN_EARLY_EXPIRY = 10
     COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
-    # only ever change this during testing!!!
+    # only ever change these during testing!!!
     COMMS_PROTO = 'https'
+    COMMS_VERIFY_SSL = True
+
     COMMS_DNS_IPS = ['8.8.8.8', '8.8.4.4']
 
     pusher_cls: PyObject = 'em2.push.Pusher'

@@ -189,7 +189,7 @@ class ApplyAction(FetchOr404Mixin):
             if self.data.component is Components.MESSAGE:
 
                 if self.data.verb is Verbs.ADD:
-                    self.item_key, message_id = await self._add_message()
+                    self.item_key, message_id, parent_id = await self._add_message()
                 else:
                     self.item_key, message_id, parent_id = await self._mod_message()
             elif self.data.component is Components.PARTICIPANT:
@@ -220,7 +220,7 @@ class ApplyAction(FetchOr404Mixin):
                 self.action_timestamp = action_timestamp[1:-1]
 
     _find_msg_by_action_sql = """
-    SELECT m.id, m.deleted, m.position
+    SELECT m.id, m.deleted, m.position, a.id
     FROM actions AS a
     JOIN messages AS m ON a.message = m.id
     WHERE a.conv = $1 AND a.key = $2
@@ -237,8 +237,8 @@ class ApplyAction(FetchOr404Mixin):
         if not self.data.parent:
             raise HTTPBadRequest(text='parent may not be null when adding a message')
 
-        after_id, deleted, position = await self.fetchrow404(self._find_msg_by_action_sql,
-                                                             self.data.conv, self.data.parent)
+        after_id, deleted, position, parent_id = await self.fetchrow404(self._find_msg_by_action_sql,
+                                                                        self.data.conv, self.data.parent)
         if deleted:
             raise HTTPBadRequest(text='you cannot add messages after a deleted message')
 
@@ -257,7 +257,7 @@ class ApplyAction(FetchOr404Mixin):
             position.append(1)
         args = item_key, self.data.conv, after_id, relationship, position, self.body
         message_id = await self.conn.fetchval(self._add_message_sql, *args)
-        return item_key, message_id
+        return item_key, message_id, parent_id
 
     _find_message_by_key_sql = """
     SELECT m.id
@@ -477,7 +477,7 @@ class _Action(BaseModel):
     verb: Verbs
     component: Components
     body: NoneStr
-    timestamp: datetime
+    ts: datetime
     actor: EmailStr
     parent: Optional[constr(min_length=20, max_length=20)]
     message: Optional[constr(min_length=20, max_length=20)]
@@ -510,14 +510,17 @@ class CreateForeignConv:
     def __init__(self, conn):
         self.conn = conn
 
-    async def run(self, data):
+    async def run(self, trigger_action_key, data):
         try:
             conv = FullConv(**data)
         except ValidationError as e:
-            return logger.warning('invalid conversation data:\n%s', e)
-
-        async with self.conn.transaction():
-            await self._trans(conv)
+            logger.warning('invalid conversation data:\n%s', e)
+        else:
+            if any(a.key == trigger_action_key for a in conv.actions):
+                async with self.conn.transaction():
+                    return await self._trans(conv)
+            else:
+                logger.warning('invalid conversation no listed action matches trigger action: %s', trigger_action_key)
 
     async def _trans(self, conv: FullConv):
         deets = conv.details
@@ -559,5 +562,6 @@ class CreateForeignConv:
                 action.participant and recip_lookup[action.participant],  # TODO could be other recipients
                 action.message and msg_lookup[action.message],
                 action.body if action.component == Components.MESSAGE else None,
-                action.timestamp
+                action.ts,
             )
+        return conv_id

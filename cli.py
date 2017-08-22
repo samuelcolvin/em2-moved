@@ -4,6 +4,8 @@ import json
 import re
 import sys
 from functools import partial
+from pathlib import Path
+from subprocess import PIPE, run
 from time import sleep
 
 try:
@@ -39,12 +41,33 @@ def cli(ctx, **kwargs):
 
 @cli.command()
 @click.pass_context
-def genkey(ctx):
+def gen_session_key(ctx):
     print(f"""
     New secret key:
 
-    export EM2_SECRET_SESSION_KEY="{Fernet.generate_key().decode()}"
+    export EM2_SECRET_SESSION_KEY='{Fernet.generate_key().decode()}'
     """)
+
+
+@cli.command()
+@click.pass_context
+def gen_dns_keys(ctx):
+    # openssl genrsa -out private.pem 4096
+    # openssl rsa -in private.pem -pubout > public.pem
+    print('generating public and private keys for DNS validation....\n')
+    private_key_file = 'em2-private.pem'
+    run(['openssl', 'genrsa', '-out', private_key_file, '4096'], check=True)
+    p = run(['openssl', 'rsa', '-in', private_key_file, '-pubout'], check=True, stdout=PIPE, encoding='utf8')
+    public_key = re.sub(r'(?:-{3,}.*?-{3,}|\s)', '', p.stdout)
+
+    print(f"""
+    public and private keys generated, private key file is: {private_key_file}
+
+    The public key should be set as a TXT record with value:
+
+    v=em2key {public_key}
+
+    (with no leading or trailing spaces)\n""")
 
 
 @cli.command(name='list')

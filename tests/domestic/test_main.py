@@ -152,7 +152,7 @@ async def test_add_message(cli, conv, url, db_conn):
         'component': 'message',
         'timestamp': CloseToNow(),
         'actor': await db_conn.fetchval('SELECT id FROM recipients'),
-        'parent': None,
+        'parent': AnyInt(),
         'recipient': None,
         'message': await db_conn.fetchval("SELECT id FROM messages WHERE body = 'hello'"),
         'body': 'hello',
@@ -229,7 +229,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
                 'component': 'message',
                 'key': await db_conn.fetchval("SELECT key FROM actions WHERE key LIKE 'act-%'"),
                 'message': new_msg_key,
-                'parent': None,
+                'parent': RegexStr('pub-.*'),
                 'participant': None,
                 'ts': CloseToNow(),
                 'verb': 'add'
@@ -355,7 +355,7 @@ async def test_publish_conv_foreign_part(cli, conv, url, db_conn, foreign_server
     assert await db_conn.fetchval('SELECT published FROM conversations')
 
     assert foreign_server.app['request_log'] == [
-        'POST /authenticate > 201',
+        'POST /auth/ > 201',
         RegexStr('POST /[0-9a-f]+/message/add/msg-firstmessagekeyx > 201'),
     ]
 
@@ -369,7 +369,7 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
     assert r.status == 200, await r.text()
 
     assert foreign_server.app['request_log'] == [
-        'POST /authenticate > 201',
+        'POST /auth/ > 201',
         RegexStr('POST /[0-9a-f]+/message/add/msg-firstmessagekeyx > 201'),
     ]
 
@@ -380,7 +380,7 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
     assert r.status == 201, await r.text()
 
     assert foreign_server.app['request_log'] == [
-        'POST /authenticate > 201',
+        'POST /auth/ > 201',
         RegexStr(f'POST /{new_conv_key}/message/add/msg-firstmessagekeyx > 201'),
         RegexStr(f'POST /{new_conv_key}/message/add/msg-[0-9a-z]+ > 201'),
     ]
@@ -395,7 +395,7 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     assert r.status == 200, await r.text()
 
     assert foreign_server.app['request_log'] == [
-        'POST /authenticate > 201',
+        'POST /auth/ > 201',
         RegexStr('POST /[0-9a-f]+/message/add/msg-firstmessagekeyx > 201'),
     ]
 
@@ -405,7 +405,7 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     assert r.status == 201, await r.text()
     print(foreign_server.app['request_log'])
     assert foreign_server.app['request_log'] == [
-        'POST /authenticate > 201',
+        'POST /auth/ > 201',
         RegexStr(f'POST /{new_conv_key}/message/add/msg-firstmessagekeyx > 201'),
         RegexStr(f'POST /{new_conv_key}/participant/add/new@foreign.com > 201'),
     ]

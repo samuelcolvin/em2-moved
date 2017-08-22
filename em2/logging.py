@@ -39,6 +39,10 @@ def prepare_log_config(settings) -> dict:
                 'handlers': ['em2.default', 'sentry'],
                 'level': 'INFO',
             },
+            'aiohttp': {
+                'handlers': ['em2.default', 'sentry'],
+                'level': 'WARNING',
+            },
         },
     }
     return v
