@@ -21,16 +21,16 @@ class SimpleAuthenticator(Authenticator):
         await self._set_key()
         return await super().validate_platform_token(token)
 
-    async def _get_public_key(self, platform):
+    async def get_public_key(self, platform):
         return self.public_key_value
 
     async def _check_domain_uses_platform(self, domain, platform_domain):
         return platform_domain.endswith(domain)
 
-    def _valid_signature(self, signed_message, signature, public_key):
+    def valid_signature(self, signed_message, signature, public_key):
         if isinstance(self.valid_signature_override, bool):
             return self.valid_signature_override
-        return super()._valid_signature(signed_message, signature, public_key)
+        return super().valid_signature(signed_message, signature, public_key)
 
     def _now_unix(self):
         return TIMESTAMP

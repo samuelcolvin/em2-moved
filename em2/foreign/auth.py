@@ -52,9 +52,9 @@ class Authenticator(RedisMixin):
         if not l_limit < timestamp < u_limit:
             raise FailedInboundAuthentication('{} was not between {} and {}'.format(timestamp, l_limit, u_limit))
 
-        public_key = await self._get_public_key(platform)
+        public_key = await self.get_public_key(platform)
         signed_message = '{}:{}'.format(platform, timestamp)
-        if not self._valid_signature(signed_message, signature, public_key):
+        if not self.valid_signature(signed_message, signature, public_key):
             raise FailedInboundAuthentication('invalid signature')
         token_expires_at = now + self._domain_timeout
         platform_token = '{}:{}:{}'.format(platform, token_expires_at, self._generate_random())
@@ -71,7 +71,7 @@ class Authenticator(RedisMixin):
         if not await self._check_domain_uses_platform(domain, platform):
             raise HTTPForbidden(text=f'"{domain}" does not use "{platform}"')
 
-    async def _get_public_key(self, platform: str):
+    async def get_public_key(self, platform: str):
         dns_results = await self._dns_query(platform, 'TXT')
         logger.info('got %d TXT records for %s', len(dns_results), platform)
         key_data = self._get_public_key_from_dns(dns_results)
@@ -116,7 +116,7 @@ class Authenticator(RedisMixin):
                     await redis.setex(cache_key, self._domain_timeout, host.encode())
                     return True
 
-    def _valid_signature(self, signed_message, signature, public_key):
+    def valid_signature(self, signed_message, signature, public_key):
         try:
             key = RSA.importKey(public_key)
         except ValueError as e:

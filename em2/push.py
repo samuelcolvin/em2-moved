@@ -8,7 +8,7 @@ import aiodns
 import aiohttp
 from aiodns.error import DNSError
 from aiohttp import ClientError
-from arq import Actor, concurrent
+from arq import Actor, concurrent, cron
 from arq.jobs import DatetimeJob
 from async_timeout import timeout
 from Crypto.Hash import SHA256
@@ -17,7 +17,7 @@ from Crypto.Signature import PKCS1_v1_5
 
 from . import Settings
 from .core import Action, CreateForeignConv, gen_random
-from .exceptions import Em2ConnectionError, FailedOutboundAuthentication
+from .exceptions import Em2ConnectionError, FailedInboundAuthentication, FailedOutboundAuthentication
 from .utils import get_domain
 from .utils.encoding import msg_encode, to_unix_ms
 
@@ -68,7 +68,7 @@ class Pusher(Actor):
 
     @classmethod
     def _get_http_resolver(cls):
-        return aiohttp.AsyncResolver()
+        return aiohttp.DefaultResolver()
 
     async def shutdown(self):
         if self.db:
@@ -342,6 +342,47 @@ class Pusher(Actor):
             if host == self.settings.EXTERNAL_DOMAIN:
                 return True
         return False
+
+    @cron(hour=3, minute=0, run_at_startup=True)
+    async def setup_check(self):
+        """
+        Check whether this node has the correct dns settings.
+        """
+        http_pass, dns_pass = False, False
+        foreign_app_url = f'{self.settings.COMMS_PROTO}://{self.settings.EXTERNAL_DOMAIN}/'
+        try:
+            async with self.session.get(foreign_app_url) as r:
+                if r.status != 200:
+                    logger.warning('setup check: %s response %d not 200', foreign_app_url, r.status)
+                else:
+                    data = await r.json()
+                    if data['domain'] == self.settings.EXTERNAL_DOMAIN:
+                        http_pass = True
+                    else:
+                        logger.warning('setup check: http domain mismatch: "%s" vs. "%s"',
+                                       data['domain'], self.settings.EXTERNAL_DOMAIN)
+        except (aiohttp.ClientError, ValueError) as e:
+            logger.warning('setup check: error checking http %s: %s', e.__class__.__name__, e)
+
+        authenticator = self.settings.authenticator_cls(self.settings, loop=self.loop)
+        try:
+            public_key = await authenticator.get_public_key(self.settings.EXTERNAL_DOMAIN)
+            auth_data = dict(self._auth_data())
+            debug(self.settings.EXTERNAL_DOMAIN)
+            debug(public_key)
+            signed_message = '{}:{}'.format(self.settings.EXTERNAL_DOMAIN, auth_data['timestamp'])
+            if authenticator.valid_signature(signed_message, auth_data['signature'], public_key):
+                dns_pass = True
+            else:
+                logger.warning('setup check: em2key dns value found but signature validation failed')
+        except FailedInboundAuthentication as e:
+            logger.warning('setup check: error checking dns setup for: %s', e)
+
+        if http_pass and dns_pass:
+            logger.info('setup check: passed')
+        else:
+            logger.warning('setup check: failed, http_pass=%s dns_pass=%s', http_pass, dns_pass)
+        return http_pass, dns_pass
 
     @property
     def resolver(self):

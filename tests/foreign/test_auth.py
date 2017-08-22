@@ -4,6 +4,8 @@ from aiohttp.web_exceptions import HTTPForbidden
 
 from em2.exceptions import FailedInboundAuthentication
 from em2.foreign.auth import Authenticator
+from em2.push import Pusher
+from tests.fixture_classes import DNSMockedPusher
 from tests.fixture_classes.auth import TIMESTAMP, DnsMockAuthenticator, FixedDnsMockAuthenticator, get_public_key
 from tests.fixture_classes.dns_resolver import VALID_SIGNATURE
 
@@ -42,10 +44,10 @@ async def test_timstamp_wrong(settings, loop, redis):
 
 async def test_real_valid_public_key(settings, loop, redis):
     auth = Authenticator(settings, loop=loop)
-    key = await auth._get_public_key('test.imber.io')
+    key = await auth.get_public_key('test.imber.io')
     assert key == get_public_key()
     # repeat check
-    key = await auth._get_public_key('test.imber.io')
+    key = await auth.get_public_key('test.imber.io')
     await auth.close()
     assert key == get_public_key()
 
@@ -53,7 +55,7 @@ async def test_real_valid_public_key(settings, loop, redis):
 async def test_real_no_public_key(settings, loop, redis):
     auth = Authenticator(settings, loop=loop)
     with pytest.raises(FailedInboundAuthentication) as exc_info:
-        await auth._get_public_key('example.com')
+        await auth.get_public_key('example.com')
     await auth.close()
     assert exc_info.value.text == 'Authenticate failed: no "em2key" TXT dns record found'
 
@@ -61,7 +63,7 @@ async def test_real_no_public_key(settings, loop, redis):
 async def test_real_domain_does_not_exists(settings, loop, redis):
     auth = Authenticator(settings, loop=loop)
     with pytest.raises(FailedInboundAuthentication) as exc_info:
-        await auth._get_public_key('doesnotexist.example.com')
+        await auth.get_public_key('doesnotexist.example.com')
     await auth.close()
     assert exc_info.value.text == 'Authenticate failed: no "em2key" TXT dns record found'
 
@@ -85,3 +87,31 @@ async def test_domain_uses_false(mocker, settings, loop, redis):
     await auth._check_domain_uses_platform('local.com', 'other.com')
     await auth.close()
     assert auth._mx_hosts.call_count == 3
+
+
+async def test_setup_check_pass(settings, loop, cli):
+    original_external = cli.server.app['settings'].EXTERNAL_DOMAIN
+    pusher = DNSMockedPusher(settings, loop=loop, worker=True)
+    await pusher.startup()
+    pusher.set_foreign_port(cli.server.port)
+    cli.server.app['settings'].EXTERNAL_DOMAIN = f'{original_external}:{cli.server.port}'
+    http_pass, dns_pass = await pusher.setup_check.direct()
+    assert http_pass
+    assert dns_pass
+
+    await pusher.shutdown()
+    cli.server.app['settings'].EXTERNAL_DOMAIN = original_external
+
+
+async def test_setup_check_fail(settings, loop, cli):
+    settings = settings.copy(update={
+        'EXTERNAL_DOMAIN': 'example.com',
+        'authenticator_cls': Authenticator,
+    })
+    pusher = Pusher(settings, loop=loop, worker=True)
+    await pusher.startup()
+    http_pass, dns_pass = await pusher.setup_check.direct()
+    assert http_pass is False
+    assert dns_pass is False
+
+    await pusher.shutdown()

@@ -1,8 +1,9 @@
+import json
 import logging
 from aiohttp.web import Application, Response
 
 from em2 import VERSION
-from em2.utils.web import db_conn_middleware
+from em2.utils.web import JSON_CONTENT_TYPE, db_conn_middleware
 from .views import Act, Authenticate, Get
 
 logger = logging.getLogger('em2.foreign')
@@ -10,7 +11,14 @@ logger = logging.getLogger('em2.foreign')
 
 async def index(request):
     s = request.app['settings']
-    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} foreign interface, domain: {s.EXTERNAL_DOMAIN}\n')
+    data = dict(
+        description='em2 foreign interface',
+        version=f'v{VERSION}',
+        commit=s.COMMIT,
+        interface='external',
+        domain=s.EXTERNAL_DOMAIN
+    )
+    return Response(text=json.dumps(data, indent=2) + '\n', content_type=JSON_CONTENT_TYPE)
 
 
 async def app_startup(app):
