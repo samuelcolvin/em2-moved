@@ -80,7 +80,7 @@ class Authenticator(RedisMixin):
 
     @classmethod
     def _get_public_key_from_dns(cls, dns_results: tuple):
-        results = (r.text for r in dns_results)
+        results = (r.text.decode() for r in dns_results)
         for r in results:
             if r.lower().startswith('v=em2key'):
                 # [8:] removes the "v=em2key"

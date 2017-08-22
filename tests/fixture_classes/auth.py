@@ -83,7 +83,7 @@ class FixedDnsMockAuthenticator(DnsMockAuthenticator):
 
 
 class TXTQueryResult(NamedTuple):
-    text: str
+    text: bytes
 
 
 class MXQueryResult(NamedTuple):
@@ -104,27 +104,27 @@ class MockDNSResolver:
             return self.get_other(host, qtype)
 
     def get_txt(self, host):
-        r = [TXTQueryResult(text='v=spf1 include:spf.example.com ?all')]
+        r = [TXTQueryResult(text=b'v=spf1 include:spf.example.com ?all')]
         if host == 'foobar.com':
             public_key = get_public_key()
             public_key = public_key.replace('-----BEGIN PUBLIC KEY-----', '')
             public_key = public_key.replace('-----END PUBLIC KEY-----', '').replace('\n', '')
             rows = wrap(public_key, width=250)
             rows[0] = 'v=em2key ' + rows[0]
-            r += [TXTQueryResult(text=t) for t in rows]
+            r += [TXTQueryResult(text=t.encode()) for t in rows]
         elif host == 'badkey1.com':
             r += [
-                TXTQueryResult(text='v=em2key 123'),
-                TXTQueryResult(text='456'),
-                TXTQueryResult(text='789'),
+                TXTQueryResult(text=b'v=em2key 123'),
+                TXTQueryResult(text=b'456'),
+                TXTQueryResult(text=b'789'),
             ]
         elif host == 'badkey2.com':
             r += [
-                TXTQueryResult(text='v=em2key 123'),
-                TXTQueryResult(text='456'),
-                TXTQueryResult(text='789='),
+                TXTQueryResult(text=b'v=em2key 123'),
+                TXTQueryResult(text=b'456'),
+                TXTQueryResult(text=b'789='),
             ]
-        r.append(TXTQueryResult(text='v=foobar'))
+        r.append(TXTQueryResult(text=b'v=foobar'))
         return r
 
     def get_mx(self, host):
