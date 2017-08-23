@@ -13,7 +13,7 @@ from pydantic.datetime_parse import parse_datetime
 
 from em2 import Settings
 from em2.core import get_create_recipient
-from em2.run.database import prepare_database
+from em2.utils.database import prepare_database
 
 from .fixture_classes.foreign_server import create_test_app
 

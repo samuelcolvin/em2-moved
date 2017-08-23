@@ -9,7 +9,7 @@ from arq import RedisMixin
 from em2 import VERSION, Settings
 from em2.logging import logger
 from em2.run.check import command, execute
-from em2.run.database import prepare_database as _prepare_database
+from em2.utils.database import prepare_database as _prepare_database
 from em2.utils.network import wait_for_services
 
 # imports are local where possible so commands (especially check) are as fast to run as possible

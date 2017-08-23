@@ -34,10 +34,12 @@ def prepare_log_config(settings) -> dict:
             'em2': {
                 'handlers': ['em2.default', 'sentry'],
                 'level': dft_log_level,
+                'propagate': False,
             },
             'arq': {
                 'handlers': ['em2.default', 'sentry'],
                 'level': 'INFO',
+                'propagate': False,
             },
             'aiohttp': {
                 'handlers': ['em2.default', 'sentry'],

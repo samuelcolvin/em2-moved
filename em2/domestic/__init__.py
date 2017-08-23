@@ -27,7 +27,7 @@ async def app_startup(app):
         background=Background(app, loop),
     )
     await app['db'].startup()
-    await app['pusher'].log_redis_info(logger.info)
+    await app['pusher'].log_redis_info(logger.debug)
 
 
 async def app_cleanup(app):

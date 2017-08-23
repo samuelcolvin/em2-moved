@@ -26,7 +26,8 @@ async def lenient_pg_connection(settings, _retry=0):
             return await lenient_pg_connection(settings, _retry=_retry + 1)
         else:
             raise
-    logger.info('pg connection successful, version: %s', await conn.fetchval('SELECT version()'))
+    log = logger.info if _retry > 0 else logger.debug
+    log('pg connection successful, version: %s', await conn.fetchval('SELECT version()'))
     return conn
 
 
@@ -39,7 +40,14 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
     """
     conn = await lenient_pg_connection(settings)
     try:
-        logger.info('attempting to create database "%s"...', settings.PG_NAME)
+        if not overwrite_existing:
+            # this check is technically unnecessary but avoids an ugly postgres error log
+            exists = await conn.fetchval('SELECT 1 AS result FROM pg_database WHERE datname=$1', settings.PG_NAME)
+            if exists:
+                logger.info('database already exists, skipping')
+                return False
+
+        logger.debug('attempting to create database "%s"...', settings.PG_NAME)
         try:
             await conn.execute('CREATE DATABASE {}'.format(settings.PG_NAME))
         except (asyncpg.DuplicateDatabaseError, asyncpg.UniqueViolationError):
@@ -51,7 +59,7 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
         else:
             logger.info('database did not exist, now created')
 
-        logging.info('settings db timezone to utc...')
+        logger.debug('settings db timezone to utc...')
         await conn.execute("ALTER DATABASE {} SET TIMEZONE TO 'UTC';".format(settings.PG_NAME))
     finally:
         await conn.close()

@@ -29,7 +29,7 @@ async def app_startup(app):
         pusher=settings.pusher_cls(settings=settings, loop=app.loop),
     )
     await app['db'].startup()
-    await app['pusher'].log_redis_info(logger.info)
+    await app['pusher'].log_redis_info(logger.debug)
 
 
 async def app_cleanup(app):

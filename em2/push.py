@@ -52,7 +52,7 @@ class Pusher(Actor):
         self._resolver = None
         kwargs['redis_settings'] = self.settings.redis
         super().__init__(**kwargs)
-        logger.info('initialising pusher %s', self)
+        logger.debug('initialising pusher %s', self)
 
     async def startup(self):
         assert not self._concurrency_enabled or self.is_shadow, 'pusher db should only be started in shadow mode'

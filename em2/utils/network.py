@@ -23,7 +23,7 @@ async def _wait_port_open(host, port, delay, loop):
         except OSError:
             await asyncio.sleep(step_size, loop=loop)
         else:
-            logger.info('Connected successfully to %s:%s after %0.2fs', host, port, loop.time() - start)
+            logger.debug('Connected successfully to %s:%s after %0.2fs', host, port, loop.time() - start)
             return
     raise StartupException(f'Unable to connect to {host}:{port} after {loop.time() - start:0.2f}s')
 
@@ -37,7 +37,7 @@ def wait_for_services(settings, *, delay=5, loop=None):
         _wait_port_open(settings.PG_HOST, settings.PG_PORT, delay, loop),
         _wait_port_open(settings.R_HOST, settings.R_PORT, delay, loop),
     ]
-    logger.info('waiting for postgres and redis to come up...')
+    logger.debug('waiting for postgres and redis to come up...')
     loop.run_until_complete(asyncio.gather(*coros, loop=loop))
 
 
