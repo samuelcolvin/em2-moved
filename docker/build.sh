@@ -2,19 +2,15 @@
 
 set -e
 
-if [ -z ${1+x} ]; then
-  echo "Error: please provide the private key file as sole argument"
+KEY_FILE=${1:-em2-private.pem}
+if [ ! -f ${KEY_FILE} ]; then
+  echo "Error: files '$KEY_FILE' does not exist"
   exit 2
 fi
 
-if [ ! -f $1 ]; then
-  echo "Error: files '$1' does not exist"
-  exit 2
-fi
-
-# copy the file before changing directory so $1 is still correct
+# copy the file before changing directory so $KEY_FILE is still correct
 THIS_DIR=`dirname "$0"`
-cp $1 ${THIS_DIR}/private.pem
+cp ${KEY_FILE} ${THIS_DIR}/private.pem
 
 cd ${THIS_DIR}
 if [[ ! -d tmp ]]; then

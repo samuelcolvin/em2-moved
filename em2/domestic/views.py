@@ -72,7 +72,7 @@ class Create(View):
             await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
         await self.conn.execute(self.add_message_sql, conv_id, gen_random('msg'), conv.message)
 
-        return json_response(url=str(request.app.router['get'].url_for(conv=key)), status_=201)
+        return json_response(key=key, status_=201)
 
 
 class Act(View):

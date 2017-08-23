@@ -44,7 +44,7 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
             # this check is technically unnecessary but avoids an ugly postgres error log
             exists = await conn.fetchval('SELECT 1 AS result FROM pg_database WHERE datname=$1', settings.PG_NAME)
             if exists:
-                logger.info('database already exists, skipping')
+                logger.info('database already exists ✓')
                 return False
 
         logger.debug('attempting to create database "%s"...', settings.PG_NAME)
@@ -52,22 +52,24 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
             await conn.execute('CREATE DATABASE {}'.format(settings.PG_NAME))
         except (asyncpg.DuplicateDatabaseError, asyncpg.UniqueViolationError):
             if not overwrite_existing:
-                logger.info('database already exists, skipping')
+                logger.info('database already exists, skipping creation')
                 return False
             else:
-                logger.info('database already exists...')
+                logger.debug('database already exists...')
         else:
-            logger.info('database did not exist, now created')
+            logger.debug('database did not exist, now created')
 
         logger.debug('settings db timezone to utc...')
-        await conn.execute("ALTER DATABASE {} SET TIMEZONE TO 'UTC';".format(settings.PG_NAME))
+        await conn.execute(f"ALTER DATABASE {settings.PG_NAME} SET TIMEZONE TO 'UTC';")
     finally:
         await conn.close()
 
     conn = await asyncpg.connect(dsn=settings.pg_dsn)
     try:
-        logger.info('creating tables from model definition...')
-        await conn.execute(settings.models_sql)
+        logger.debug('creating tables from model definition...')
+        async with conn.transaction():
+            await conn.execute(settings.models_sql)
     finally:
         await conn.close()
+    logger.info('database successfully setup ✓')
     return True

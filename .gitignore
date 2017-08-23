@@ -14,3 +14,4 @@ em2_tests
 /em2.egg-info
 activate.sh
 docker/tmp/
+em2-private.pem

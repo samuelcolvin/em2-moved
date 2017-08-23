@@ -109,7 +109,7 @@ async def test_create_conv(cli, url, db_conn):
     r = await cli.post(url('create'), json=data)
     assert r.status == 201, await r.text()
     conv_key = await db_conn.fetchval('SELECT key FROM conversations')
-    assert {'url': f'/c/{conv_key}/'} == await r.json()
+    assert {'key': conv_key} == await r.json()
     assert conv_key.startswith('dft-')
 
 
