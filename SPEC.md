@@ -268,7 +268,7 @@ Send "to" each SMTP recipient
 
 set reply-to to a unique address on the platform, leave the platform to forward the message other SMTP participants
 
-(Will have problem with "forging" emails from the original SMTP adddress)
+(Will have problem with "forging" emails from the original SMTP address)
 
 ### Or
 
@@ -276,3 +276,31 @@ cc to all SMTP addresses, cc to a unique address for each em2 domain "<conv-key>
 this might involve multiple email addresses for each platform but that's fine.
 
 Second solution should work better and look more normal for SMTP users.
+
+----------------------------------
+
+# Auth endpoints
+
+No "sign-up" page, but an endpoint for approved applications to create users, endpoint to get and edit 
+account.
+
+Main cookies for domestic should expire every 10 minutes, when js client fails to connect it should requests
+a new cookie from auth.
+
+## User View:
+
+?? Switching account
+
+* `/login/` - including partial approval prompting 2FA and recaptcha
+* `/logout/` - deletes the cookie, posts to `term-session` on domestic.
+* `/reset-password/`
+* `/account/`
+* `/account/update/`
+* `/new-otp-token/`
+
+## API View:
+
+* `/add/`
+* `/suspect/`
+
+TODO: public profiles

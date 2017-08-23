@@ -34,7 +34,7 @@ def wait_for_services(settings, *, delay=5, loop=None):
     """
     loop = loop or asyncio.get_event_loop()
     coros = [
-        _wait_port_open(settings.PG_HOST, settings.PG_PORT, delay, loop),
+        _wait_port_open(settings.pg_host, settings.pg_port, delay, loop),
         _wait_port_open(settings.R_HOST, settings.R_PORT, delay, loop),
     ]
     logger.debug('waiting for postgres and redis to come up...')

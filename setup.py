@@ -41,7 +41,7 @@ setup(
         'em2': [
             'extras/requirements1.txt',
             'extras/requirements2.txt',
-            'extras/models.sql',
+            'extras/main_models.sql',
         ],
     },
     install_requires=requirements,

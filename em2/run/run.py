@@ -81,14 +81,15 @@ def info(settings: Settings):
     import aiohttp
     import arq
     logger.info(f"""em2 info:
-    Python:   {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}
-    em2:      {VERSION}
-    aiohttp:  {aiohttp.__version__}
-    arq:      {arq.VERSION}
-    domain:   {settings.EXTERNAL_DOMAIN}
-    debug:    {settings.DEBUG}
-    pg db:    {settings.PG_NAME}
-    redis db: {settings.R_DATABASE}""")
+    Python:     {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}
+    em2:        {VERSION}
+    aiohttp:    {aiohttp.__version__}
+    arq:        {arq.VERSION}
+    domain:     {settings.EXTERNAL_DOMAIN}
+    debug:      {settings.DEBUG}
+    main pg db: {settings.pg_main_name}
+    auth pg db: {settings.pg_auth_name}
+    redis db:   {settings.R_DATABASE}""")
 
 
 @command

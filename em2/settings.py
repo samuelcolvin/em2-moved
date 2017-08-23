@@ -1,8 +1,14 @@
+from enum import Enum
 from pathlib import Path
 
 from arq import RedisSettings
 from pydantic import BaseSettings, PyObject
 from pydantic.utils import make_dsn
+
+
+class Mode(str, Enum):
+    main = 'main'
+    auth = 'auth'
 
 
 class Settings(BaseSettings):
@@ -30,14 +36,17 @@ class Settings(BaseSettings):
 
     WEB_PORT = 8000
 
-    PG_HOST = 'localhost'
-    PG_PORT = '5432'
-    PG_USER = 'postgres'
-    PG_PASSWORD = ''
-    PG_NAME = 'em2'
+    pg_host = 'localhost'
+    pg_port = '5432'
+    pg_user = 'postgres'
+    pg_password = ''
+    pg_main_name = 'em2'
+    pg_auth_name = 'em2_auth'
 
-    PG_POOL_MINSIZE = 1
-    PG_POOL_MAXSIZE = 10
+    mode = Mode.main
+
+    pg_pool_minsize = 1
+    pg_pool_maxsize = 10
 
     # the domain at which other platforms connect to this node, eg. the "foreign" app's endpoint
     EXTERNAL_DOMAIN = 'em2-domain-set'
@@ -67,21 +76,18 @@ class Settings(BaseSettings):
         return Path(self.PRIVATE_DOMAIN_KEY_FILE).read_text()
 
     @property
-    def pg_dsn_kwargs(self):
-        kwargs = {
-            f: getattr(self, f'PG_{f.upper()}')
-            for f in ('name', 'password', 'host', 'port', 'user')
-        }
-        kwargs['driver'] = 'postgres'
-        return kwargs
+    def pg_name(self):
+        return self.pg_main_name if self.mode == Mode.main else self.pg_auth_name
 
     @property
     def pg_dsn(self):
-        return make_dsn(**self.pg_dsn_kwargs)
+        kwargs = {f: getattr(self, f'pg_{f}') for f in ('name', 'password', 'host', 'port', 'user')}
+        return make_dsn(driver='postgres', **kwargs)
 
     @property
     def models_sql(self):
-        return (self.THIS_DIR / 'extras/models.sql').read_text()
+        f = 'main_models.sql' if self.mode == Mode.main else 'auth_models.sql'
+        return (self.THIS_DIR / 'extras' / f).read_text()
 
     @property
     def redis(self):

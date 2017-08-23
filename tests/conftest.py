@@ -30,7 +30,8 @@ def pytest_addoption(parser):
 def settings():
     return Settings(
         DEBUG=True,  # needed for insecure cookies
-        PG_NAME='em2_test',
+        pg_main_name='em2_test',
+        pg_auth_name='em2_auth_test',
         EXTERNAL_DOMAIN='em2.platform.example.com',
         authenticator_cls='tests.fixture_classes.SimpleAuthenticator',
         db_cls='tests.fixture_classes.TestDatabase',
@@ -52,6 +53,32 @@ def clean_db(request, settings):
 def db_conn(loop, settings, clean_db, redis):
     await_ = loop.run_until_complete
     conn = await_(asyncpg.connect(dsn=settings.pg_dsn, loop=loop))
+
+    tr = conn.transaction()
+    await_(tr.start())
+
+    yield conn
+
+    await_(tr.rollback())
+
+
+@pytest.fixture(scope='session')
+def auth_settings(settings):
+    return settings.copy(update={'mode': 'auth'})
+
+
+@pytest.fixture(scope='session')
+def auth_clean_db(request, auth_settings):
+    # loop fixture has function scope so can't be used here.
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(prepare_database(auth_settings, not request.config.getoption('--reuse-db')))
+    teardown_test_loop(loop)
+
+
+@pytest.yield_fixture
+def auth_db_conn(loop, auth_settings, auth_clean_db):
+    await_ = loop.run_until_complete
+    conn = await_(asyncpg.connect(dsn=auth_settings.pg_dsn, loop=loop))
 
     tr = conn.transaction()
     await_(tr.start())

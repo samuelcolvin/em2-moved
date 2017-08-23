@@ -80,8 +80,8 @@ class Database:
     async def startup(self):
         self._pool = await asyncpg.create_pool(
             dsn=self._settings.pg_dsn,
-            min_size=self._settings.PG_POOL_MINSIZE,
-            max_size=self._settings.PG_POOL_MAXSIZE,
+            min_size=self._settings.pg_pool_minsize,
+            max_size=self._settings.pg_pool_maxsize,
             loop=self._loop,
         )
 

@@ -3,7 +3,6 @@ import logging
 
 import asyncpg
 from async_timeout import timeout
-from pydantic.utils import make_dsn
 
 from em2.settings import Settings
 
@@ -11,10 +10,7 @@ logger = logging.getLogger('em2.database')
 
 
 async def lenient_pg_connection(settings, _retry=0):
-    no_db_dsn = make_dsn(**{
-        **settings.pg_dsn_kwargs,
-        **{'name': None}
-    })
+    no_db_dsn, _ = settings.pg_dsn.rsplit('/', 1)
 
     try:
         with timeout(2):
@@ -42,14 +38,14 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
     try:
         if not overwrite_existing:
             # this check is technically unnecessary but avoids an ugly postgres error log
-            exists = await conn.fetchval('SELECT 1 AS result FROM pg_database WHERE datname=$1', settings.PG_NAME)
+            exists = await conn.fetchval('SELECT 1 AS result FROM pg_database WHERE datname=$1', settings.pg_name)
             if exists:
                 logger.info('database already exists ✓')
                 return False
 
-        logger.debug('attempting to create database "%s"...', settings.PG_NAME)
+        logger.debug('attempting to create database "%s"...', settings.pg_name)
         try:
-            await conn.execute('CREATE DATABASE {}'.format(settings.PG_NAME))
+            await conn.execute('CREATE DATABASE {}'.format(settings.pg_name))
         except (asyncpg.DuplicateDatabaseError, asyncpg.UniqueViolationError):
             if not overwrite_existing:
                 logger.info('database already exists, skipping creation')
@@ -60,7 +56,7 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
             logger.debug('database did not exist, now created')
 
         logger.debug('settings db timezone to utc...')
-        await conn.execute(f"ALTER DATABASE {settings.PG_NAME} SET TIMEZONE TO 'UTC';")
+        await conn.execute(f"ALTER DATABASE {settings.pg_name} SET TIMEZONE TO 'UTC';")
     finally:
         await conn.close()
 
