@@ -28,13 +28,13 @@ def worker_check(settings):
 
 
 def execute(command_):
-    settings = Settings(COMMAND=command_)
+    settings = Settings()
     setup_logging(settings)
 
-    func = command_lookup.get(settings.COMMAND)
+    func = command_lookup.get(command_)
     if func is None:
         options = ', '.join(sorted(command_lookup.keys()))
-        raise ConfigException(f'invalid command "{settings.COMMAND}", options are: {options}')
+        raise ConfigException(f'invalid command "{command_}", options are: {options}')
     logger.info('running %s...', func.__name__)
     func(settings)
 

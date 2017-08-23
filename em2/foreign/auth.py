@@ -32,9 +32,6 @@ class Authenticator(RedisMixin):
         self.redis_settings = self.settings.redis
         super().__init__(**kwargs)
         self._resolver = None
-        self._head_request_timeout = self.settings.COMMS_HEAD_REQUEST_TIMEOUT
-        self._domain_timeout = self.settings.COMMS_DOMAIN_CACHE_TIMEOUT
-        self._platform_token_timeout = self.settings.COMMS_PLATFORM_TOKEN_TIMEOUT
         self._past_ts_limit, self._future_ts_limit = self.settings.COMMS_AUTHENTICATION_TS_LENIENCY
         self._token_length = self.settings.COMMS_PLATFORM_TOKEN_LENGTH
 
@@ -56,7 +53,7 @@ class Authenticator(RedisMixin):
         signed_message = '{}:{}'.format(platform, timestamp)
         if not self.valid_signature(signed_message, signature, public_key):
             raise FailedInboundAuthentication('invalid signature')
-        token_expires_at = now + self._domain_timeout
+        token_expires_at = now + self.settings.COMMS_PLATFORM_TOKEN_TIMEOUT
         platform_token = '{}:{}:{}'.format(platform, token_expires_at, self._generate_random())
         await self._store_platform_token(platform_token, token_expires_at)
         return platform_token
@@ -113,7 +110,7 @@ class Authenticator(RedisMixin):
                 return True
             async for host in self._mx_hosts(domain):
                 if host == platform_domain:
-                    await redis.setex(cache_key, self._domain_timeout, host.encode())
+                    await redis.setex(cache_key, self.settings.COMMS_DOMAIN_CACHE_TIMEOUT, host.encode())
                     return True
 
     def valid_signature(self, signed_message, signature, public_key):

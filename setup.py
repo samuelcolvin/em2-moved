@@ -9,7 +9,10 @@ em2
 
 # avoid loading the package before requirements are installed:
 version = SourceFileLoader('version', 'em2/version.py').load_module()
-requirements = [r for r in Path('em2/extras/requirements.txt').read_text().split('\n') if r and not r.startswith('#')]
+requirements = (
+    [r for r in Path('em2/extras/requirements1.txt').read_text().split('\n') if r and not r.startswith('#')] +
+    [r for r in Path('em2/extras/requirements2.txt').read_text().split('\n') if r and not r.startswith('#')]
+)
 
 setup(
     name='em2',
@@ -30,13 +33,14 @@ setup(
     packages=find_packages(include=('em2*',)),
     entry_points="""
         [console_scripts]
-        em2run=em2.run.main:main
+        em2run=em2.run.run:main
         em2check=em2.run.check:main
     """,
     zip_safe=True,
     package_data={
         'em2': [
-            'extras/requirements.txt',
+            'extras/requirements1.txt',
+            'extras/requirements2.txt',
             'extras/models.sql',
         ],
     },

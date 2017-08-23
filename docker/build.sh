@@ -22,7 +22,7 @@ fi
 
 echo "copying necessary files into place..."
 rsync -i -a requirements.txt tmp/docker-requirements.txt
-rsync -i -a --exclude=*.pyc --exclude=__pycache__ ../em2 tmp/
+rsync -i -a --delete --exclude=*.pyc --exclude=__pycache__ ../em2 tmp/
 rsync -i -a ../setup.py tmp/
 rsync -i -a Dockerfile tmp/
 mv private.pem tmp/

@@ -1,0 +1,7 @@
+# these packages are slow to install so it's a pain to have to reinstall them every time a dependency changes
+# hence the split requirements file
+asyncpg==0.12.0
+cryptography==2.0.3
+pycares==2.3.0
+pycrypto==2.6.1
+uvloop==0.8.0

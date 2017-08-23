@@ -20,7 +20,7 @@ def web(settings: Settings):
     import uvloop
     from aiohttp.web import run_app
     from em2 import create_app
-    # print(settings.to_string(True), flush=True)
+    # logger.info(settings.to_string(True))
 
     asyncio.get_event_loop().close()
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -80,16 +80,15 @@ def worker(settings: Settings):
 def info(settings: Settings):
     import aiohttp
     import arq
-    logger.info(f'em2')
-    logger.info(f'Python:   {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')
-    logger.info(f'em2:      {VERSION}')
-    logger.info(f'aiohttp:  {aiohttp.__version__}')
-    logger.info(f'arq:      {arq.VERSION}\n')
-    logger.info(f'domain:   {settings.EXTERNAL_DOMAIN}')
-    logger.info(f'command:  {settings.COMMAND}')
-    logger.info(f'debug:    {settings.DEBUG}')
-    logger.info(f'pg db:    {settings.PG_NAME}')
-    logger.info(f'redis db: {settings.R_DATABASE}\n')
+    logger.info(f"""em2 info:
+    Python:   {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}
+    em2:      {VERSION}
+    aiohttp:  {aiohttp.__version__}
+    arq:      {arq.VERSION}
+    domain:   {settings.EXTERNAL_DOMAIN}
+    debug:    {settings.DEBUG}
+    pg db:    {settings.PG_NAME}
+    redis db: {settings.R_DATABASE}""")
 
 
 @command

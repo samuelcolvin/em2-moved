@@ -7,11 +7,9 @@ from pydantic.utils import make_dsn
 
 class Settings(BaseSettings):
     DEBUG = False
-    COMMAND = 'info'
     LOG_TIMES = True
     COMMIT: str = None
 
-    COMMS_HEAD_REQUEST_TIMEOUT = 0.8
     COMMS_DOMAIN_CACHE_TIMEOUT = 86_400
     COMMS_PLATFORM_TOKEN_TIMEOUT = 86_400
     COMMS_PLATFORM_TOKEN_LENGTH = 64
