@@ -73,7 +73,7 @@ CREATE TYPE ACTION_STATUS AS ENUM ('pending', 'temporary_failure', 'failed', 'su
 CREATE TABLE actions_status (
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   status ACTION_STATUS NOT NULL DEFAULT 'pending',
-  platform VARCHAR(265),
+  platform VARCHAR(255),
   errors JSONB[]
 );
 

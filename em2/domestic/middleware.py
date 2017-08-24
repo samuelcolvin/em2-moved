@@ -1,9 +1,6 @@
-from aiohttp.web import HTTPBadRequest, HTTPForbidden
-from cryptography.fernet import InvalidToken
-
 from em2.core import get_create_recipient
-from em2.utils.encoding import msg_decode, msg_encode
-from em2.utils.web import db_conn_middleware
+from em2.utils.encoding import msg_encode
+from em2.utils.web import db_conn_middleware, decrypt_token
 
 from .common import Session
 
@@ -12,20 +9,10 @@ from .common import Session
 
 async def user_middleware(app, handler):
     async def user_middleware_handler(request):
-        if request.match_info.route.name in ('index', 'index-head'):
-            # index can be viewed without auth
-            return await handler(request)
-
-        token = request.cookies.get(app['settings'].COOKIE_NAME, '')
-        try:
-            raw_data = app['fernet'].decrypt(token.encode())
-        except InvalidToken:
-            raise HTTPForbidden(text='Invalid token')
-        try:
-            data = msg_decode(raw_data)
-            request['session'] = Session(**data)
-        except (ValueError, TypeError):
-            raise HTTPBadRequest(text='bad cookie data')
+        # index can be viewed without auth
+        if request.match_info.route.name not in ('index', 'index-head'):
+            token = request.cookies.get(app['settings'].COOKIE_NAME, '')
+            request['session'] = decrypt_token(token, app, Session)
         return await handler(request)
     return user_middleware_handler
 

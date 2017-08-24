@@ -284,23 +284,32 @@ Second solution should work better and look more normal for SMTP users.
 No "sign-up" page, but an endpoint for approved applications to create users, endpoint to get and edit 
 account.
 
-Main cookies for domestic should expire every 10 minutes, when js client fails to connect it should requests
-a new cookie from auth.
+One cookie, set and deleted by auth at login. Domestic checks it looks valid then calls `/check-cookie/` on auth
+at first login and every hour.
 
-## User View:
+## Anon User Views:
 
-?? Switching account
+* `/login/` - including partial approval prompting 2FA and recaptcha on repeat logins
+* `/request-reset-password/` 
+* `/reset-password/` - authenticated with get token
+* `/accept-invitation/` - authenticated with get token
+* `/tmp-token/` - returns a token used for login and password reset requests this url can be strictly rate limited
 
-* `/login/` - including partial approval prompting 2FA and recaptcha
-* `/logout/` - deletes the cookie, posts to `term-session` on domestic.
-* `/reset-password/`
+## Authenticated User Views:
+
+* `/logout/` - removes cookie and makes request to domestic to invalidate cookie.
 * `/account/`
 * `/account/update/`
 * `/new-otp-token/`
 
 ## API View:
 
-* `/add/`
-* `/suspect/`
+* `/invite/`
+* `/suspend/`
+* `/check-cookie/` - called by domestic every hour to confirm session is still active.
+* `/end-session/` - used by admin or session manager to a session, as above invalidates cookie with domestic.
 
 TODO: public profiles
+
+Multiple simultaneous logins are achieve by multiple cookies: `em2session1`, `em2session2`. If js is making a request
+for a session other than default it includes some kind of reference to the cookie it's authenticated by.

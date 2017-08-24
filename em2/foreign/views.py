@@ -8,7 +8,7 @@ from aiohttp.web import HTTPBadRequest, HTTPForbidden, HTTPNotFound
 
 from em2.core import ApplyAction, Components, GetConv, Verbs
 from em2.utils import get_domain
-from em2.utils.web import View, WebModel, raw_json_response
+from em2.utils.web import ViewMain, WebModel, raw_json_response
 
 logger = logging.getLogger('em2.f.views')
 
@@ -22,7 +22,7 @@ def get_ip(request):
     return ip
 
 
-class ForeignView(View):
+class ForeignView(ViewMain):
     def __init__(self, request):
         super().__init__(request)
         self.auth = self.app['authenticator']

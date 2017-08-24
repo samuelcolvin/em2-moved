@@ -2,10 +2,16 @@ import datetime
 import json
 import traceback
 from functools import update_wrapper
+from typing import Type
 
 from aiohttp.web import Application, HTTPBadRequest, HTTPNotFound, Request, Response  # noqa
 from asyncpg.connection import Connection  # noqa
+from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError
+
+from em2.exceptions import InvalidTokenError
+
+from .encoding import msg_decode
 
 JSON_CONTENT_TYPE = 'application/json'
 
@@ -16,6 +22,18 @@ async def db_conn_middleware(app, handler):
             request['conn'] = conn
             return await handler(request)
     return _handler
+
+
+def decrypt_token(token: str, app: Application, model: Type[BaseModel]) -> BaseModel:
+        try:
+            raw_data = app['fernet'].decrypt(token.encode())
+        except InvalidToken:
+            raise InvalidTokenError('Invalid token')
+        try:
+            data = msg_decode(raw_data)
+            return model(**data)
+        except (ValueError, TypeError):
+            raise HTTPBadRequest(text='bad cookie data')
 
 
 class Em2JsonEncoder(json.JSONEncoder):
@@ -83,8 +101,6 @@ class View(FetchOr404Mixin):
         self.request: Request = request
         self.app: Application = request.app
         self.conn: Connection = request['conn']
-        from em2.push import Pusher
-        self.pusher: Pusher = self.app['pusher']
 
     @classmethod
     def view(cls):
@@ -104,3 +120,19 @@ class View(FetchOr404Mixin):
 
     async def call(self, request):
         raise NotImplementedError()
+
+    async def request_json(self):
+        try:
+            data = await self.request.json()
+        except ValueError as e:
+            raise HTTPBadRequest(text=f'invalid request json: {e}')
+        if not isinstance(data, dict):
+            raise HTTPBadRequest(text='request json should be a dictionary')
+        return data
+
+
+class ViewMain(View):
+    def __init__(self, request):
+        super().__init__(request)
+        from em2.push import Pusher
+        self.pusher: Pusher = self.app['pusher']

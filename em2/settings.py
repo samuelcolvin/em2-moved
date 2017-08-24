@@ -29,6 +29,10 @@ class Settings(BaseSettings):
 
     COMMS_DNS_IPS = ['8.8.8.8', '8.8.4.4']
 
+    auth_token_key = b'this should be a secure key'
+    auth_token_validity = 7 * 86_400
+    auth_bcrypt_wf = 13
+
     pusher_cls: PyObject = 'em2.push.Pusher'
     fallback_cls: PyObject = 'em2.fallback.FallbackHandler'
     db_cls: PyObject = 'em2.core.Database'
