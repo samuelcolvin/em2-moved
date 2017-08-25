@@ -5,6 +5,8 @@ from aiohttp.web import Application, Response
 from cryptography.fernet import Fernet
 
 from em2 import VERSION
+from em2.utils.web import db_conn_middleware
+from .view import AcceptInvitationView
 
 logger = logging.getLogger('em2.auth')
 
@@ -28,15 +30,16 @@ async def app_cleanup(app):
 
 
 def create_auth_app(settings):
-    app = Application()
+    app = Application(middlewares=(db_conn_middleware,))
 
     app.on_startup.append(app_startup)
     app.on_cleanup.append(app_cleanup)
 
     app.update(
         settings=settings,
-        fernet=Fernet(settings.SECRET_SESSION_KEY),
+        fernet=Fernet(settings.auth_token_key),
     )
 
     app.router.add_get('/', index, name='index')
+    app.router.add_route('*', '/accept-invitation/', AcceptInvitationView.view(), name='accept-invitation')
     return app

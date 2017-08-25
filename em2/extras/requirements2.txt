@@ -6,6 +6,7 @@ arq==0.10.4
 cchardet==2.1.1
 msgpack-python==0.4.8
 pydantic==0.4
+zxcvbn-python==4.4.16
 
 # optionally used in logging
 raven==6.1.0

@@ -4,12 +4,10 @@ import traceback
 from functools import update_wrapper
 from typing import Type
 
-from aiohttp.web import Application, HTTPBadRequest, HTTPNotFound, Request, Response  # noqa
+from aiohttp.web import Application, HTTPBadRequest, HTTPForbidden, HTTPNotFound, Request, Response  # noqa
 from asyncpg.connection import Connection  # noqa
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError
-
-from em2.exceptions import InvalidTokenError
 
 from .encoding import msg_decode
 
@@ -28,7 +26,7 @@ def decrypt_token(token: str, app: Application, model: Type[BaseModel]) -> BaseM
         try:
             raw_data = app['fernet'].decrypt(token.encode())
         except InvalidToken:
-            raise InvalidTokenError('Invalid token')
+            raise HTTPForbidden(text='Invalid token')
         try:
             data = msg_decode(raw_data)
             return model(**data)

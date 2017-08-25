@@ -320,11 +320,6 @@ class ApplyAction(FetchOr404Mixin):
         # lock and unlock don't change the message
         return message_key, message_id, parent_id
 
-    _get_recipient_id_sql = 'SELECT id FROM recipients WHERE address = $1'
-    _set_recipient_id_sql = """
-    INSERT INTO recipients (address) VALUES ($1)
-    ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address RETURNING id
-    """
     _add_participant_sql = """
     INSERT INTO participants (conv, recipient) VALUES ($1, $2)
     ON CONFLICT DO NOTHING RETURNING id
@@ -336,10 +331,7 @@ class ApplyAction(FetchOr404Mixin):
         except (TypeError, ValueError):
             raise HTTPBadRequest(text='is not a valid email address')
 
-        # TODO use get_create_recipient here
-        recipient_id = await self.conn.fetchval(self._get_recipient_id_sql, address)
-        if recipient_id is None:
-            recipient_id = await self.conn.fetchval(self._set_recipient_id_sql, address)
+        recipient_id = await get_create_recipient(self.conn, address)
         prt_id = await self.conn.fetchval(self._add_participant_sql, self.data.conv, recipient_id)
         if prt_id is None:
             raise HTTPConflict(text='participant already exists on the conversation')

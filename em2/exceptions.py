@@ -1,4 +1,4 @@
-from aiohttp.web import HTTPBadRequest, HTTPForbidden
+from aiohttp.web import HTTPBadRequest
 
 
 class Em2Exception(Exception):
@@ -32,8 +32,3 @@ class FallbackPushError(PushError):
 
 class Em2ConnectionError(Em2Exception):
     pass
-
-
-class InvalidTokenError(HTTPForbidden, Em2Exception):
-    def __init__(self, text: str):
-        super().__init__(text='Invalid Token: ' + text)

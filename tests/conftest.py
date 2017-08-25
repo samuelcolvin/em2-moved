@@ -30,6 +30,7 @@ def pytest_addoption(parser):
 def settings():
     return Settings(
         DEBUG=True,  # needed for insecure cookies
+        auth_bcrypt_work_factor=5,  # make tests faster
         pg_main_name='em2_test',
         pg_auth_name='em2_auth_test',
         EXTERNAL_DOMAIN='em2.platform.example.com',
@@ -93,7 +94,8 @@ def url(request):
     client = request.getfixturevalue('cli')
 
     def _url(name, **parts):
-        return client.server.app.router[name].url_for(**parts)
+        query = parts.pop('query', None)
+        return client.server.app.router[name].url_for(**parts).with_query(query)
     return _url
 
 

@@ -29,9 +29,9 @@ class Settings(BaseSettings):
 
     COMMS_DNS_IPS = ['8.8.8.8', '8.8.4.4']
 
-    auth_token_key = b'this should be a secure key'
     auth_token_validity = 7 * 86_400
-    auth_bcrypt_wf = 13
+    auth_bcrypt_work_factor = 13
+    auth_token_key = b'you need to replace me with a real Fernet keyxxxxxxx='
 
     pusher_cls: PyObject = 'em2.push.Pusher'
     fallback_cls: PyObject = 'em2.fallback.FallbackHandler'
