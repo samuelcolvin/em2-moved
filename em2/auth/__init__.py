@@ -1,10 +1,12 @@
 import asyncio
 import logging
 
+from aiohttp import ClientSession
 from aiohttp.web import Application, Response
+from arq import create_pool_lenient
 from cryptography.fernet import Fernet
 
-from em2 import VERSION
+from em2 import VERSION, Settings
 from em2.utils.web import db_conn_middleware
 from .view import AcceptInvitationView
 
@@ -17,19 +19,26 @@ async def index(request):
 
 
 async def app_startup(app):
-    settings = app['settings']
+    settings: Settings = app['settings']
     loop = app.loop or asyncio.get_event_loop()
     app.update(
         db=settings.db_cls(settings=settings, loop=loop),
+        session=ClientSession(loop=loop, read_timeout=5, conn_timeout=5),
+        redis_pool=await create_pool_lenient(settings.auth_redis, loop),
     )
     await app['db'].startup()
 
 
 async def app_cleanup(app):
     await app['db'].close()
+    await app['session'].close()
+
+    app['redis_pool'].close()
+    await app['redis_pool'].wait_closed()
+    await app['redis_pool'].clear()
 
 
-def create_auth_app(settings):
+def create_auth_app(settings: Settings):
     app = Application(middlewares=(db_conn_middleware,))
 
     app.on_startup.append(app_startup)

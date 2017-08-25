@@ -2,7 +2,7 @@ from enum import Enum
 from pathlib import Path
 
 from arq import RedisSettings
-from pydantic import BaseSettings, PyObject
+from pydantic import BaseSettings, NoneStr, PyObject
 from pydantic.utils import make_dsn
 
 
@@ -29,9 +29,15 @@ class Settings(BaseSettings):
 
     COMMS_DNS_IPS = ['8.8.8.8', '8.8.4.4']
 
+    # set to None to use peername
+    client_ip_header: NoneStr = 'X-Forwarded-For'
+    grecaptcha_secret: str = None
+    grecaptcha_url = 'https://www.google.com/recaptcha/api/siteverify'
+
     auth_token_validity = 7 * 86_400
     auth_bcrypt_work_factor = 13
     auth_token_key = b'you need to replace me with a real Fernet keyxxxxxxx='
+    cookie_name = 'em2auth'
 
     pusher_cls: PyObject = 'em2.push.Pusher'
     fallback_cls: PyObject = 'em2.fallback.FallbackHandler'
@@ -62,10 +68,10 @@ class Settings(BaseSettings):
 
     R_HOST = 'localhost'
     R_PORT = 6379
-    R_DATABASE = 0
     R_PASSWORD: str = None
+    R_DATABASE = 0
+    AUTH_R_DATABASE = 1
 
-    COOKIE_NAME = 'em2session'
     SECRET_SESSION_KEY = b'you need to replace me with a real Fernet keyxxxxxxx='
     THIS_DIR = Path(__file__).resolve().parent
     FRONTEND_RECIPIENTS_BASE = 'frontend:recipients:{}'
@@ -98,6 +104,15 @@ class Settings(BaseSettings):
         return RedisSettings(
             host=self.R_HOST,
             port=self.R_PORT,
-            database=self.R_DATABASE,
             password=self.R_PASSWORD,
+            database=self.R_DATABASE,
+        )
+
+    @property
+    def auth_redis(self):
+        return RedisSettings(
+            host=self.R_HOST,
+            port=self.R_PORT,
+            password=self.R_PASSWORD,
+            database=self.AUTH_R_DATABASE,
         )

@@ -19,15 +19,9 @@ logger = logging.getLogger('em2.core')
 
 
 def generate_conv_key(creator, ts, subject):
-    return generate_hash(creator, to_unix_ms(ts), subject, sha256=True)
-
-
-def generate_hash(*args, sha256=False):
-    to_hash = '_'.join(map(str, args)).encode()
-    if sha256:
-        return hashlib.sha256(to_hash).hexdigest()
-    else:
-        return hashlib.sha1(to_hash).hexdigest()
+    to_hash = creator, to_unix_ms(ts), subject
+    to_hash = '_'.join(map(str, to_hash)).encode()
+    return hashlib.sha256(to_hash).hexdigest()
 
 
 def gen_random(prefix):
@@ -35,7 +29,7 @@ def gen_random(prefix):
     :param prefix: string to prefix random key with
     :return: prefix plus 16 char alphanumeric (lowercase) random string
     """
-    # TODO move to untils
+    # TODO move to utils
     return prefix + '-' + base64.b32encode(os.urandom(10))[:16].decode().lower()
 
 

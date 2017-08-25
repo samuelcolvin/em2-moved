@@ -1,5 +1,6 @@
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
+CREATE EXTENSION pgcrypto;
 
 CREATE TYPE ACCOUNT_STATUS AS ENUM ('pending', 'active', 'suspended');
 
@@ -18,7 +19,7 @@ CREATE INDEX user_address ON auth_users USING btree (address);
 -- could be saved in redis if performance becomes a problem, should be deleted when old enough
 
 CREATE TABLE auth_session (
-  token VARCHAR(255) PRIMARY KEY,
+  token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_user INT NOT NULL REFERENCES auth_users ON DELETE CASCADE,
   started TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   finish TIMESTAMP NOT NULL,

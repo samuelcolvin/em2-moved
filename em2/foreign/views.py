@@ -8,18 +8,9 @@ from aiohttp.web import HTTPBadRequest, HTTPForbidden, HTTPNotFound
 
 from em2.core import ApplyAction, Components, GetConv, Verbs
 from em2.utils import get_domain
-from em2.utils.web import ViewMain, WebModel, raw_json_response
+from em2.utils.web import ViewMain, WebModel, get_ip, raw_json_response
 
 logger = logging.getLogger('em2.f.views')
-
-
-def get_ip(request):
-    # TODO switch to use X-Forwarded-For
-    peername = request.transport.get_extra_info('peername')
-    ip = '-'
-    if peername is not None:
-        ip, _ = peername
-    return ip
 
 
 class ForeignView(ViewMain):

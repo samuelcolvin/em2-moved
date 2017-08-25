@@ -11,7 +11,7 @@ async def user_middleware(app, handler):
     async def user_middleware_handler(request):
         # index can be viewed without auth
         if request.match_info.route.name not in ('index', 'index-head'):
-            token = request.cookies.get(app['settings'].COOKIE_NAME, '')
+            token = request.cookies.get(app['settings'].cookie_name, '')
             request['session'] = decrypt_token(token, app, Session)
         return await handler(request)
     return user_middleware_handler
@@ -31,7 +31,7 @@ async def update_session_middleware(app, handler):
             data = msg_encode(request['session'].values())
             token = app['fernet'].encrypt(data).decode()
             # TODO set cookie domain?
-            response.set_cookie(app['settings'].COOKIE_NAME, token, secure=not app['settings'].DEBUG, httponly=True)
+            response.set_cookie(app['settings'].cookie_name, token, secure=not app['settings'].DEBUG, httponly=True)
 
         return response
     return _handler

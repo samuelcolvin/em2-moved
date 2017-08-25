@@ -284,8 +284,8 @@ Second solution should work better and look more normal for SMTP users.
 No "sign-up" page, but an endpoint for approved applications to create users, endpoint to get and edit 
 account.
 
-One cookie, set and deleted by auth at login. Domestic checks it looks valid then calls `/check-cookie/` on auth
-at first login and every hour.
+One cookie, set by auth at login, deleted by auth at logout Domestic checks it looks valid then calls `/check-cookie/` 
+on auth at first login and every hour.
 
 ## Anon User Views:
 

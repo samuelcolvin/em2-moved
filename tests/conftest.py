@@ -31,6 +31,7 @@ def settings():
     return Settings(
         DEBUG=True,  # needed for insecure cookies
         auth_bcrypt_work_factor=5,  # make tests faster
+        client_ip_header=None,
         pg_main_name='em2_test',
         pg_auth_name='em2_auth_test',
         EXTERNAL_DOMAIN='em2.platform.example.com',

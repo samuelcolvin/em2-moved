@@ -34,6 +34,18 @@ def decrypt_token(token: str, app: Application, model: Type[BaseModel]) -> BaseM
             raise HTTPBadRequest(text='bad cookie data')
 
 
+def get_ip(request):
+    header = request.app['settings'].client_ip_header
+    if header:
+        ips = request.headers.get(header)
+        if not ips:
+            raise HTTPBadRequest(text=f'missing header "{header}"')
+        return ips.split(',', 1)[0]
+    else:
+        peername = request.transport.get_extra_info('peername')
+        return peername[0] if peername else '-'
+
+
 class Em2JsonEncoder(json.JSONEncoder):
     # add more only when necessary
     ENCODER_BY_TYPE = {
@@ -71,6 +83,9 @@ class WebModel(BaseModel):
             return super()._process_values(values)
         except ValidationError as e:
             raise HTTPBadRequest(text=e.json(), content_type=JSON_CONTENT_TYPE)
+
+    class Config:
+        allow_extra = False
 
 
 async def _fetch404(func, sql, *args, msg=None):

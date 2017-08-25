@@ -4,7 +4,7 @@ import os
 import sys
 from time import sleep
 
-from arq import RedisMixin
+from arq import create_pool_lenient
 
 from em2 import VERSION, Settings
 from em2.logging import logger
@@ -49,8 +49,9 @@ def reset_database(settings: Settings):
         logger.info('done.')
 
 
-async def _flush_redis(redis_mixin: RedisMixin):
-    async with await redis_mixin.get_redis_conn() as redis:
+async def _flush_redis(settings: Settings, loop):
+    pool = await create_pool_lenient(settings.redis, loop=loop)
+    async with pool.get() as redis:
         await redis.flushdb()
 
 
@@ -61,7 +62,7 @@ def flush_redis(settings: Settings):
     else:
         logger.info('flushing redis...')
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(_flush_redis(RedisMixin(loop=loop, redis_settings=settings.redis)))
+        loop.run_until_complete(_flush_redis(settings, loop))
         logger.info('done.')
 
 

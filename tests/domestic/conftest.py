@@ -17,7 +17,7 @@ def cli(loop, settings, db_conn, test_client, redis):
     data = msg_encode(data)
     fernet = Fernet(settings.SECRET_SESSION_KEY)
     cookies = {
-        settings.COOKIE_NAME: fernet.encrypt(data).decode()
+        settings.cookie_name: fernet.encrypt(data).decode()
     }
     app = create_domestic_app(settings, 'd-testing')
     app['_conn'] = db_conn

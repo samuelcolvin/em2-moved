@@ -44,7 +44,7 @@ async def test_invalid_cookie(cli, url, settings):
     data = msg_encode(data)
     fernet = Fernet(base64.urlsafe_b64encode(b'i am different and 32 bits long!'))
     settings = cli.server.app['settings']
-    cookies = {settings.COOKIE_NAME: fernet.encrypt(data).decode()}
+    cookies = {settings.cookie_name: fernet.encrypt(data).decode()}
     cli.session.cookie_jar.update_cookies(cookies)
 
     r = await cli.get(url('list'))
