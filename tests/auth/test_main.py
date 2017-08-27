@@ -182,12 +182,7 @@ async def test_captcha_supplied(cli, settings, url, user, g_recaptcha_server):
     assert {'msg': 'login successful'} == await r.json()
 
 
-async def test_get_account(cli, url, token):
-    url_ = url('accept-invitation', query=dict(token=token(last_name='testing')))
-    r = await cli.post(url_, json={'password': 'thisissecure'})
-    assert r.status == 200, await r.text()
-    assert len(cli.session.cookie_jar) == 1
-
+async def test_get_account(cli, url, authenticate):
     r = await cli.get(url('account'))
     assert r.status == 200, await r.text()
     assert {
@@ -196,4 +191,27 @@ async def test_get_account(cli, url, token):
         'last_name': 'testing',
         'recovery_address': None,
         'otp_enabled': False
+    } == await r.json()
+
+
+async def test_view_sessions(cli, url, authenticate):
+    r = await cli.get(url('sessions'))
+    assert r.status == 200, await r.text()
+    assert {
+        'active': True,
+        'last_active': CloseToNow(),
+        'events': [
+            {
+                'ac': 'user created',
+                'ip': '127.0.0.1',
+                'ts': CloseToNow(),
+                'ua': RegexStr('Python.*')
+            },
+            {
+                'ac': 'auth request',
+                'ip': '127.0.0.1',
+                'ts': CloseToNow(),
+                'ua': RegexStr('Python.*')
+            }
+        ]
     } == await r.json()

@@ -55,3 +55,14 @@ def g_recaptcha_server(loop, test_server, cli):
     server = loop.run_until_complete(test_server(app))
     cli.server.app['settings'].grecaptcha_url = f'http://localhost:{server.port}/mock_verify'
     return server
+
+
+@pytest.fixture
+def authenticate(loop, cli, url, token):
+    async def _login():
+        url_ = url('accept-invitation', query=dict(token=token(last_name='testing')))
+        r = await cli.post(url_, json={'password': 'thisissecure'})
+        assert r.status == 200, await r.text()
+        assert len(cli.session.cookie_jar) == 1
+
+    loop.run_until_complete(_login())

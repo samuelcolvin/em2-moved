@@ -162,13 +162,14 @@ class AccountView(AuthView):
 
 
 class SessionsView(AuthView):
-    sessions_sql = """"
+    sessions_sql = """
     SELECT to_json(t)
     FROM (
-      SELECT s.active AS active, s.started AS started, s.events AS events
+      SELECT s.active AS active, s.last_active AS last_active, s.events AS events
       FROM auth_sessions as s
       JOIN auth_users AS u ON s.auth_user = u.id
       WHERE u.address=$1
+      ORDER BY s.last_active DESC
     ) t;
     """
 

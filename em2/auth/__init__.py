@@ -10,7 +10,7 @@ from cryptography.fernet import Fernet
 from em2 import VERSION, Settings
 from em2.utils.web import auth_middleware, db_conn_middleware
 from .sessions import check_session_active
-from .view import AcceptInvitationView, AccountView, LoginView
+from .view import AcceptInvitationView, AccountView, LoginView, SessionsView
 
 logger = logging.getLogger('em2.auth')
 
@@ -58,5 +58,6 @@ def create_auth_app(settings: Settings):
     app.router.add_get('/', index, name='index')
     app.router.add_route('*', '/login/', LoginView.view(), name='login')
     app.router.add_get('/account/', AccountView.view(), name='account')
+    app.router.add_get('/sessions/', SessionsView.view(), name='sessions')
     app.router.add_route('*', '/accept-invitation/', AcceptInvitationView.view(), name='accept-invitation')
     return app
