@@ -284,8 +284,8 @@ Second solution should work better and look more normal for SMTP users.
 No "sign-up" page, but an endpoint for approved applications to create users, endpoint to get and edit 
 account.
 
-One cookie, set by auth at login, deleted by auth at logout Domestic checks it looks valid then calls `/check-cookie/` 
-on auth at first login and every hour.
+One cookie, set by auth at login, deleted by auth at logout, checked regularly by domestic redirecting
+to auth when the cookie expires.
 
 ## Anon User Views:
 
@@ -293,6 +293,7 @@ on auth at first login and every hour.
 * `/request-reset-password/` 
 * `/reset-password/` - authenticated with get token
 * `/accept-invitation/` - authenticated with get token
+* `/update-session/` returns 307 to query argument `r`
 
 Could use temporary tokens for login and reset-password so multiple people logging in from the same ip
 are less likely to get prompted for a captcha.
@@ -308,7 +309,6 @@ are less likely to get prompted for a captcha.
 
 * `/invite/`
 * `/suspend/`
-* `/check-cookie/` - called by domestic every hour to confirm session is still active.
 * `/end-session/` - used by admin or session manager to a session, as above invalidates cookie with domestic.
 
 TODO: public profiles

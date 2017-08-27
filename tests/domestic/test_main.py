@@ -1,6 +1,8 @@
 import base64
 import json
 from asyncio import sleep
+from time import time
+from urllib.parse import parse_qs, urlparse
 
 from aiohttp import WSMsgType
 from async_timeout import timeout
@@ -8,7 +10,6 @@ from cryptography.fernet import Fernet
 
 from em2 import VERSION
 from em2.core import Components, Verbs
-from em2.utils.encoding import msg_encode
 
 from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict  # noqa
 
@@ -40,11 +41,9 @@ async def test_no_cookie(cli, url):
 
 
 async def test_invalid_cookie(cli, url, settings):
-    data = {'address': 'testing@example.com'}
-    data = msg_encode(data)
     fernet = Fernet(base64.urlsafe_b64encode(b'i am different and 32 bits long!'))
     settings = cli.server.app['settings']
-    cookies = {settings.cookie_name: fernet.encrypt(data).decode()}
+    cookies = {settings.cookie_name: fernet.encrypt(b'foobar').decode()}
     cli.session.cookie_jar.update_cookies(cookies)
 
     r = await cli.get(url('list'))
@@ -52,23 +51,17 @@ async def test_invalid_cookie(cli, url, settings):
     assert {'error': 'cookie missing or incorrect'} == await r.json()
 
 
-async def test_session_update(cli, url):
-    assert len(cli.session.cookie_jar) == 1
-    c1 = list(cli.session.cookie_jar)[0]
+async def test_expired_cookie(cli, url, settings):
+    fernet = Fernet(settings.SECRET_SESSION_KEY)
+    data = f'123:{int(time()) - 10}:foo@bar.com'
+    cookies = {settings.cookie_name: fernet.encrypt(data.encode()).decode()}
+    cli.session.cookie_jar.update_cookies(cookies)
 
-    r = await cli.get(url('list'))
-    assert r.status == 200, await r.text()
-    assert len(cli.session.cookie_jar) == 2
-    c2 = list(cli.session.cookie_jar)[-1]
-
-    r = await cli.get(url('list'))
-    assert r.status == 200, await r.text()
-    assert len(cli.session.cookie_jar) == 2
-    c3 = list(cli.session.cookie_jar)[-1]
-    assert c1 != c2
-    print(c2)
-    print(c3)
-    assert c2 == c3
+    r = await cli.get(url('list'), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'].startswith('http://testing.example.com?r=')
+    return_url = parse_qs(urlparse(r.headers['Location']).query)['r'][0]
+    assert return_url == f'http://127.0.0.1:{cli.server.port}{url("list")}'
 
 
 async def test_list_conv(cli, conv, url):
@@ -419,7 +412,6 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, debug):
         assert await db_conn.fetchval('SELECT published FROM conversations')
 
         got_message = False
-        # FIXME this fails occasionally with the ws message never being received
         with timeout(0.5):
             async for msg in ws:
                 assert msg.tp == WSMsgType.text

@@ -1,13 +1,16 @@
 import asyncio
 import logging
+from time import time
+from urllib.parse import urlencode
 
-from aiohttp.web import Application, Response
+from aiohttp import ClientSession
+from aiohttp.web import Application, Response, HTTPTemporaryRedirect
 from cryptography.fernet import Fernet
 
 from em2 import VERSION
-from em2.core import Components, Verbs, gen_random
+from em2.core import Components, Verbs, gen_random, get_create_recipient
+from em2.utils.web import auth_middleware, db_conn_middleware
 from .background import Background
-from .middleware import middleware
 from .views import Act, Create, Get, Publish, VList, Websocket
 
 logger = logging.getLogger('em2.domestic')
@@ -25,23 +28,41 @@ async def app_startup(app):
         db=settings.db_cls(settings=settings, loop=loop),
         pusher=settings.pusher_cls(settings=settings, loop=loop),
         background=Background(app, loop),
+        auth_client=ClientSession(loop=loop)
     )
     await app['db'].startup()
     await app['pusher'].log_redis_info(logger.debug)
 
 
 async def app_cleanup(app):
+    await app['auth_client'].close()
     await app['background'].close()
     await app['pusher'].close()
     await app['db'].close()
 
 
-async def check_session_active(request, session):
-    pass  # TODO
+async def activate_session(request, data):
+    session_token, expires_at, user_address = data.split(':', 2)
+    session_cache = 's:{}'.format(session_token).encode()
+    expires_at = int(expires_at)
+    async with await request.app['pusher'].get_redis_conn() as redis:
+        data = await redis.get(session_cache)
+        if data:
+            recipient_id = int(data)
+        elif expires_at > time():
+            recipient_id = await get_create_recipient(request['conn'], user_address)
+            await asyncio.gather(
+                redis.set(session_cache, str(recipient_id).encode()),
+                redis.expireat(session_cache, expires_at),
+            )
+        else:
+            loc = request.app['settings'].auth_update_cookie_url + '?' + urlencode({'r': request.url})
+            raise HTTPTemporaryRedirect(location=loc)
+        request['session_args'] = recipient_id, user_address
 
 
 def create_domestic_app(settings, app_name=None):
-    app = Application(middlewares=middleware)
+    app = Application(middlewares=(db_conn_middleware, auth_middleware))
 
     app.on_startup.append(app_startup)
     app.on_cleanup.append(app_cleanup)
@@ -51,7 +72,7 @@ def create_domestic_app(settings, app_name=None):
         fernet=Fernet(settings.SECRET_SESSION_KEY),
         name=app_name or gen_random('d'),
         anon_views=['index'],
-        check_session_active=check_session_active,
+        activate_session=activate_session,
     )
 
     app.router.add_get('/list/', VList.view(), name='list')

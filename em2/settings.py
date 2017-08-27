@@ -38,11 +38,15 @@ class Settings(BaseSettings):
     # attempts before captcha is required
     easy_login_attempts = 4
 
-    # time after which idle session expire
+    # time after which idle sessions expire
     auth_cookie_idle: timedelta = 7 * 86_400
     auth_bcrypt_work_factor = 13
     auth_token_key = b'you need to replace me with a real Fernet keyxxxxxxx='
+    auth_update_cookie_url = 'not-set'
+
     cookie_name = 'em2session'
+    # how long cookies should remain valid with main before they need checking with auth
+    cookie_grace_time = 600
     secure_cookies = True  # only ever change these during testing!!!
 
     pusher_cls: PyObject = 'em2.push.Pusher'

@@ -21,6 +21,6 @@ CREATE TABLE auth_sessions (
   token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_user INT NOT NULL REFERENCES auth_users ON DELETE CASCADE,
   last_active TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  active BOOLEAN DEFAULT TRUE,  -- TODO need a cron job to close expired sessions
+  active BOOLEAN DEFAULT TRUE,  -- TODO need a cron job to close expired sessions just so they look sensible
   events JSONB[]
 );

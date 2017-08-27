@@ -208,10 +208,33 @@ async def test_view_sessions(cli, url, authenticate):
                 'ua': RegexStr('Python.*')
             },
             {
-                'ac': 'auth request',
+                'ac': 'request',
                 'ip': '127.0.0.1',
                 'ts': CloseToNow(),
                 'ua': RegexStr('Python.*')
             }
         ]
     } == await r.json()
+
+
+async def test_get_account_anon(cli, url):
+    r = await cli.get(url('account'))
+    assert r.status == 403, await r.text()
+    assert {'error': 'cookie missing or incorrect'} == await r.json()
+
+
+async def update_session(cli, url, authenticate):
+    assert len(cli.session.cookie_jar) == 1
+    c1 = list(cli.session.cookie_jar)[0]
+
+    r = await cli.get(url('update-session', query={'r': 'https://example.com/foo/bar/?a=b'}), allow_redirects=False)
+    assert r.status == 307
+    assert r.headers['Location'] == 'https://example.com/foo/bar/?a=b'
+    assert len(cli.session.cookie_jar) == 2
+    c2 = list(cli.session.cookie_jar)[-1]
+    assert c1 != c2
+
+
+async def update_session_no_redirect(cli, url, authenticate):
+    r = await cli.get(url('update-session'), allow_redirects=False)
+    assert r.status == 400, await r.text()

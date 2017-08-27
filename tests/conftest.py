@@ -32,6 +32,7 @@ def pytest_addoption(parser):
 def settings():
     return Settings(
         auth_bcrypt_work_factor=5,  # make tests faster
+        auth_update_cookie_url='http://testing.example.com',
         easy_login_attempts=2,
         client_ip_header=None,
         secure_cookies=False,

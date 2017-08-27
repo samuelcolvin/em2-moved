@@ -1,21 +1,26 @@
 import logging
 from datetime import datetime
-from typing import List
+from typing import List, NamedTuple
 
 from aiohttp import WSMsgType
 from aiohttp.web import WebSocketResponse
 from pydantic import EmailStr, constr
 
 from em2.core import ApplyAction, GetConv, create_missing_recipients, gen_random, generate_conv_key
-from em2.utils.web import Session, ViewMain, WebModel, json_response, raw_json_response
+from em2.utils.web import ViewMain, WebModel, json_response, raw_json_response
 
 logger = logging.getLogger('em2.d.views')
+
+
+class Session(NamedTuple):
+    recipient_id: int
+    address: str
 
 
 class View(ViewMain):
     def __init__(self, request):
         super().__init__(request)
-        self.session: Session = request['session']
+        self.session = Session(*request['session_args'])
 
 
 class VList(View):
@@ -31,7 +36,7 @@ class VList(View):
     """
 
     async def call(self, request):
-        raw_json = await self.conn.fetchval(self.sql, request['session'].recipient_id)
+        raw_json = await self.conn.fetchval(self.sql, self.session.recipient_id)
         return raw_json_response(raw_json or '[]')
 
 

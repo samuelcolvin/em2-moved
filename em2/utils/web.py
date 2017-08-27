@@ -8,7 +8,7 @@ from aiohttp import web_exceptions
 from aiohttp.web import Application, Request, Response  # noqa
 from asyncpg.connection import Connection  # noqa
 from cryptography.fernet import InvalidToken
-from pydantic import BaseModel, EmailStr, ValidationError
+from pydantic import BaseModel, ValidationError
 
 from .encoding import msg_decode
 
@@ -56,24 +56,20 @@ async def db_conn_middleware(app, handler):
     return _handler
 
 
-class Session(WebModel):
-    address: EmailStr
-    token: str
-    recipient_id: int = None
-
-
 async def auth_middleware(app, handler):
     anon_views = set(app['anon_views'])
     anon_views |= {v + '-head' for v in anon_views}
-    check_session_active = app['check_session_active']
+    activate_session = app['activate_session']
     cookie_name = app['settings'].cookie_name
 
     async def auth_middleware_handler(request):
         if request.match_info.route.name not in anon_views:
             cookie = request.cookies.get(cookie_name, '')
-            session: Session = decrypt_token(cookie, app, Session, error_msg='cookie missing or incorrect')
-            await check_session_active(request, session)
-            request['session'] = session
+            try:
+                token = app['fernet'].decrypt(cookie.encode())
+            except InvalidToken:
+                raise JsonError.HTTPForbidden(error='cookie missing or incorrect')
+            await activate_session(request, token.decode())
 
         return await handler(request)
     return auth_middleware_handler

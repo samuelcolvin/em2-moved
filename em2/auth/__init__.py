@@ -9,8 +9,8 @@ from cryptography.fernet import Fernet
 
 from em2 import VERSION, Settings
 from em2.utils.web import auth_middleware, db_conn_middleware
-from .sessions import check_session_active
-from .view import AcceptInvitationView, AccountView, LoginView, SessionsView
+from .sessions import activate_session
+from .view import AcceptInvitationView, AccountView, LoginView, SessionsView, UpdateSession
 
 logger = logging.getLogger('em2.auth')
 
@@ -52,10 +52,11 @@ def create_auth_app(settings: Settings):
         # used for password checks with address is invalid
         alt_pw_hash=bcrypt.hashpw('x'.encode(), bcrypt.gensalt(settings.auth_bcrypt_work_factor)).decode(),
         anon_views=['index', 'login', 'accept-invitation'],
-        check_session_active=check_session_active,
+        activate_session=activate_session,
     )
 
     app.router.add_get('/', index, name='index')
+    app.router.add_route('*', '/update_session/', UpdateSession.view(), name='update-session')
     app.router.add_route('*', '/login/', LoginView.view(), name='login')
     app.router.add_get('/account/', AccountView.view(), name='account')
     app.router.add_get('/sessions/', SessionsView.view(), name='sessions')

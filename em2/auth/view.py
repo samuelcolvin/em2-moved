@@ -1,12 +1,14 @@
+from time import time
 from urllib.parse import urlencode
 
 import bcrypt
 from aiohttp.hdrs import METH_POST
+from aiohttp.web import HTTPTemporaryRedirect
 from pydantic import EmailStr, constr
 from zxcvbn import zxcvbn
 
-from em2.utils.encoding import msg_encode
-from em2.utils.web import JsonError, View, WebModel, decrypt_token, get_ip, json_response, raw_json_response
+from em2.utils.web import View as _View
+from em2.utils.web import JsonError, WebModel, decrypt_token, get_ip, json_response, raw_json_response
 
 from .sessions import session_event
 
@@ -15,7 +17,7 @@ class Password(WebModel):
     password: constr(max_length=72)
 
 
-class AuthView(View):
+class View(_View):
     CREATE_SESSION_SQL = """
     INSERT INTO auth_sessions (auth_user, events) VALUES ($1, ARRAY[$2::JSONB])
     RETURNING token
@@ -37,16 +39,13 @@ class AuthView(View):
     async def response_create_session(self, user_id, user_address, action, msg):
         r = json_response(msg=msg)
         token = await self.conn.fetchval(self.CREATE_SESSION_SQL, user_id, session_event(self.request, action))
-        data = msg_encode(dict(
-            token=str(token),
-            address=user_address,
-        ))
-        token = self.app['fernet'].encrypt(data).decode()
-        r.set_cookie(self.settings.cookie_name, token, secure=self.settings.secure_cookies, httponly=True)
+        expires = int(time()) + self.settings.cookie_grace_time
+        cookie = self.app['fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
+        r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
         return r
 
 
-class LoginView(AuthView):
+class LoginView(View):
     # TODO enforce Same-Origin, json Content-Type, Referrer
     class LoginForm(WebModel):
         address: EmailStr
@@ -110,7 +109,21 @@ class LoginView(AuthView):
                 )
 
 
-class AcceptInvitationView(AuthView):
+class UpdateSession(View):
+    async def call(self, request):
+        try:
+            redirect_to = request.query['r']
+        except KeyError:
+            raise JsonError.HTTPBadRequest(error='redirect value "r" missing')
+        token, user_address = request['session_token'], request['user_address']
+        expires = int(time()) + self.settings.cookie_grace_time
+        cookie = self.app['fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
+        r = HTTPTemporaryRedirect(location=redirect_to)
+        r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
+        raise r
+
+
+class AcceptInvitationView(View):
     class Invitation(WebModel):
         address: EmailStr
         first_name: constr(max_length=255) = None
@@ -148,31 +161,30 @@ class AcceptInvitationView(AuthView):
             )
 
 
-class AccountView(AuthView):
+class AccountView(View):
     user_details_sql = """
     SELECT address, first_name, last_name, otp_secret, recovery_address
     FROM auth_users
-    WHERE address = $1
+    WHERE id = $1
     """
 
     async def call(self, request):
-        data = dict(await self.fetchrow404(self.user_details_sql, self.request['session'].address))
+        data = dict(await self.fetchrow404(self.user_details_sql, self.request['user_id']))
         data['otp_enabled'] = bool(data.pop('otp_secret'))
         return json_response(**data)
 
 
-class SessionsView(AuthView):
+class SessionsView(View):
     sessions_sql = """
     SELECT to_json(t)
     FROM (
-      SELECT s.active AS active, s.last_active AS last_active, s.events AS events
-      FROM auth_sessions as s
-      JOIN auth_users AS u ON s.auth_user = u.id
-      WHERE u.address=$1
-      ORDER BY s.last_active DESC
+      SELECT active, last_active, events
+      FROM auth_sessions
+      WHERE auth_user=$1
+      ORDER BY last_active DESC
     ) t;
     """
 
     async def call(self, request):
-        s = await self.conn.fetchval(self.sessions_sql, self.request['session'].address)
+        s = await self.conn.fetchval(self.sessions_sql, self.request['user_id'])
         return raw_json_response(s)

@@ -6,7 +6,10 @@ from em2.utils.web import JsonError, get_ip
 
 
 GET_SESSION_SQL = """
-SELECT active, last_active FROM auth_sessions WHERE token=$1
+SELECT s.active AS active, s.last_active AS last_active, u.id AS user_id
+FROM auth_sessions AS s
+JOIN auth_users AS u ON s.auth_user = u.id
+WHERE s.token=$1
 """
 UPDATE_SESSION_SQL = """
 UPDATE auth_sessions SET last_active=CURRENT_TIMESTAMP, events=events || $1::JSONB
@@ -22,33 +25,41 @@ def session_event(request, action):
         'ts': int(time()),
         'ua': request.headers.get('User-Agent'),
         'ac': action
-        # TODO include info about which session this (when multiple sessions are active
+        # TODO include info about which session this is (when multiple sessions are active
     })
 
 
-async def check_session_active(request, session):
-    if not await check_update_session(request.app, session.token, session_event(request, 'auth request')):
+async def activate_session(request, data):
+    session_token, _, user_address = data.split(':', 2)
+    user_id = await get_session_user(request.app, session_token, session_event(request, 'request'))
+    if not user_id:
         raise JsonError.HTTPForbidden(error='session not active')
+    request.update(
+        session_token=session_token,
+        user_address=user_address,
+        user_id=user_id,
+    )
 
 
-async def check_update_session(app, session_token, event_data):
+async def get_session_user(app, session_token, event_data):
     session_cache = 's:{}'.format(session_token).encode()
     async with app['redis_pool'].get() as redis:
-        if await redis.get(session_cache):
-            return True
+        d = await redis.get(session_cache)
+        if d:
+            return int(d)
         async with app['db'].acquire() as conn:
             r = await conn.fetchrow(GET_SESSION_SQL, session_token)
             if not r or not r['active']:
-                return False
+                return
             last_active = r['last_active']
 
             expiry = last_active + app['settings'].auth_cookie_idle
-            session_active = expiry > datetime.utcnow()
+            now = datetime.utcnow()
 
-            if session_active:
+            if expiry > now:
                 await conn.execute(UPDATE_SESSION_SQL, event_data)
-                await redis.setex(session_cache, 3600, b'1')
+                key_time = min(int((expiry - now).total_seconds()), 3600)
+                await redis.setex(session_cache, key_time, str(r['user_id']).encode())
+                return r['user_id']
             else:
                 await conn.execute(DEACTIVATE_SESSION_SQL, event_data)
-
-            return session_active
