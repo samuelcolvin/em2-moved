@@ -1,8 +1,13 @@
+import bcrypt
 import pytest
+from aiohttp.web import Application, json_response
 from cryptography.fernet import Fernet
 
 from em2.auth import create_auth_app
 from em2.utils.encoding import msg_encode
+
+TEST_ADDRESS = 'testing@example.com'
+TEST_PASSWORD = 'valid-testing-password'
 
 
 async def startup_modify_app(app):
@@ -10,7 +15,7 @@ async def startup_modify_app(app):
 
 
 @pytest.fixture
-def cli(loop, auth_settings, auth_db_conn, test_client):
+def cli(loop, auth_settings, auth_db_conn, test_client, auth_redis):
     app = create_auth_app(auth_settings)
     app['_conn'] = auth_db_conn
     app.on_startup.append(startup_modify_app)
@@ -19,8 +24,34 @@ def cli(loop, auth_settings, auth_db_conn, test_client):
 
 @pytest.fixture
 def token(settings):
-    def _token(address='testing@example.com', **kwargs):
+    def _token(address=TEST_ADDRESS, **kwargs):
         fernet = Fernet(settings.auth_token_key)
         data = msg_encode(dict(address=address, **kwargs))
         return fernet.encrypt(data).decode()
     return _token
+
+
+@pytest.fixture
+def user(loop, auth_settings, auth_db_conn):
+    async def _create_user():
+        hashb = bcrypt.hashpw(TEST_PASSWORD.encode(), bcrypt.gensalt(auth_settings.auth_bcrypt_work_factor))
+        sql = 'INSERT INTO auth_users (address, password_hash)  VALUES ($1, $2)'
+        await auth_db_conn.execute(sql, TEST_ADDRESS, hashb.decode())
+
+    loop.run_until_complete(_create_user())
+    return TEST_ADDRESS, TEST_PASSWORD
+
+
+@pytest.fixture
+def g_recaptcha_server(loop, test_server, cli):
+    app = Application()
+
+    async def _mock_verify(request):
+        data = await request.post()
+        return json_response({'success': 'good' in data['response']})
+
+    app.router.add_post('/mock_verify', _mock_verify)
+
+    server = loop.run_until_complete(test_server(app))
+    cli.server.app['settings'].grecaptcha_url = f'http://localhost:{server.port}/mock_verify'
+    return server

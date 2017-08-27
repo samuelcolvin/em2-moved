@@ -293,7 +293,9 @@ on auth at first login and every hour.
 * `/request-reset-password/` 
 * `/reset-password/` - authenticated with get token
 * `/accept-invitation/` - authenticated with get token
-* `/tmp-token/` - returns a token used for login and password reset requests this url can be strictly rate limited
+
+Could use temporary tokens for login and reset-password so multiple people logging in from the same ip
+are less likely to get prompted for a captcha.
 
 ## Authenticated User Views:
 

@@ -42,7 +42,7 @@ def wait_for_services(settings, *, delay=5, loop=None):
 
 
 async def check_server(settings: Settings, expected_status=200):
-    url = f'http://127.0.0.1:{settings.WEB_PORT}/'
+    url = f'http://127.0.0.1:{settings.web_port}/'
     try:
         async with ClientSession() as session:
             async with session.get(url) as r:

@@ -5,6 +5,8 @@ from arq import RedisSettings
 from pydantic import BaseSettings, NoneStr, PyObject
 from pydantic.utils import make_dsn
 
+THIS_DIR = Path(__file__).resolve().parent
+
 
 class Mode(str, Enum):
     main = 'main'
@@ -23,9 +25,8 @@ class Settings(BaseSettings):
     COMMS_PUSH_TOKEN_EARLY_EXPIRY = 10
     COMMS_DNS_CACHE_EXPIRY = 7200
     COMMS_HTTP_TIMEOUT = 4
-    # only ever change these during testing!!!
-    COMMS_PROTO = 'https'
-    COMMS_VERIFY_SSL = True
+    COMMS_PROTO = 'https'  # only ever change these during testing!!!
+    COMMS_VERIFY_SSL = True  # only ever change these during testing!!!
 
     COMMS_DNS_IPS = ['8.8.8.8', '8.8.4.4']
 
@@ -33,18 +34,21 @@ class Settings(BaseSettings):
     client_ip_header: NoneStr = 'X-Forwarded-For'
     grecaptcha_secret: str = None
     grecaptcha_url = 'https://www.google.com/recaptcha/api/siteverify'
+    # attempts before captcha is required
+    easy_login_attempts = 4
 
     auth_token_validity = 7 * 86_400
     auth_bcrypt_work_factor = 13
     auth_token_key = b'you need to replace me with a real Fernet keyxxxxxxx='
-    cookie_name = 'em2auth'
+    cookie_name = 'em2session'
+    secure_cookies = True  # only ever change these during testing!!!
 
     pusher_cls: PyObject = 'em2.push.Pusher'
     fallback_cls: PyObject = 'em2.fallback.FallbackHandler'
     db_cls: PyObject = 'em2.core.Database'
     authenticator_cls: PyObject = 'em2.foreign.auth.Authenticator'
 
-    WEB_PORT = 8000
+    web_port = 8000
 
     pg_host = 'localhost'
     pg_port = '5432'
@@ -73,7 +77,6 @@ class Settings(BaseSettings):
     AUTH_R_DATABASE = 1
 
     SECRET_SESSION_KEY = b'you need to replace me with a real Fernet keyxxxxxxx='
-    THIS_DIR = Path(__file__).resolve().parent
     FRONTEND_RECIPIENTS_BASE = 'frontend:recipients:{}'
     FRONTEND_JOBS_BASE = 'frontend:jobs:{}'
 
@@ -97,7 +100,7 @@ class Settings(BaseSettings):
     @property
     def models_sql(self):
         f = 'main_models.sql' if self.mode == Mode.main else 'auth_models.sql'
-        return (self.THIS_DIR / 'extras' / f).read_text()
+        return (THIS_DIR / 'extras' / f).read_text()
 
     @property
     def redis(self):

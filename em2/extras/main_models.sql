@@ -8,7 +8,6 @@ CREATE TABLE recipients (
   address VARCHAR(255) NOT NULL UNIQUE
   -- TODO perhaps display name
 );
-CREATE INDEX recipient_address ON recipients USING btree (address);
 
 CREATE TABLE conversations (
   id SERIAL PRIMARY KEY,

@@ -22,7 +22,6 @@ CREATE TABLE auth_session (
   token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_user INT NOT NULL REFERENCES auth_users ON DELETE CASCADE,
   started TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  finish TIMESTAMP NOT NULL,
+  active BOOLEAN DEFAULT TRUE,  -- need a cron job to close expired sessions
   events JSONB[]
 );
-CREATE INDEX session_token ON auth_session USING btree (token);

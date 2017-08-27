@@ -32,7 +32,7 @@ def web(settings: Settings):
     logger.info('starting server...')
     app = create_app(settings)
     try:
-        run_app(app, port=settings.WEB_PORT, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
+        run_app(app, port=settings.web_port, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
     finally:
         logger.info('server shutdown')
         sleep(0.01)  # time for the log message to propagate

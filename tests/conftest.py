@@ -1,9 +1,11 @@
 import asyncio
 import json
 import re
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple
+from uuid import UUID
 
 import asyncpg
 import pytest
@@ -29,9 +31,10 @@ def pytest_addoption(parser):
 @pytest.fixture(scope='session')
 def settings():
     return Settings(
-        DEBUG=True,  # needed for insecure cookies
         auth_bcrypt_work_factor=5,  # make tests faster
+        easy_login_attempts=2,
         client_ip_header=None,
+        secure_cookies=False,
         pg_main_name='em2_test',
         pg_auth_name='em2_auth_test',
         EXTERNAL_DOMAIN='em2.platform.example.com',
@@ -140,10 +143,10 @@ def create_conv(db_conn):
     return create_conv_
 
 
-@pytest.yield_fixture
-def redis(loop):
+@contextmanager
+def get_clean_redis(loop, redis_db):
     async def _redis():
-        redis = await create_redis(('localhost', 6379))
+        redis = await create_redis(('localhost', 6379), db=redis_db)
         await redis.flushdb()
         return redis
 
@@ -155,6 +158,18 @@ def redis(loop):
         redis.close()
         await redis.wait_closed()
     loop.run_until_complete(_close())
+
+
+@pytest.yield_fixture
+def redis(loop, settings):
+    with get_clean_redis(loop, settings.R_DATABASE) as redis:
+        yield redis
+
+
+@pytest.yield_fixture
+def auth_redis(loop, auth_settings):
+    with get_clean_redis(loop, auth_settings.AUTH_R_DATABASE) as redis:
+        yield redis
 
 
 async def startup_modify_app(app):
@@ -225,6 +240,20 @@ class RegexStr:
             return f'<RegexStr(regex={self._regex!r}>'
         else:
             return repr(self.v)
+
+
+class IsUUID:
+    def __init__(self):
+        self.v = None
+
+    def __eq__(self, other):
+        if isinstance(other, UUID):
+            self.v = other
+            return True
+        # could also check for regex
+
+    def __repr__(self):
+        return repr(self.v) if self.v else 'UUID(*)'
 
 
 CHANGES = [

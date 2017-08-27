@@ -18,6 +18,8 @@ async def user_middleware(app, handler):
 
 
 async def update_session_middleware(app, handler):
+    secure_cookies = app['settings'].secure_cookies
+
     async def _handler(request):
         session = request.get('session')
         update_session = session and not bool(session.recipient_id)
@@ -30,8 +32,7 @@ async def update_session_middleware(app, handler):
         if update_session:
             data = msg_encode(request['session'].values())
             token = app['fernet'].encrypt(data).decode()
-            # TODO set cookie domain?
-            response.set_cookie(app['settings'].cookie_name, token, secure=not app['settings'].DEBUG, httponly=True)
+            response.set_cookie(app['settings'].cookie_name, token, secure=secure_cookies, httponly=True)
 
         return response
     return _handler

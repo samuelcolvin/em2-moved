@@ -154,9 +154,9 @@ async def test_wrong_conv(cli, conv, url):
 
 
 async def test_check_server(cli):
-    r = await check_server(Settings(WEB_PORT=cli.server.port), expected_status=200)
+    r = await check_server(Settings(web_port=cli.server.port), expected_status=200)
     assert r == 0
-    r = await check_server(Settings(WEB_PORT=cli.server.port + 1), expected_status=200)
+    r = await check_server(Settings(web_port=cli.server.port + 1), expected_status=200)
     assert r == 1
 
 

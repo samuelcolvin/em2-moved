@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+import bcrypt
 from aiohttp import ClientSession
 from aiohttp.web import Application, Response
 from arq import create_pool_lenient
@@ -8,7 +9,7 @@ from cryptography.fernet import Fernet
 
 from em2 import VERSION, Settings
 from em2.utils.web import db_conn_middleware
-from .view import AcceptInvitationView
+from .view import AcceptInvitationView, LoginView
 
 logger = logging.getLogger('em2.auth')
 
@@ -47,8 +48,11 @@ def create_auth_app(settings: Settings):
     app.update(
         settings=settings,
         fernet=Fernet(settings.auth_token_key),
+        # used for password checks with address is invalid
+        alt_pw_hash=bcrypt.hashpw('x'.encode(), bcrypt.gensalt(settings.auth_bcrypt_work_factor)).decode(),
     )
 
     app.router.add_get('/', index, name='index')
     app.router.add_route('*', '/accept-invitation/', AcceptInvitationView.view(), name='accept-invitation')
+    app.router.add_route('*', '/login/', LoginView.view(), name='login')
     return app

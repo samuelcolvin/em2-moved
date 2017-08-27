@@ -114,6 +114,8 @@ class View(FetchOr404Mixin):
         self.request: Request = request
         self.app: Application = request.app
         self.conn: Connection = request['conn']
+        from em2 import Settings
+        self.settings: Settings = self.app['settings']
 
     @classmethod
     def view(cls):
