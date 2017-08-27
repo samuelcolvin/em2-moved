@@ -8,8 +8,9 @@ from arq import create_pool_lenient
 from cryptography.fernet import Fernet
 
 from em2 import VERSION, Settings
-from em2.utils.web import db_conn_middleware
-from .view import AcceptInvitationView, LoginView
+from em2.utils.web import auth_middleware, db_conn_middleware
+from .sessions import check_session_active
+from .view import AcceptInvitationView, AccountView, LoginView
 
 logger = logging.getLogger('em2.auth')
 
@@ -40,7 +41,7 @@ async def app_cleanup(app):
 
 
 def create_auth_app(settings: Settings):
-    app = Application(middlewares=(db_conn_middleware,))
+    app = Application(middlewares=(auth_middleware, db_conn_middleware,))
 
     app.on_startup.append(app_startup)
     app.on_cleanup.append(app_cleanup)
@@ -50,9 +51,12 @@ def create_auth_app(settings: Settings):
         fernet=Fernet(settings.auth_token_key),
         # used for password checks with address is invalid
         alt_pw_hash=bcrypt.hashpw('x'.encode(), bcrypt.gensalt(settings.auth_bcrypt_work_factor)).decode(),
+        anon_views=['index', 'login', 'accept-invitation'],
+        check_session_active=check_session_active,
     )
 
     app.router.add_get('/', index, name='index')
-    app.router.add_route('*', '/accept-invitation/', AcceptInvitationView.view(), name='accept-invitation')
     app.router.add_route('*', '/login/', LoginView.view(), name='login')
+    app.router.add_get('/account/', AccountView.view(), name='account')
+    app.router.add_route('*', '/accept-invitation/', AcceptInvitationView.view(), name='accept-invitation')
     return app

@@ -14,14 +14,13 @@ CREATE TABLE auth_users (
   recovery_address VARCHAR(63) UNIQUE,
   account_status ACCOUNT_STATUS NOT NULL DEFAULT 'pending'
 );
-CREATE INDEX user_address ON auth_users USING btree (address);
 
 -- could be saved in redis if performance becomes a problem, should be deleted when old enough
 
-CREATE TABLE auth_session (
+CREATE TABLE auth_sessions (
   token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_user INT NOT NULL REFERENCES auth_users ON DELETE CASCADE,
-  started TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  active BOOLEAN DEFAULT TRUE,  -- need a cron job to close expired sessions
+  last_active TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  active BOOLEAN DEFAULT TRUE,  -- TODO need a cron job to close expired sessions
   events JSONB[]
 );

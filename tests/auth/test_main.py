@@ -1,8 +1,10 @@
+import json
+
 import bcrypt
 import pytest
 
 from em2 import VERSION
-from tests.conftest import CloseToNow, IsUUID
+from tests.conftest import CloseToNow, IsUUID, RegexStr
 
 from .conftest import TEST_ADDRESS, TEST_PASSWORD
 
@@ -33,7 +35,7 @@ async def test_get_accept_invitation_invalid_token(cli, url):
     url_ = url('accept-invitation', query=dict(token='foobar'))
     r = await cli.get(url_)
     assert r.status == 403, await r.text()
-    assert 'Invalid token' == await r.text()
+    assert {'error': 'Invalid token'} == await r.json()
 
 
 async def test_post_accept_invitation(cli, url, token, auth_db_conn):
@@ -99,21 +101,29 @@ async def test_login_get(cli, url, user):
 
 
 async def test_login_post_successful(cli, url, auth_db_conn, user):
-    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_session')
+    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_sessions')
     address, password = user
     r = await cli.post(url('login'), json={'address': address, 'password': password})
     assert r.status == 200, await r.text()
     assert {'msg': 'login successful'} == await r.json()
     assert len(cli.session.cookie_jar) == 1
-    assert 1 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_session')
-    r = dict(await auth_db_conn.fetchrow('SELECT * FROM auth_session'))
+    assert 1 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_sessions')
+    r = dict(await auth_db_conn.fetchrow('SELECT * FROM auth_sessions'))
+    events = r.pop('events')
     assert {
         'token': IsUUID(),
         'auth_user': await auth_db_conn.fetchval('SELECT id FROM auth_users'),
-        'started': CloseToNow(),
+        'last_active': CloseToNow(),
         'active': True,
-        'events': None,
     } == r
+    assert len(events) == 1
+    event = json.loads(events[0])
+    assert {
+        'ac': 'login',
+        'ip': '127.0.0.1',
+        'ts': CloseToNow(),
+        'ua': RegexStr('Python.*'),
+    } == event
 
 
 @pytest.mark.parametrize('address, password', [
@@ -126,7 +136,7 @@ async def test_failed_login(cli, url, user, auth_db_conn, address, password):
     assert r.status == 403, await r.text()
     assert {'error': 'invalid credentials', 'captcha_required': False} == await r.json()
     assert 0 == len(cli.session.cookie_jar)
-    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_session')
+    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_sessions')
 
 
 async def test_captcha_required(cli, settings, url, user):
@@ -170,3 +180,20 @@ async def test_captcha_supplied(cli, settings, url, user, g_recaptcha_server):
     r = await cli.post(url('login'), json={'address': address, 'password': password, 'grecaptcha': g_good})
     assert r.status == 200, await r.text()
     assert {'msg': 'login successful'} == await r.json()
+
+
+async def test_get_account(cli, url, token):
+    url_ = url('accept-invitation', query=dict(token=token(last_name='testing')))
+    r = await cli.post(url_, json={'password': 'thisissecure'})
+    assert r.status == 200, await r.text()
+    assert len(cli.session.cookie_jar) == 1
+
+    r = await cli.get(url('account'))
+    assert r.status == 200, await r.text()
+    assert {
+        'address': 'testing@example.com',
+        'first_name': None,
+        'last_name': 'testing',
+        'recovery_address': None,
+        'otp_enabled': False
+    } == await r.json()

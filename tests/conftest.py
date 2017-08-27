@@ -2,7 +2,7 @@ import asyncio
 import json
 import re
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 from uuid import UUID
@@ -195,8 +195,10 @@ class CloseToNow:
 
     def __eq__(self, other):
         self.other = other
-        if isinstance(other, str):
+        if not isinstance(other, datetime):
             other = parse_datetime(other)
+        if other.tzinfo:
+            self.now = self.now.replace(tzinfo=timezone.utc)
         self.match = -self.delta < (self.now - other).total_seconds() < self.delta
         return self.match
 

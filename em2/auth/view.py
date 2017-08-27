@@ -1,48 +1,32 @@
-import json
 from urllib.parse import urlencode
 
 import bcrypt
 from aiohttp.hdrs import METH_POST
-from aiohttp.web import HTTPBadRequest, HTTPConflict, HTTPForbidden, HTTPTooManyRequests
 from pydantic import EmailStr, constr
 from zxcvbn import zxcvbn
 
 from em2.utils.encoding import msg_encode
-from em2.utils.web import JSON_CONTENT_TYPE, View, WebModel, decrypt_token, get_ip, json_response
+from em2.utils.web import JsonError, View, WebModel, decrypt_token, get_ip, json_response, raw_json_response
+
+from .sessions import session_event
 
 
-class _JsonHTTPError:
-    def __init__(self, **data):
-        super().__init__(text=json.dumps(data), content_type=JSON_CONTENT_TYPE)
-
-
-class JsonHTTPBadRequest(_JsonHTTPError, HTTPBadRequest):
-    pass
-
-
-class JsonHTTPForbidden(_JsonHTTPError, HTTPForbidden):
-    pass
-
-
-class JsonHTTPTooManyRequests(_JsonHTTPError, HTTPTooManyRequests):
-    pass
+class Password(WebModel):
+    password: constr(max_length=72)
 
 
 class AuthView(View):
     CREATE_SESSION_SQL = """
-    INSERT INTO auth_session (auth_user) VALUES ($1)
+    INSERT INTO auth_sessions (auth_user, events) VALUES ($1, ARRAY[$2::JSONB])
     RETURNING token
     """
 
-    class Password(WebModel):
-        password: constr(max_length=72)
-
     async def get_password_hash(self):
         # repeat password confirmation should be done in js
-        password = self.Password(**await self.request_json()).password
+        password = Password(**await self.request_json()).password
         result = zxcvbn(password)
         if result['score'] < 2:
-            raise JsonHTTPBadRequest(
+            raise JsonError.HTTPBadRequest(
                 msg='password not strong enough',
                 feedback=result['feedback'],
             )
@@ -50,9 +34,9 @@ class AuthView(View):
             hashb = bcrypt.hashpw(password.encode(), bcrypt.gensalt(self.settings.auth_bcrypt_work_factor))
             return hashb.decode()
 
-    async def response_create_session(self, user_id, user_address, msg):
+    async def response_create_session(self, user_id, user_address, action, msg):
         r = json_response(msg=msg)
-        token = await self.conn.fetchval(self.CREATE_SESSION_SQL, user_id)
+        token = await self.conn.fetchval(self.CREATE_SESSION_SQL, user_id, session_event(self.request, action))
         data = msg_encode(dict(
             token=str(token),
             address=user_address,
@@ -84,7 +68,7 @@ class LoginView(AuthView):
             data = await r.json()
         # could check hostname here
         if data['success'] is not True:
-            raise JsonHTTPBadRequest(error='invalid captcha')
+            raise JsonError.HTTPBadRequest(error='invalid captcha')
 
     async def call(self, request):
         ip_address = get_ip(request)
@@ -104,7 +88,7 @@ class LoginView(AuthView):
                     if form.grecaptcha:
                         await self._check_grecaptcha(form.grecaptcha, ip_address)
                     else:
-                        raise JsonHTTPTooManyRequests(error='captcha required', captcha_required=True)
+                        raise JsonError.HTTPTooManyRequests(error='captcha required', captcha_required=True)
 
                 r = await self.conn.fetchrow(self.GET_USER_HASH_SQL, form.address)
                 # by always checking the password even if the address is not found we rule out use of
@@ -115,9 +99,9 @@ class LoginView(AuthView):
                     user_id, password_hash = 0, self.app['alt_pw_hash']
 
                 if bcrypt.checkpw(form.password.encode(), password_hash.encode()):
-                    return await self.response_create_session(user_id, form.address, 'login successful')
+                    return await self.response_create_session(user_id, form.address, 'login', 'login successful')
                 else:
-                    raise JsonHTTPForbidden(error='invalid credentials', captcha_required=captcha_required)
+                    raise JsonError.HTTPForbidden(error='invalid credentials', captcha_required=captcha_required)
             else:
                 return json_response(
                     msg='login',
@@ -146,7 +130,7 @@ class AcceptInvitationView(AuthView):
         inv.address = inv.address.lower()  # TODO move to model clean method
         user_exists = await self.conn.fetchval(self.GET_USER_SQL, inv.address)
         if user_exists:
-            raise HTTPConflict(text='user with this address already exists')
+            raise JsonError.HTTPConflict(text='user with this address already exists')
 
         if request.method == METH_POST:
             pw_hash = await self.get_password_hash()
@@ -155,10 +139,39 @@ class AcceptInvitationView(AuthView):
                 inv.address, inv.first_name, inv.last_name, inv.recovery_address, pw_hash
             )
             if not user_id:
-                raise HTTPConflict(text='user with this address already exists')
-            return await self.response_create_session(user_id, inv.address, 'user created')
+                raise JsonError.HTTPConflict(text='user with this address already exists')
+            return await self.response_create_session(user_id, inv.address, 'user created', 'user created')
         else:
             return json_response(
                 msg='please submit password',
                 fields=inv.values()
             )
+
+
+class AccountView(AuthView):
+    user_details_sql = """
+    SELECT address, first_name, last_name, otp_secret, recovery_address
+    FROM auth_users
+    WHERE address = $1
+    """
+
+    async def call(self, request):
+        data = dict(await self.fetchrow404(self.user_details_sql, self.request['session'].address))
+        data['otp_enabled'] = bool(data.pop('otp_secret'))
+        return json_response(**data)
+
+
+class SessionsView(AuthView):
+    sessions_sql = """"
+    SELECT to_json(t)
+    FROM (
+      SELECT s.active AS active, s.started AS started, s.events AS events
+      FROM auth_sessions as s
+      JOIN auth_users AS u ON s.auth_user = u.id
+      WHERE u.address=$1
+    ) t;
+    """
+
+    async def call(self, request):
+        s = await self.conn.fetchval(self.sessions_sql, self.request['session'].address)
+        return raw_json_response(s)

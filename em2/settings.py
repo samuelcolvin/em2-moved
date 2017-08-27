@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 
@@ -37,7 +38,8 @@ class Settings(BaseSettings):
     # attempts before captcha is required
     easy_login_attempts = 4
 
-    auth_token_validity = 7 * 86_400
+    # time after which idle session expire
+    auth_cookie_idle: timedelta = 7 * 86_400
     auth_bcrypt_work_factor = 13
     auth_token_key = b'you need to replace me with a real Fernet keyxxxxxxx='
     cookie_name = 'em2session'

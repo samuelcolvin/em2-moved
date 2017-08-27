@@ -7,11 +7,15 @@ from aiohttp.web import WebSocketResponse
 from pydantic import EmailStr, constr
 
 from em2.core import ApplyAction, GetConv, create_missing_recipients, gen_random, generate_conv_key
-from em2.utils.web import WebModel, json_response, raw_json_response
-
-from .common import View
+from em2.utils.web import Session, ViewMain, WebModel, json_response, raw_json_response
 
 logger = logging.getLogger('em2.d.views')
+
+
+class View(ViewMain):
+    def __init__(self, request):
+        super().__init__(request)
+        self.session: Session = request['session']
 
 
 class VList(View):

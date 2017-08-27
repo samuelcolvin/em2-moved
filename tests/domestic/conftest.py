@@ -12,7 +12,8 @@ test_addr = 'testing@example.com'
 @pytest.fixture
 def cli(loop, settings, db_conn, test_client, redis):
     data = {
-        'address': test_addr
+        'address': test_addr,
+        'token': '123',
     }
     data = msg_encode(data)
     fernet = Fernet(settings.SECRET_SESSION_KEY)

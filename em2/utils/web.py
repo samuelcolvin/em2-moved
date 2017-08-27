@@ -4,14 +4,48 @@ import traceback
 from functools import update_wrapper
 from typing import Type
 
-from aiohttp.web import Application, HTTPBadRequest, HTTPForbidden, HTTPNotFound, Request, Response  # noqa
+from aiohttp import web_exceptions
+from aiohttp.web import Application, Request, Response  # noqa
 from asyncpg.connection import Connection  # noqa
 from cryptography.fernet import InvalidToken
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, EmailStr, ValidationError
 
 from .encoding import msg_decode
 
 JSON_CONTENT_TYPE = 'application/json'
+
+
+class _JsonHTTPError:
+    def __init__(self, **data):
+        super().__init__(text=json.dumps(data), content_type=JSON_CONTENT_TYPE)
+
+
+class JsonError:
+    class HTTPBadRequest(_JsonHTTPError, web_exceptions.HTTPBadRequest):
+        pass
+
+    class HTTPForbidden(_JsonHTTPError, web_exceptions.HTTPForbidden):
+        pass
+
+    class HTTPConflict(_JsonHTTPError, web_exceptions.HTTPConflict):
+        pass
+
+    class HTTPTooManyRequests(_JsonHTTPError, web_exceptions.HTTPTooManyRequests):
+        pass
+
+    class HTTPInternalServerError(_JsonHTTPError, web_exceptions.HTTPInternalServerError):
+        pass
+
+
+class WebModel(BaseModel):
+    def _process_values(self, values):
+        try:
+            return super()._process_values(values)
+        except ValidationError as e:
+            raise web_exceptions.HTTPBadRequest(text=e.json(), content_type=JSON_CONTENT_TYPE)
+
+    class Config:
+        allow_extra = False
 
 
 async def db_conn_middleware(app, handler):
@@ -22,16 +56,40 @@ async def db_conn_middleware(app, handler):
     return _handler
 
 
-def decrypt_token(token: str, app: Application, model: Type[BaseModel]) -> BaseModel:
+class Session(WebModel):
+    address: EmailStr
+    token: str
+    recipient_id: int = None
+
+
+async def auth_middleware(app, handler):
+    anon_views = set(app['anon_views'])
+    anon_views |= {v + '-head' for v in anon_views}
+    check_session_active = app['check_session_active']
+    cookie_name = app['settings'].cookie_name
+
+    async def auth_middleware_handler(request):
+        if request.match_info.route.name not in anon_views:
+            cookie = request.cookies.get(cookie_name, '')
+            session: Session = decrypt_token(cookie, app, Session, error_msg='cookie missing or incorrect')
+            await check_session_active(request, session)
+            request['session'] = session
+
+        return await handler(request)
+    return auth_middleware_handler
+
+
+def decrypt_token(token: str, app: Application, model: Type[BaseModel], error_msg='Invalid token') -> BaseModel:
         try:
             raw_data = app['fernet'].decrypt(token.encode())
         except InvalidToken:
-            raise HTTPForbidden(text='Invalid token')
+            raise JsonError.HTTPForbidden(error=error_msg)
         try:
             data = msg_decode(raw_data)
             return model(**data)
         except (ValueError, TypeError):
-            raise HTTPBadRequest(text='bad cookie data')
+            # This shouldn't happen
+            raise JsonError.HTTPInternalServerError(error='bad token data')
 
 
 def get_ip(request):
@@ -39,7 +97,7 @@ def get_ip(request):
     if header:
         ips = request.headers.get(header)
         if not ips:
-            raise HTTPBadRequest(text=f'missing header "{header}"')
+            raise JsonError.HTTPBadRequest(error=f'missing header "{header}"')
         return ips.split(',', 1)[0]
     else:
         peername = request.transport.get_extra_info('peername')
@@ -77,17 +135,6 @@ def raw_json_response(text: str, *, status_=200):
     )
 
 
-class WebModel(BaseModel):
-    def _process_values(self, values):
-        try:
-            return super()._process_values(values)
-        except ValidationError as e:
-            raise HTTPBadRequest(text=e.json(), content_type=JSON_CONTENT_TYPE)
-
-    class Config:
-        allow_extra = False
-
-
 async def _fetch404(func, sql, *args, msg=None):
     """
     fetch from the db, raise not found if the value is doesn't exist
@@ -97,7 +144,7 @@ async def _fetch404(func, sql, *args, msg=None):
         # TODO add debug
         msg = msg or 'unable to find value in db'
         tb = ''.join(traceback.format_stack())
-        raise HTTPNotFound(text=f'{msg}\nsql:\n{sql}\ntraceback:{tb}')
+        raise web_exceptions.HTTPNotFound(text=f'{msg}\nsql:\n{sql}\ntraceback:{tb}')
     return val
 
 
@@ -140,9 +187,9 @@ class View(FetchOr404Mixin):
         try:
             data = await self.request.json()
         except ValueError as e:
-            raise HTTPBadRequest(text=f'invalid request json: {e}')
+            raise JsonError.HTTPBadRequest(error=f'invalid request json: {e}')
         if not isinstance(data, dict):
-            raise HTTPBadRequest(text='request json should be a dictionary')
+            raise JsonError.HTTPBadRequest(error='request json should be a dictionary')
         return data
 
 

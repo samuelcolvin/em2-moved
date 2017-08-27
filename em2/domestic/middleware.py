@@ -1,20 +1,8 @@
 from em2.core import get_create_recipient
 from em2.utils.encoding import msg_encode
-from em2.utils.web import db_conn_middleware, decrypt_token
-
-from .common import Session
+from em2.utils.web import auth_middleware, db_conn_middleware
 
 # TODO enforce Same-Origin, json Content-Type, Referrer and XSS rules
-
-
-async def user_middleware(app, handler):
-    async def user_middleware_handler(request):
-        # index can be viewed without auth
-        if request.match_info.route.name not in ('index', 'index-head'):
-            token = request.cookies.get(app['settings'].cookie_name, '')
-            request['session'] = decrypt_token(token, app, Session)
-        return await handler(request)
-    return user_middleware_handler
 
 
 async def update_session_middleware(app, handler):
@@ -39,7 +27,7 @@ async def update_session_middleware(app, handler):
 
 
 middleware = (
-    user_middleware,
+    auth_middleware,
     db_conn_middleware,
     update_session_middleware,
 )

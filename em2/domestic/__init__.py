@@ -36,6 +36,10 @@ async def app_cleanup(app):
     await app['db'].close()
 
 
+async def check_session_active(request, session):
+    pass  # TODO
+
+
 def create_domestic_app(settings, app_name=None):
     app = Application(middlewares=middleware)
 
@@ -46,6 +50,8 @@ def create_domestic_app(settings, app_name=None):
         settings=settings,
         fernet=Fernet(settings.SECRET_SESSION_KEY),
         name=app_name or gen_random('d'),
+        anon_views=['index'],
+        check_session_active=check_session_active,
     )
 
     app.router.add_get('/list/', VList.view(), name='list')

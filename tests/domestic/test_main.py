@@ -36,7 +36,7 @@ async def test_no_cookie(cli, url):
     cli.session.cookie_jar.clear()
     r = await cli.get(url('list'))
     assert r.status == 403, await r.text()
-    assert 'Invalid token' in await r.text()
+    assert {'error': 'cookie missing or incorrect'} == await r.json()
 
 
 async def test_invalid_cookie(cli, url, settings):
@@ -49,7 +49,7 @@ async def test_invalid_cookie(cli, url, settings):
 
     r = await cli.get(url('list'))
     assert r.status == 403, await r.text()
-    assert 'Invalid token' in await r.text()
+    assert {'error': 'cookie missing or incorrect'} == await r.json()
 
 
 async def test_session_update(cli, url):
@@ -174,8 +174,7 @@ async def test_add_message_invalid_data_list(cli, conv, url):
     url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
     assert r.status == 400, await r.text()
-    text = await r.text()
-    assert 'request json should be a dictionary' == text
+    assert {'error': 'request json should be a dictionary'} == await r.json()
 
 
 async def test_add_message_invalid_data_model_error(cli, conv, url):
