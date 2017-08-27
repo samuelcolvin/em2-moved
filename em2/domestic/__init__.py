@@ -50,7 +50,8 @@ async def activate_session(request, data):
         if data:
             recipient_id = int(data)
         elif expires_at > time():
-            recipient_id = await get_create_recipient(request['conn'], user_address)
+            async with request.app['db'].acquire() as conn:
+                recipient_id = await get_create_recipient(conn, user_address)
             await asyncio.gather(
                 redis.set(session_cache, str(recipient_id).encode()),
                 redis.expireat(session_cache, expires_at),
@@ -62,7 +63,7 @@ async def activate_session(request, data):
 
 
 def create_domestic_app(settings, app_name=None):
-    app = Application(middlewares=(db_conn_middleware, auth_middleware))
+    app = Application(middlewares=(auth_middleware, db_conn_middleware))
 
     app.on_startup.append(app_startup)
     app.on_cleanup.append(app_cleanup)

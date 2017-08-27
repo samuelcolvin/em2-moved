@@ -293,7 +293,7 @@ to auth when the cookie expires.
 * `/request-reset-password/` 
 * `/reset-password/` - authenticated with get token
 * `/accept-invitation/` - authenticated with get token
-* `/update-session/` returns 307 to query argument `r`
+* `/update-session/` - returns 307 to query argument `r`
 
 Could use temporary tokens for login and reset-password so multiple people logging in from the same ip
 are less likely to get prompted for a captcha.
@@ -307,7 +307,6 @@ are less likely to get prompted for a captcha.
 
 ## API View:
 
-* `/invite/`
 * `/suspend/`
 * `/end-session/` - used by admin or session manager to a session, as above invalidates cookie with domestic.
 

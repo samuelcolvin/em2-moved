@@ -10,7 +10,7 @@ from zxcvbn import zxcvbn
 from em2.utils.web import View as _View
 from em2.utils.web import JsonError, WebModel, decrypt_token, get_ip, json_response, raw_json_response
 
-from .sessions import session_event
+from .sessions import logout, session_event
 
 
 class Password(WebModel):
@@ -73,7 +73,6 @@ class LoginView(View):
         ip_address = get_ip(request)
         key = b'login:%s' % ip_address.encode()
         async with self.app['redis_pool'].get() as redis:
-
             if request.method == METH_POST:
                 login_attempts = int(await redis.incr(key))
                 if login_attempts == 1:
@@ -121,6 +120,14 @@ class UpdateSession(View):
         r = HTTPTemporaryRedirect(location=redirect_to)
         r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
         raise r
+
+
+class LogoutView(View):
+    async def call(self, request):
+        await logout(request)
+        r = json_response(msg='logout successful')
+        r.del_cookie(self.settings.cookie_name)
+        return r
 
 
 class AcceptInvitationView(View):

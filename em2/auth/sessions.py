@@ -4,7 +4,6 @@ from time import time
 
 from em2.utils.web import JsonError, get_ip
 
-
 GET_SESSION_SQL = """
 SELECT s.active AS active, s.last_active AS last_active, u.id AS user_id
 FROM auth_sessions AS s
@@ -13,10 +12,13 @@ WHERE s.token=$1
 """
 UPDATE_SESSION_SQL = """
 UPDATE auth_sessions SET last_active=CURRENT_TIMESTAMP, events=events || $1::JSONB
+WHERE token=$2
 """
 DEACTIVATE_SESSION_SQL = """
 UPDATE auth_sessions SET last_active=CURRENT_TIMESTAMP, active=FALSE, events=events || $1::JSONB
+WHERE token=$2
 """
+SESSION_CACHE_TEMPLATE = 's:{}'
 
 
 def session_event(request, action):
@@ -42,7 +44,7 @@ async def activate_session(request, data):
 
 
 async def get_session_user(app, session_token, event_data):
-    session_cache = 's:{}'.format(session_token).encode()
+    session_cache = SESSION_CACHE_TEMPLATE.format(session_token).encode()
     async with app['redis_pool'].get() as redis:
         d = await redis.get(session_cache)
         if d:
@@ -57,9 +59,18 @@ async def get_session_user(app, session_token, event_data):
             now = datetime.utcnow()
 
             if expiry > now:
-                await conn.execute(UPDATE_SESSION_SQL, event_data)
+                await conn.execute(UPDATE_SESSION_SQL, event_data, session_token)
                 key_time = min(int((expiry - now).total_seconds()), 3600)
                 await redis.setex(session_cache, key_time, str(r['user_id']).encode())
                 return r['user_id']
             else:
-                await conn.execute(DEACTIVATE_SESSION_SQL, event_data)
+                await conn.execute(DEACTIVATE_SESSION_SQL, event_data, session_token)
+
+
+async def logout(request):
+    event_data = session_event(request, 'logout')
+    await request['conn'].execute(DEACTIVATE_SESSION_SQL, event_data, request['session_token'])
+
+    session_cache = SESSION_CACHE_TEMPLATE.format(request['session_token']).encode()
+    async with request.app['redis_pool'].get() as redis:
+        await redis.delete(session_cache)

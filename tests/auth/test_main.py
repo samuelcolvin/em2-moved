@@ -223,18 +223,47 @@ async def test_get_account_anon(cli, url):
     assert {'error': 'cookie missing or incorrect'} == await r.json()
 
 
-async def update_session(cli, url, authenticate):
+async def test_update_session(cli, url, authenticate):
     assert len(cli.session.cookie_jar) == 1
     c1 = list(cli.session.cookie_jar)[0]
+    r = await cli.get(url('account'))
+    assert r.status == 200, await r.text()
+    assert c1 == list(cli.session.cookie_jar)[0]
 
     r = await cli.get(url('update-session', query={'r': 'https://example.com/foo/bar/?a=b'}), allow_redirects=False)
     assert r.status == 307
     assert r.headers['Location'] == 'https://example.com/foo/bar/?a=b'
-    assert len(cli.session.cookie_jar) == 2
-    c2 = list(cli.session.cookie_jar)[-1]
-    assert c1 != c2
+    assert len(cli.session.cookie_jar) == 1
+    assert c1 != list(cli.session.cookie_jar)[0]
 
 
-async def update_session_no_redirect(cli, url, authenticate):
+async def test_update_session_no_redirect(cli, url, authenticate):
     r = await cli.get(url('update-session'), allow_redirects=False)
     assert r.status == 400, await r.text()
+
+
+async def test_logout(cli, url, authenticate):
+    r = await cli.get(url('account'))
+    assert r.status == 200, await r.text()
+
+    r = await cli.post(url('logout'))
+    assert r.status == 200, await r.text()
+
+    r = await cli.get(url('account'))
+    assert r.status == 403, await r.text()
+
+
+async def test_logout_keep_cookie(cli, url, authenticate):
+    r = await cli.get(url('account'))
+    assert r.status == 200, await r.text()
+    assert len(cli.session.cookie_jar) == 1
+    c = list(cli.session.cookie_jar)[0]
+
+    r = await cli.post(url('logout'))
+    assert r.status == 200, await r.text()
+
+    assert len(cli.session.cookie_jar) == 0
+    cli.session.cookie_jar.update_cookies({c.key: c.value})
+
+    r = await cli.get(url('account'))
+    assert r.status == 403, await r.text()
