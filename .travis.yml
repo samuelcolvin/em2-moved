@@ -20,6 +20,7 @@ matrix:
 install:
 - make install
 - pip freeze
+- cp tests/.coveragerc .
 
 script:
 - make lint
