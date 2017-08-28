@@ -20,7 +20,7 @@ matrix:
 install:
 - make install
 - pip freeze
-- cp tests/.coveragerc .
+- pip install codecov
 
 script:
 - make lint
@@ -28,7 +28,7 @@ script:
 
 after_success:
 - ls -lha
-- bash <(curl -s https://codecov.io/bash)
+- codecov
 
 env:
   global:
