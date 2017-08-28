@@ -113,6 +113,7 @@ async def test_login_post_successful(cli, url, auth_db_conn, user):
     assert {
         'token': IsUUID(),
         'auth_user': await auth_db_conn.fetchval('SELECT id FROM auth_users'),
+        'started': CloseToNow(),
         'last_active': CloseToNow(),
         'active': True,
     } == r

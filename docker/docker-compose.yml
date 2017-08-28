@@ -60,6 +60,7 @@ services:
       EM2_R_HOST: redis
       EM2_EXTERNAL_DOMAIN: ${EM2_EXTERNAL_DOMAIN}
       EM2_AUTH_SESSION_SECRET: ${EM2_AUTH_SESSION_SECRET}
+      EM2_AUTH_UPDATE_SESSION_URL: 'http://localhost:8000/auth/update-session/'
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
       EM2_SECURE_COOKIES: 'false'
     restart: always
@@ -81,6 +82,7 @@ services:
       EM2_R_HOST: redis
       EM2_EXTERNAL_DOMAIN: ${EM2_EXTERNAL_DOMAIN}
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
+      EM2_RUN_SETUP_CHECK: 'false'
     restart: always
     depends_on:
     - postgres

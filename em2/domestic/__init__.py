@@ -42,9 +42,9 @@ async def app_cleanup(app):
 
 
 async def activate_session(request, data):
-    session_token, expires_at, user_address = data.split(':', 2)
+    session_token, created_at, user_address = data.split(':', 2)
     session_cache = 's:{}'.format(session_token).encode()
-    expires_at = int(expires_at)
+    expires_at = int(created_at) + request.app['settings'].cookie_grace_time
     async with await request.app['pusher'].get_redis_conn() as redis:
         data = await redis.get(session_cache)
         if data:
@@ -57,7 +57,7 @@ async def activate_session(request, data):
                 redis.expireat(session_cache, expires_at),
             )
         else:
-            loc = request.app['settings'].auth_update_cookie_url + '?' + urlencode({'r': request.url})
+            loc = request.app['settings'].auth_update_session_url + '?' + urlencode({'r': request.url})
             raise HTTPTemporaryRedirect(location=loc)
         request['session_args'] = recipient_id, user_address
 

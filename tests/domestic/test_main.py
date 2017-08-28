@@ -53,13 +53,13 @@ async def test_invalid_cookie(cli, url, settings):
 
 async def test_expired_cookie(cli, url, settings):
     fernet = Fernet(settings.auth_session_secret)
-    data = f'123:{int(time()) - 10}:foo@bar.com'
+    data = f'123:{int(time()) - 3600}:foo@bar.com'
     cookies = {settings.cookie_name: fernet.encrypt(data.encode()).decode()}
     cli.session.cookie_jar.update_cookies(cookies)
 
     r = await cli.get(url('list'), allow_redirects=False)
     assert r.status == 307, await r.text()
-    assert r.headers['Location'].startswith('http://testing.example.com?r=')
+    assert r.headers['Location'].startswith('https://auth.example.com/update-session/?r=')
     return_url = parse_qs(urlparse(r.headers['Location']).query)['r'][0]
     assert return_url == f'http://127.0.0.1:{cli.server.port}{url("list")}'
 

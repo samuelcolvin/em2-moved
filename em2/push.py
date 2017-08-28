@@ -356,6 +356,8 @@ class Pusher(Actor):
         """
         Check whether this node has the correct dns settings.
         """
+        if not self.settings.run_setup_check:
+            return
         http_pass, dns_pass = False, False
         foreign_app_url = f'{self.settings.COMMS_PROTO}://{self.settings.EXTERNAL_DOMAIN}/'
         try:

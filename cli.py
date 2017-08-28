@@ -31,8 +31,8 @@ except ImportError as e:
               help='env variable: EM2_DOMESTIC_URL')
 @click.option('--auth-url', default='http://localhost:8000/auth/', envvar='EM2_AUTH_URL',
               help='env variable: EM2_AUTH_URL')
-@click.option('--auth-token-key', default='you need to replace me with a real Fernet keyxxxxxxx=',
-              envvar='EM2_AUTH_TOKEN_KEY', help='env variable: EM2_AUTH_TOKEN_KEY')
+@click.option('--auth-invitation-secret', default='you need to replace me with a real Fernet keyxxxxxxx=',
+              envvar='EM2_AUTH_INVITATION_SECRET', help='env variable: EM2_AUTH_INVITATION_SECRET')
 @click.option('--address', default='testing@localhost.example.com', envvar='USER_ADDRESS',
               help='env variable: USER_ADDRESS')
 @click.option('--password', default='we-are-testing')
@@ -77,7 +77,7 @@ def gen_dns_keys(ctx):
 @cli.command()
 @click.pass_context
 def create_account(ctx):
-    fernet = Fernet(ctx.obj['auth_token_key'].encode())
+    fernet = Fernet(ctx.obj['auth_invitation_secret'].encode())
     data = dict(address=ctx.obj['address'], last_name='testing')
     token = fernet.encrypt(msgpack.packb(data, use_bin_type=True)).decode()
     session = requests.Session()
@@ -304,6 +304,8 @@ def format_dict(d):
 
 
 def print_response(r):
+    redirects = ' > '.join(f'{r_.request.method} {r_.url} {r_.status_code}' for r_ in r.history)
+
     print(f"""\
 {dim('request url', fmt='{}:')}     {green(r.request.url)}
 {dim('request method', fmt='{}:')}  {green(r.request.method)}
@@ -312,6 +314,8 @@ def print_response(r):
 {dim('request body', fmt='{}:')}
 {highlight_data(r.request.body)}
 {dim('request time', fmt='{}:')}    {green(r.elapsed.total_seconds() * 1000, fmt='{:.0f}ms')}
+
+{redirects or '(no redirects)'}
 
 {dim('response status', fmt='{}:')} {green(r.status_code)}
 {dim('response headers', fmt='{}:')}
@@ -323,15 +327,25 @@ def print_response(r):
 
 def make_session(ctx):
     session = requests.Session()
-    data = {'password': ctx.obj['password'], 'address': ctx.obj['address']}
-    r = session.post(url(ctx, '/login/', auth=True), json=data)
-    if r.status_code != 200:
-        click.secho('Error logging in:\n', fg='red')
-        print_response(r)
-        sys.exit(1)
+    cookie_path = Path('em2-cookie-{[address]}.json'.format(ctx.obj))
+    if cookie_path.exists():
+        with cookie_path.open() as f:
+            cookies = json.load(f)
+
+        for name, value in cookies.items():
+            session.cookies.set(name, value)
     else:
-        print_response(r)
-        print('login successful')
+        print('cookie file missing, logging in...')
+        data = {'password': ctx.obj['password'], 'address': ctx.obj['address']}
+        r = session.post(url(ctx, '/login/', auth=True), json=data)
+        if r.status_code != 200:
+            click.secho('Error logging in:\n', fg='red')
+            print_response(r)
+            sys.exit(1)
+
+        print('login successful, saving cookie')
+        with cookie_path.open('w') as f:
+            json.dump(dict(session.cookies), f, indent=2)
     return session
 
 

@@ -41,7 +41,7 @@ class View(_View):
     async def response_create_session(self, user_id, user_address, action, msg):
         r = json_response(msg=msg)
         token = await self.conn.fetchval(self.CREATE_SESSION_SQL, user_id, session_event(self.request, action))
-        expires = int(time()) + self.settings.cookie_grace_time
+        expires = int(time())
         cookie = self.app['session_fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
         r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
         return r
@@ -117,8 +117,7 @@ class UpdateSession(View):
         except KeyError:
             raise JsonError.HTTPBadRequest(error='redirect value "r" missing')
         token, user_address = request['session_token'], request['user_address']
-        expires = int(time()) + self.settings.cookie_grace_time
-        cookie = self.app['session_fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
+        cookie = self.app['session_fernet'].encrypt(f'{token}:{int(time())}:{user_address}'.encode()).decode()
         r = HTTPTemporaryRedirect(location=redirect_to)
         r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
         raise r

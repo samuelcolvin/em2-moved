@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     auth_bcrypt_work_factor = 13
     auth_session_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
     auth_invitation_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
-    auth_update_cookie_url = 'not-set'
+    auth_update_session_url = 'https://auth.example.com/update-session/'
 
     cookie_name = 'em2session'
     # how long cookies should remain valid with main before they need checking with auth
@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     pg_auth_name = 'em2_auth'
 
     mode = Mode.main
+    run_setup_check = True
 
     pg_pool_minsize = 1
     pg_pool_maxsize = 10
@@ -114,14 +115,5 @@ class Settings(BaseSettings):
             host=self.R_HOST,
             port=self.R_PORT,
             password=self.R_PASSWORD,
-            database=self.R_DATABASE,
-        )
-
-    @property
-    def auth_redis(self):
-        return RedisSettings(
-            host=self.R_HOST,
-            port=self.R_PORT,
-            password=self.R_PASSWORD,
-            database=self.AUTH_R_DATABASE,
+            database=self.R_DATABASE if self.mode == Mode.main else self.AUTH_R_DATABASE,
         )

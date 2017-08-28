@@ -26,7 +26,7 @@ async def app_startup(app):
     app.update(
         db=settings.db_cls(settings=settings, loop=loop),
         session=ClientSession(loop=loop, read_timeout=5, conn_timeout=5),
-        redis_pool=await create_pool_lenient(settings.auth_redis, loop),
+        redis_pool=await create_pool_lenient(settings.redis, loop),
     )
     await app['db'].startup()
 

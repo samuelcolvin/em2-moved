@@ -15,11 +15,10 @@ CREATE TABLE auth_users (
   account_status ACCOUNT_STATUS NOT NULL DEFAULT 'pending'
 );
 
--- could be saved in redis if performance becomes a problem, should be deleted when old enough
-
 CREATE TABLE auth_sessions (
   token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_user INT NOT NULL REFERENCES auth_users ON DELETE CASCADE,
+  started TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_active TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   active BOOLEAN DEFAULT TRUE,  -- TODO need a cron job to close expired sessions just so they look sensible
   events JSONB[]
