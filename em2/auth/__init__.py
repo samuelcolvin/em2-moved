@@ -8,7 +8,7 @@ from arq import create_pool_lenient
 from cryptography.fernet import Fernet
 
 from em2 import VERSION, Settings
-from em2.utils.web import auth_middleware, db_conn_middleware
+from em2.utils.web import auth_middleware, db_conn_middleware, set_anon_views
 from .sessions import activate_session
 from .view import AcceptInvitationView, AccountView, LoginView, LogoutView, SessionsView, UpdateSession
 
@@ -48,10 +48,11 @@ def create_auth_app(settings: Settings):
 
     app.update(
         settings=settings,
-        fernet=Fernet(settings.auth_token_key),
+        session_fernet=Fernet(settings.auth_session_secret),
+        invitation_fernet=Fernet(settings.auth_invitation_secret),
         # used for password checks with address is invalid
         alt_pw_hash=bcrypt.hashpw('x'.encode(), bcrypt.gensalt(settings.auth_bcrypt_work_factor)).decode(),
-        anon_views=['index', 'login', 'accept-invitation'],
+        anon_views=set_anon_views('index', 'login', 'accept-invitation'),
         activate_session=activate_session,
     )
 

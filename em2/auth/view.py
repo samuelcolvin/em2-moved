@@ -4,11 +4,13 @@ from urllib.parse import urlencode
 import bcrypt
 from aiohttp.hdrs import METH_POST
 from aiohttp.web import HTTPTemporaryRedirect
+from cryptography.fernet import InvalidToken
 from pydantic import EmailStr, constr
 from zxcvbn import zxcvbn
 
+from em2.utils.encoding import msg_decode
 from em2.utils.web import View as _View
-from em2.utils.web import JsonError, WebModel, decrypt_token, get_ip, json_response, raw_json_response
+from em2.utils.web import JsonError, WebModel, get_ip, json_response, raw_json_response
 
 from .sessions import logout, session_event
 
@@ -40,7 +42,7 @@ class View(_View):
         r = json_response(msg=msg)
         token = await self.conn.fetchval(self.CREATE_SESSION_SQL, user_id, session_event(self.request, action))
         expires = int(time()) + self.settings.cookie_grace_time
-        cookie = self.app['fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
+        cookie = self.app['session_fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
         r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
         return r
 
@@ -116,7 +118,7 @@ class UpdateSession(View):
             raise JsonError.HTTPBadRequest(error='redirect value "r" missing')
         token, user_address = request['session_token'], request['user_address']
         expires = int(time()) + self.settings.cookie_grace_time
-        cookie = self.app['fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
+        cookie = self.app['session_fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
         r = HTTPTemporaryRedirect(location=redirect_to)
         r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
         raise r
@@ -144,9 +146,21 @@ class AcceptInvitationView(View):
     ON CONFLICT (address) DO NOTHING RETURNING id
     """
 
+    def decrypt_token(self, token: str):
+        try:
+            raw_data = self.app['invitation_fernet'].decrypt(token.encode())
+        except InvalidToken:
+            raise JsonError.HTTPForbidden(error='Invalid token')
+        try:
+            data = msg_decode(raw_data)
+            return self.Invitation(**data)
+        except (ValueError, TypeError):
+            # This shouldn't happen
+            raise JsonError.HTTPInternalServerError(error='bad token data')
+
     async def call(self, request):
         token = self.request.query.get('token', '-')
-        inv: self.Invitation = decrypt_token(token, self.app, self.Invitation)
+        inv: self.Invitation = self.decrypt_token(token)
         inv.address = inv.address.lower()  # TODO move to model clean method
         user_exists = await self.conn.fetchval(self.GET_USER_SQL, inv.address)
         if user_exists:

@@ -12,7 +12,7 @@ test_addr = 'testing@example.com'
 
 @pytest.fixture
 def cli(loop, settings, db_conn, test_client, redis):
-    fernet = Fernet(settings.SECRET_SESSION_KEY)
+    fernet = Fernet(settings.auth_session_secret)
     data = f'123:{int(time()) + settings.cookie_grace_time}:{test_addr}'
     cookies = {
         settings.cookie_name: fernet.encrypt(data.encode()).decode()

@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 
 from em2 import VERSION
 from em2.core import Components, Verbs, gen_random, get_create_recipient
-from em2.utils.web import auth_middleware, db_conn_middleware
+from em2.utils.web import auth_middleware, db_conn_middleware, set_anon_views
 from .background import Background
 from .views import Act, Create, Get, Publish, VList, Websocket
 
@@ -70,9 +70,9 @@ def create_domestic_app(settings, app_name=None):
 
     app.update(
         settings=settings,
-        fernet=Fernet(settings.SECRET_SESSION_KEY),
+        session_fernet=Fernet(settings.auth_session_secret),
         name=app_name or gen_random('d'),
-        anon_views=['index'],
+        anon_views=set_anon_views('index'),
         activate_session=activate_session,
     )
 

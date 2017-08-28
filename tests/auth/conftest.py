@@ -23,9 +23,9 @@ def cli(loop, auth_settings, auth_db_conn, test_client, auth_redis):
 
 
 @pytest.fixture
-def token(settings):
+def inv_token(settings):
     def _token(address=TEST_ADDRESS, **kwargs):
-        fernet = Fernet(settings.auth_token_key)
+        fernet = Fernet(settings.auth_invitation_secret)
         data = msg_encode(dict(address=address, **kwargs))
         return fernet.encrypt(data).decode()
     return _token
@@ -58,9 +58,9 @@ def g_recaptcha_server(loop, test_server, cli):
 
 
 @pytest.fixture
-def authenticate(loop, cli, url, token):
+def authenticate(loop, cli, url, inv_token):
     async def _login():
-        url_ = url('accept-invitation', query=dict(token=token(last_name='testing')))
+        url_ = url('accept-invitation', query=dict(token=inv_token(last_name='testing')))
         r = await cli.post(url_, json={'password': 'thisissecure'})
         assert r.status == 200, await r.text()
         assert len(cli.session.cookie_jar) == 1

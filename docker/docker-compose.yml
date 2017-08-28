@@ -59,8 +59,9 @@ services:
       EM2_PG_PASSWORD: docker
       EM2_R_HOST: redis
       EM2_EXTERNAL_DOMAIN: ${EM2_EXTERNAL_DOMAIN}
-      EM2_SECRET_SESSION_KEY: ${EM2_SECRET_SESSION_KEY}
+      EM2_AUTH_SESSION_SECRET: ${EM2_AUTH_SESSION_SECRET}
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
+      EM2_SECURE_COOKIES: 'false'
     restart: always
     networks:
       default:
@@ -79,9 +80,30 @@ services:
       EM2_PG_PASSWORD: docker
       EM2_R_HOST: redis
       EM2_EXTERNAL_DOMAIN: ${EM2_EXTERNAL_DOMAIN}
-      EM2_SECRET_SESSION_KEY: ${EM2_SECRET_SESSION_KEY}
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
     restart: always
+    depends_on:
+    - postgres
+    - redis
+    - logs
+
+  auth:
+    image: em2
+    environment:
+      EM2_COMMAND: auth
+      EM2_DEBUG: 'true'
+      EM2_PG_HOST: postgres
+      EM2_PG_PASSWORD: docker
+      EM2_R_HOST: redis
+      EM2_EXTERNAL_DOMAIN: ${EM2_EXTERNAL_DOMAIN}
+      EM2_AUTH_SESSION_SECRET: ${EM2_AUTH_SESSION_SECRET}
+      EM2_AUTH_INVITATION_SECRET: ${EM2_AUTH_INVITATION_SECRET}
+      EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
+      EM2_SECURE_COOKIES: 'false'
+    restart: always
+    networks:
+      default:
+        ipv4_address: 172.20.0.102
     depends_on:
     - postgres
     - redis

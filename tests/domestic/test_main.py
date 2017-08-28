@@ -37,7 +37,7 @@ async def test_no_cookie(cli, url):
     cli.session.cookie_jar.clear()
     r = await cli.get(url('list'))
     assert r.status == 403, await r.text()
-    assert {'error': 'cookie missing or incorrect'} == await r.json()
+    assert {'error': 'cookie missing or invalid'} == await r.json()
 
 
 async def test_invalid_cookie(cli, url, settings):
@@ -48,11 +48,11 @@ async def test_invalid_cookie(cli, url, settings):
 
     r = await cli.get(url('list'))
     assert r.status == 403, await r.text()
-    assert {'error': 'cookie missing or incorrect'} == await r.json()
+    assert {'error': 'cookie missing or invalid'} == await r.json()
 
 
 async def test_expired_cookie(cli, url, settings):
-    fernet = Fernet(settings.SECRET_SESSION_KEY)
+    fernet = Fernet(settings.auth_session_secret)
     data = f'123:{int(time()) - 10}:foo@bar.com'
     cookies = {settings.cookie_name: fernet.encrypt(data.encode()).decode()}
     cli.session.cookie_jar.update_cookies(cookies)

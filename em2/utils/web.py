@@ -2,15 +2,12 @@ import datetime
 import json
 import traceback
 from functools import update_wrapper
-from typing import Type
 
 from aiohttp import web_exceptions
 from aiohttp.web import Application, Request, Response  # noqa
 from asyncpg.connection import Connection  # noqa
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError
-
-from .encoding import msg_decode
 
 JSON_CONTENT_TYPE = 'application/json'
 
@@ -56,36 +53,24 @@ async def db_conn_middleware(app, handler):
     return _handler
 
 
-async def auth_middleware(app, handler):
-    anon_views = set(app['anon_views'])
+def set_anon_views(*anon_views):
+    anon_views = set(anon_views)
     anon_views |= {v + '-head' for v in anon_views}
-    activate_session = app['activate_session']
-    cookie_name = app['settings'].cookie_name
+    return frozenset(anon_views)
 
-    async def auth_middleware_handler(request):
-        if request.match_info.route.name not in anon_views:
-            cookie = request.cookies.get(cookie_name, '')
+
+async def auth_middleware(app, handler):
+    async def _handler(request):
+        if request.match_info.route.name not in app['anon_views']:
+            cookie = request.cookies.get(app['settings'].cookie_name, '')
             try:
-                token = app['fernet'].decrypt(cookie.encode())
+                token = app['session_fernet'].decrypt(cookie.encode())
             except InvalidToken:
-                raise JsonError.HTTPForbidden(error='cookie missing or incorrect')
-            await activate_session(request, token.decode())
+                raise JsonError.HTTPForbidden(error='cookie missing or invalid')
+            await app['activate_session'](request, token.decode())
 
         return await handler(request)
-    return auth_middleware_handler
-
-
-def decrypt_token(token: str, app: Application, model: Type[BaseModel], error_msg='Invalid token') -> BaseModel:
-        try:
-            raw_data = app['fernet'].decrypt(token.encode())
-        except InvalidToken:
-            raise JsonError.HTTPForbidden(error=error_msg)
-        try:
-            data = msg_decode(raw_data)
-            return model(**data)
-        except (ValueError, TypeError):
-            # This shouldn't happen
-            raise JsonError.HTTPInternalServerError(error='bad token data')
+    return _handler
 
 
 def get_ip(request):

@@ -78,6 +78,30 @@ def worker(settings: Settings):
 
 
 @command
+def auth(settings: Settings):
+    import uvloop
+    from aiohttp.web import run_app
+    from em2.auth import create_auth_app
+    from em2.settings import Mode
+    settings.mode = Mode.auth
+
+    asyncio.get_event_loop().close()
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    loop = asyncio.get_event_loop()
+
+    wait_for_services(settings, loop=loop)
+    loop.run_until_complete(_prepare_database(settings, overwrite_existing=False))
+
+    logger.info('starting auth server...')
+    app = create_auth_app(settings)
+    try:
+        run_app(app, port=settings.web_port, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
+    finally:
+        logger.info('auth server shutdown')
+        sleep(0.01)  # time for the log message to propagate
+
+
+@command
 def info(settings: Settings):
     import aiohttp
     import arq

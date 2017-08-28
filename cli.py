@@ -27,11 +27,15 @@ except ImportError as e:
 
 @click.group()
 @click.pass_context
-@click.option('--url', default='http://localhost:8000/d/', envvar='EM2_URL', help='env variable: EM2_URL')
-@click.option('--session-key', default='testing', envvar='EM2_SECRET_SESSION_KEY',
-              help='env variable: EM2_SECRET_SESSION_KEY')
+@click.option('--domestic-url', default='http://localhost:8000/d/', envvar='EM2_DOMESTIC_URL',
+              help='env variable: EM2_DOMESTIC_URL')
+@click.option('--auth-url', default='http://localhost:8000/auth/', envvar='EM2_AUTH_URL',
+              help='env variable: EM2_AUTH_URL')
+@click.option('--auth-token-key', default='you need to replace me with a real Fernet keyxxxxxxx=',
+              envvar='EM2_AUTH_TOKEN_KEY', help='env variable: EM2_AUTH_TOKEN_KEY')
 @click.option('--address', default='testing@localhost.example.com', envvar='USER_ADDRESS',
               help='env variable: USER_ADDRESS')
+@click.option('--password', default='we-are-testing')
 def cli(ctx, **kwargs):
     """
     Run em2 CLI.
@@ -68,6 +72,18 @@ def gen_dns_keys(ctx):
     v=em2key {public_key}
 
     (with no leading or trailing spaces)\n""")
+
+
+@cli.command()
+@click.pass_context
+def create_account(ctx):
+    fernet = Fernet(ctx.obj['auth_token_key'].encode())
+    data = dict(address=ctx.obj['address'], last_name='testing')
+    token = fernet.encrypt(msgpack.packb(data, use_bin_type=True)).decode()
+    session = requests.Session()
+    url_ = url(ctx, '/accept-invitation/', auth=True) + f'?token={token}'
+    r = session.post(url_, json={'password': ctx.obj['password']})
+    print_response(r)
 
 
 @cli.command(name='list')
@@ -305,21 +321,23 @@ def print_response(r):
 """)
 
 
-def get_cookie(ctx):
-    data = {'address': ctx.obj['address']}
-    data = msgpack.packb(data, use_bin_type=True)
-    fernet = Fernet(ctx.obj['session_key'])
-    return 'em2session', fernet.encrypt(data).decode()
-
-
 def make_session(ctx):
     session = requests.Session()
-    session.cookies.set(*get_cookie(ctx))
+    data = {'password': ctx.obj['password'], 'address': ctx.obj['address']}
+    r = session.post(url(ctx, '/login/', auth=True), json=data)
+    if r.status_code != 200:
+        click.secho('Error logging in:\n', fg='red')
+        print_response(r)
+        sys.exit(1)
+    else:
+        print_response(r)
+        print('login successful')
     return session
 
 
-def url(ctx, uri):
-    return ctx.obj['url'].rstrip('/') + '/' + uri.lstrip('/')
+def url(ctx, uri, auth=False):
+    base = ctx.obj['auth_url'] if auth else ctx.obj['domestic_url']
+    return base.rstrip('/') + '/' + uri.lstrip('/')
 
 
 if __name__ == '__main__':

@@ -41,7 +41,8 @@ class Settings(BaseSettings):
     # time after which idle sessions expire
     auth_cookie_idle: timedelta = 7 * 86_400
     auth_bcrypt_work_factor = 13
-    auth_token_key = b'you need to replace me with a real Fernet keyxxxxxxx='
+    auth_session_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
+    auth_invitation_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
     auth_update_cookie_url = 'not-set'
 
     cookie_name = 'em2session'
@@ -82,7 +83,6 @@ class Settings(BaseSettings):
     R_DATABASE = 0
     AUTH_R_DATABASE = 1
 
-    SECRET_SESSION_KEY = b'you need to replace me with a real Fernet keyxxxxxxx='
     FRONTEND_RECIPIENTS_BASE = 'frontend:recipients:{}'
     FRONTEND_JOBS_BASE = 'frontend:jobs:{}'
 

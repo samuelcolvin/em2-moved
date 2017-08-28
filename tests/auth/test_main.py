@@ -15,8 +15,8 @@ async def test_index(cli, url):
     assert f'em2 v{VERSION}:- auth interface\n' == await r.text()
 
 
-async def test_get_accept_invitation(cli, url, token):
-    url_ = url('accept-invitation', query=dict(token=token(first_name='foobar')))
+async def test_get_accept_invitation(cli, url, inv_token):
+    url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))
     r = await cli.get(url_)
     assert r.status == 200, await r.text()
     data = await r.json()
@@ -38,9 +38,9 @@ async def test_get_accept_invitation_invalid_token(cli, url):
     assert {'error': 'Invalid token'} == await r.json()
 
 
-async def test_post_accept_invitation(cli, url, token, auth_db_conn):
+async def test_post_accept_invitation(cli, url, inv_token, auth_db_conn):
     assert len(cli.session.cookie_jar) == 0
-    url_ = url('accept-invitation', query=dict(token=token(first_name='foobar')))
+    url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))
     r = await cli.post(url_, json={'password': 'thisissecure'})
     assert r.status == 200, await r.text()
     data = await r.json()
@@ -58,9 +58,9 @@ async def test_post_accept_invitation(cli, url, token, auth_db_conn):
     # TODO test logged in
 
 
-async def test_user_exists(cli, url, token, auth_db_conn):
+async def test_user_exists(cli, url, inv_token, auth_db_conn):
     assert 0 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
-    url_ = url('accept-invitation', query=dict(token=token(first_name='foobar')))
+    url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))
     r = await cli.post(url_, json={'password': 'thisissecure'})
     assert r.status == 200, await r.text()
     assert 1 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
@@ -70,10 +70,10 @@ async def test_user_exists(cli, url, token, auth_db_conn):
     assert 1 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
 
 
-async def test_password_not_secure1(cli, url, token, auth_db_conn):
+async def test_password_not_secure1(cli, url, inv_token, auth_db_conn):
     assert len(cli.session.cookie_jar) == 0
     assert 0 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
-    url_ = url('accept-invitation', query=dict(token=token(first_name='foobar')))
+    url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))
     r = await cli.post(url_, json={'password': 'testing'})
     assert r.status == 400, await r.text()
     data = await r.json()
@@ -82,9 +82,9 @@ async def test_password_not_secure1(cli, url, token, auth_db_conn):
     assert len(cli.session.cookie_jar) == 0
 
 
-async def test_password_not_secure2(cli, url, token, auth_db_conn):
+async def test_password_not_secure2(cli, url, inv_token, auth_db_conn):
     assert 0 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
-    url_ = url('accept-invitation', query=dict(token=token(first_name='samuel')))
+    url_ = url('accept-invitation', query=dict(token=inv_token(first_name='samuel')))
     r = await cli.post(url_, json={'password': 'samuel'})
     assert r.status == 400, await r.text()
     data = await r.json()
@@ -220,7 +220,7 @@ async def test_view_sessions(cli, url, authenticate):
 async def test_get_account_anon(cli, url):
     r = await cli.get(url('account'))
     assert r.status == 403, await r.text()
-    assert {'error': 'cookie missing or incorrect'} == await r.json()
+    assert {'error': 'cookie missing or invalid'} == await r.json()
 
 
 async def test_update_session(cli, url, authenticate):

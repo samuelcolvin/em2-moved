@@ -27,7 +27,7 @@ def session_event(request, action):
         'ts': int(time()),
         'ua': request.headers.get('User-Agent'),
         'ac': action
-        # TODO include info about which session this is (when multiple sessions are active
+        # TODO include info about which session this is when multiple sessions are active
     })
 
 
@@ -53,7 +53,7 @@ async def get_session_user(app, session_token, event_data):
             r = await conn.fetchrow(GET_SESSION_SQL, session_token)
             if not r or not r['active']:
                 return
-            last_active = r['last_active']
+            last_active, user_id = r['last_active'], r['user_id']
 
             expiry = last_active + app['settings'].auth_cookie_idle
             now = datetime.utcnow()
@@ -61,8 +61,8 @@ async def get_session_user(app, session_token, event_data):
             if expiry > now:
                 await conn.execute(UPDATE_SESSION_SQL, event_data, session_token)
                 key_time = min(int((expiry - now).total_seconds()), 3600)
-                await redis.setex(session_cache, key_time, str(r['user_id']).encode())
-                return r['user_id']
+                await redis.setex(session_cache, key_time, str(user_id).encode())
+                return user_id
             else:
                 await conn.execute(DEACTIVATE_SESSION_SQL, event_data, session_token)
 
