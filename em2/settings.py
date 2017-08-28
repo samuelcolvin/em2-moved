@@ -74,9 +74,9 @@ class Settings(BaseSettings):
     EXTERNAL_DOMAIN = 'em2-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
 
-    FALLBACK_USERNAME: str = None
-    FALLBACK_PASSWORD: str = None
-    FALLBACK_ENDPOINT: str = None
+    fallback_username: str = None
+    fallback_password: str = None
+    fallback_endpoint: str = None
 
     R_HOST = 'localhost'
     R_PORT = 6379

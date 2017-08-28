@@ -48,12 +48,12 @@ class AwsFallbackHandler(FallbackHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.session = None
-        if None in {self.settings.FALLBACK_USERNAME, self.settings.FALLBACK_PASSWORD, self.settings.FALLBACK_ENDPOINT}:
+        if None in {self.settings.fallback_username, self.settings.fallback_password, self.settings.fallback_endpoint}:
             raise ConfigException('The following settings must be set to use AwsFallbackHandler: '
-                                  'FALLBACK_USERNAME, FALLBACK_PASSWORD, FALLBACK_ENDPOINT')
-        self.access_key = self.settings.FALLBACK_USERNAME
-        self.secret_key_b = self.settings.FALLBACK_PASSWORD.encode()
-        self.region = self.settings.FALLBACK_ENDPOINT
+                                  'fallback_username, fallback_password, fallback_endpoint')
+        self.access_key = self.settings.fallback_username
+        self.secret_key_b = self.settings.fallback_password.encode()
+        self.region = self.settings.fallback_endpoint
         self._host = _AWS_HOST.format(region=self.region)
         self._endpoint = _AWS_ENDPOINT.format(host=self._host)
 
