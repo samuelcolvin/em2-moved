@@ -260,7 +260,9 @@ Task `process_actions`, running constantly in infinite `BLPOP` loop, when an act
 
 # Integration with SMTP
 
-list all participants in the email body, then
+list all participants (em2 and fallback) in the email body, then
+
+easiest just to send to everyone, need to know if a conv is new to a participant to include all previous messages.
 
 ### Either
 

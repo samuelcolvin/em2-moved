@@ -5,6 +5,8 @@ import aiohttp
 from .auth import SimpleAuthenticator
 from .dns_resolver import PLATFORM, TIMESTAMP, VALID_SIGNATURE, get_private_key_file
 from .db import TestDatabase
+from .fallback import TestFallbackHandler
+from .foreign_server import create_test_app
 from .push import DNSMockedPusher
 
 

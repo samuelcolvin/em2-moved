@@ -48,14 +48,6 @@ class Get(View):
 
 
 class Create(View):
-    get_existing_recips_sql = 'SELECT id, address FROM recipients WHERE address = any($1)'
-    set_missing_recips_sql = """
-    INSERT INTO recipients (address) (
-      SELECT unnest ($1::VARCHAR(255)[])
-    )
-    ON CONFLICT (address) DO UPDATE SET address=EXCLUDED.address
-    RETURNING id
-    """
     create_conv_sql = """
     INSERT INTO conversations (key, creator, subject)
     VALUES ($1, $2, $3) RETURNING id

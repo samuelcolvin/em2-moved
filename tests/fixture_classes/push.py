@@ -18,10 +18,6 @@ class DNSMockedPusher(Pusher):
     def resolver(self):
         return MockDNSResolver(self._foreign_port)
 
-    def mx_query(self, host):
-        self._mx_query_count += 1
-        return super().mx_query(host)
-
     @classmethod
     def _get_http_resolver(cls):
         return MockAsyncResolver()

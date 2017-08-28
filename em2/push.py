@@ -94,7 +94,7 @@ class Pusher(Actor):
     WHERE a.id = $1
     """
 
-    parts_sql = """
+    prts_sql = """
     SELECT r.id, r.address
     FROM participants AS p
     JOIN recipients AS r ON p.recipient = r.id
@@ -114,13 +114,13 @@ class Pusher(Actor):
             # TODO perhaps need to add other fields required to understand the action
             action = Action(*args, message_key or prt_address)
 
-            parts = await conn.fetch(self.parts_sql, action.conv_id)  # TODO more info e.g. bcc etc.
+            prts = await conn.fetch(self.prts_sql, action.conv_id)  # TODO more info e.g. bcc etc.
 
-            remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(*parts)
+            remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(*prts)
 
             logger.info('%s.%s %.6s to %d participants: %d em2 nodes, local %d, fallback %d',
                         action.component, action.verb, action.conv_key,
-                        len(parts), len(remote_nodes), len(local_recipients), len(fallback_addresses))
+                        len(prts), len(remote_nodes), len(local_recipients), len(fallback_addresses))
 
             if local_recipients:
                 await self.domestic_push(local_recipients, action)
@@ -130,8 +130,9 @@ class Pusher(Actor):
                     await self.foreign_push(remote_nodes, action)
 
                 if fallback_addresses:
-                    subject = await conn.fetch(self.conv_subject_sql, action.conv_id)
-                    await self.fallback.push(action, parts, subject)
+                    subject = await conn.fetchval(self.conv_subject_sql, action.conv_id)
+                    addresses = {r['address'] for r in prts}
+                    await self.fallback.push(action=action, addresses=addresses, conv_subject=subject)
             # TODO save actions_status
 
     async def domestic_push(self, recipient_ids, action: Action):

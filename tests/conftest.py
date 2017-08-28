@@ -29,7 +29,7 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope='session')
-def settings():
+def full_scope_settings():
     return Settings(
         auth_bcrypt_work_factor=5,  # make tests faster
         easy_login_attempts=2,
@@ -41,16 +41,22 @@ def settings():
         authenticator_cls='tests.fixture_classes.SimpleAuthenticator',
         db_cls='tests.fixture_classes.TestDatabase',
         pusher_cls='tests.fixture_classes.DNSMockedPusher',
+        fallback_cls='tests.fixture_classes.TestFallbackHandler',
         PRIVATE_DOMAIN_KEY_FILE=str(THIS_DIR / 'fixture_classes/keys/private.pem'),
         COMMS_PROTO='http',
     )
 
 
+@pytest.fixture
+def settings(full_scope_settings):
+    return full_scope_settings.copy()
+
+
 @pytest.fixture(scope='session')
-def clean_db(request, settings):
+def clean_db(request, full_scope_settings):
     # loop fixture has function scope so can't be used here.
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(prepare_database(settings, not request.config.getoption('--reuse-db')))
+    loop.run_until_complete(prepare_database(full_scope_settings, not request.config.getoption('--reuse-db')))
     teardown_test_loop(loop)
 
 
@@ -68,15 +74,20 @@ def db_conn(loop, settings, clean_db, redis):
 
 
 @pytest.fixture(scope='session')
-def auth_settings(settings):
-    return settings.copy(update={'mode': 'auth'})
+def full_scope_auth_settings(full_scope_settings):
+    return full_scope_settings.copy(update={'mode': 'auth'})
+
+
+@pytest.fixture
+def auth_settings(full_scope_auth_settings):
+    return full_scope_auth_settings.copy()
 
 
 @pytest.fixture(scope='session')
-def auth_clean_db(request, auth_settings):
+def auth_clean_db(request, full_scope_auth_settings):
     # loop fixture has function scope so can't be used here.
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(prepare_database(auth_settings, not request.config.getoption('--reuse-db')))
+    loop.run_until_complete(prepare_database(full_scope_auth_settings, not request.config.getoption('--reuse-db')))
     teardown_test_loop(loop)
 
 
@@ -228,14 +239,17 @@ class AnyInt:
 
 
 class RegexStr:
-    def __init__(self, regex):
-        self._regex = re.compile(regex)
+    re = re
+
+    def __init__(self, regex, flags=re.S):
+        self._regex = re.compile(regex, flags=flags)
         self.v = None
 
     def __eq__(self, other):
         if self._regex.fullmatch(other):
             self.v = other
             return True
+        return False
 
     def __repr__(self):
         if self.v is None:

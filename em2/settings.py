@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     secure_cookies = True  # only ever change these during testing!!!
 
     pusher_cls: PyObject = 'em2.push.Pusher'
-    fallback_cls: PyObject = 'em2.fallback.FallbackHandler'
+    fallback_cls: PyObject = 'em2.fallback.LogFallbackHandler'
     db_cls: PyObject = 'em2.core.Database'
     authenticator_cls: PyObject = 'em2.foreign.auth.Authenticator'
 

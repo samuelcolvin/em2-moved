@@ -11,7 +11,7 @@ import aiohttp
 
 from em2.exceptions import ConfigException, FallbackPushError
 
-from . import SmtpFallbackHandler
+from . import FallbackHandler
 
 logger = logging.getLogger('em2.fallback.ses')
 
@@ -40,7 +40,7 @@ _AUTH_HEADER = (
 )
 
 
-class AwsFallbackHandler(SmtpFallbackHandler):
+class AwsFallbackHandler(FallbackHandler):
     """
     Fallback handler using AWS's SES service to send smtp emails.
     """
@@ -111,8 +111,8 @@ class AwsFallbackHandler(SmtpFallbackHandler):
             'Message.Body.Text.Data': plain_body,
             'Message.Body.Html.Data': html_body,
         }
-        data.update({'Destination.ToAddresses.member.{}'.format(i + 1): t.encode() for i, t in enumerate(to)})
-        data.update({'Destination.BccAddresses.member.{}'.format(i + 1): t.encode() for i, t in enumerate(bcc)})
+        data.update({f'Destination.ToAddresses.member.{i + 1}': t.encode() for i, t in enumerate(to)})
+        data.update({f'Destination.BccAddresses.member.{i + 1}': t.encode() for i, t in enumerate(bcc)})
         data = urlencode(data).encode()
 
         headers = self._aws_headers(data)
@@ -120,7 +120,7 @@ class AwsFallbackHandler(SmtpFallbackHandler):
             status_code = r.status
             text = await r.text()
         if status_code != 200:
-            raise FallbackPushError('bad response {} != 200: {}'.format(r.status, text))
+            raise FallbackPushError(f'bad response {r.status} != 200: {text}')
         msg_id = re.search('<MessageId>(.+?)</MessageId>', text)
         return msg_id.groups()[0]
 

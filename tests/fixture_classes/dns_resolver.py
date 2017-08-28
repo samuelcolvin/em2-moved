@@ -94,7 +94,7 @@ class MockDNSResolver:
             raise ValueError('DNS error with error.com')
         elif host == 'dns_error.com':
             raise DNSError('snap')
-        if host == 'fallback.com':
+        elif host == 'fallback.com':
             return [
                 MXQueryResult(priority=10, host='mx.local.com'),
             ]

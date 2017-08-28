@@ -162,7 +162,7 @@ class ApplyAction(FetchOr404Mixin):
     RETURNING id, to_json(timestamp)
     """
 
-    def __init__(self, conn, remote_action, **data):
+    def __init__(self, conn, remote_action: bool, **data):
         self.conn = conn
         self._remote_action = remote_action
         self.data = self.Data(**data)
