@@ -20,15 +20,16 @@ matrix:
 install:
 - make install
 - pip freeze
-- pip install codecov
 
 script:
 - make lint
-- make test
+#- make test, use coverage directly to fix "sources" issue with codecov
+- coverage run `which pytest`
+- coverage report
 
 after_success:
 - ls -lha
-- codecov
+- bash <(curl -s https://codecov.io/bash)
 
 env:
   global:
