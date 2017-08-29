@@ -23,9 +23,7 @@ install:
 
 script:
 - make lint
-#- make test, use coverage directly to fix "sources" issue with codecov
-- coverage run `which pytest`
-- coverage report
+- make test
 
 after_success:
 - ls -lha

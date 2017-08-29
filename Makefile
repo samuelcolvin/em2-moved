@@ -20,7 +20,7 @@ lint:
 
 .PHONY: test
 test:
-	pytest --cov=em2 && coverage combine
+	pytest --cov=em2
 
 .PHONY: testcov
 testcov:
