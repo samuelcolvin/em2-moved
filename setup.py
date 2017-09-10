@@ -38,11 +38,7 @@ setup(
     """,
     zip_safe=True,
     package_data={
-        'em2': [
-            'extras/requirements1.txt',
-            'extras/requirements2.txt',
-            'extras/main_models.sql',
-        ],
+        'em2': [f'extra/{p.name}' for p in Path('em2/extras').iterdir()]
     },
     install_requires=requirements,
 )

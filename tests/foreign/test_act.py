@@ -1,6 +1,6 @@
 import pytest
 
-from ..conftest import CloseToNow, python_dict  # noqa
+from ..conftest import CloseToNow
 
 
 class TestAct:
@@ -112,7 +112,6 @@ class TestAct:
         )
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        # print(python_dict(obj))
         assert len(obj['participants']) == 2
         assert len(obj['actions']) == 2
         r = await self.cli.post(
@@ -122,7 +121,6 @@ class TestAct:
         )
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        # print(python_dict(obj))
         assert len(obj['participants']) == 1
         assert len(obj['actions']) == 3
 
@@ -170,7 +168,6 @@ class TestAct:
         r = await self.cli.post(url_, data='foobar', headers=headers)
         assert r.status == 201, await r.text()
         obj = await self.get_conv(self.conv)
-        print(python_dict(obj))
         assert [
             {
                 'after': None,

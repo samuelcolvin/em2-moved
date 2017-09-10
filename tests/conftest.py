@@ -1,5 +1,4 @@
 import asyncio
-import json
 import re
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -270,18 +269,3 @@ class IsUUID:
 
     def __repr__(self):
         return repr(self.v) if self.v else 'UUID(*)'
-
-
-CHANGES = [
-    ('"', "'"),
-    (' false', ' False'),
-    (' true', ' True'),
-    (' null', ' None'),
-]
-
-
-def python_dict(v):
-    s = json.dumps(v, indent=4, sort_keys=True)
-    for pattern, repl in CHANGES:
-        s = s.replace(pattern, repl)
-    return s

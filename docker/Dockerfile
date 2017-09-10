@@ -7,6 +7,7 @@ LABEL maintainer "s@muelcolvin.com"
 RUN apk --update --no-cache add postgresql-dev gcc g++ musl-dev libuv make libffi-dev \
  && rm -rf /var/cache/apk/*
 
+RUN pip install -U pip setuptools
 ADD ./docker-requirements.txt /home/root/
 RUN pip install -r /home/root/docker-requirements.txt
 
@@ -24,6 +25,9 @@ ENV EM2_COMMIT ${EM2_COMMIT}
 ADD ./private.pem /home/root/
 ENV EM2_PRIVATE_DOMAIN_KEY_FILE /home/root/private.pem
 
+ADD ./smtp_html_template.html /home/root/
+ENV EM2_SMTP_HTML_TEMPLATE /home/root/smtp_html_template.html
+
 WORKDIR /home/root
 HEALTHCHECK --interval=20s --timeout=10s --retries=2 CMD em2check
-CMD ["em2run"]
+ENTRYPOINT ["em2run"]

@@ -103,7 +103,6 @@ class AwsFallbackHandler(FallbackHandler):
         }
 
     async def send_message(self, *, e_from, to, bcc, subject, plain_body, html_body):
-        # TODO encode fields as per RFC 2822, perhaps already done by urlencode
         data = {
             'Action': 'SendEmail',
             'Source': e_from,
