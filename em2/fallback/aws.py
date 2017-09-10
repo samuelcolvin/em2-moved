@@ -5,6 +5,7 @@ import re
 from binascii import hexlify
 from datetime import datetime
 from functools import reduce
+from typing import List
 from urllib.parse import urlencode
 
 import aiohttp
@@ -102,7 +103,8 @@ class AwsFallbackHandler(FallbackHandler):
             'Authorization': authorization_header
         }
 
-    async def send_message(self, *, e_from, to, bcc, subject, plain_body, html_body):
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str,
+                           plain_body: str, html_body: str):
         data = {
             'Action': 'SendEmail',
             'Source': e_from,
@@ -122,7 +124,3 @@ class AwsFallbackHandler(FallbackHandler):
             raise FallbackPushError(f'bad response {r.status} != 200: {text}')
         msg_id = re.search('<MessageId>(.+?)</MessageId>', text)
         return msg_id.groups()[0]
-
-    async def close(self):
-        logger.info('closing http session')
-        await self.session.close()

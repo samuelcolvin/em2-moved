@@ -1,5 +1,6 @@
 import logging
 from textwrap import indent
+from typing import List
 
 from em2 import Settings
 from em2.core import Components, Verbs, Action
@@ -57,7 +58,8 @@ class FallbackHandler:
         )
         logger.info('message sent conv %.6s, smtp message id %0.6s', action.conv_key, msg_id)
 
-    async def send_message(self, *, e_from, to, bcc, subject, plain_body, html_body):
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str,
+                           plain_body: str, html_body: str):
         raise NotImplementedError()
 
     def plain_format(self, body: str, conv_id: str) -> str:
@@ -65,9 +67,10 @@ class FallbackHandler:
 
     def html_format(self, body: str, conv_id: str) -> str:
         body_html = markdown(body)
-        return self.html_template.format(body_html=body_html, conv_id=conv_id)
+        return self.html_template % dict(body_html=body_html, conv_id=conv_id)
 
 
 class LogFallbackHandler(FallbackHandler):
-    async def send_message(self, *, e_from, to, bcc, subject, plain_body, html_body):
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str,
+                           plain_body: str, html_body: str):
         logger.info('%s > %s, subject: "%s"\n%s', e_from, to, subject, indent(plain_body, '  '))

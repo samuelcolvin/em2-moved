@@ -48,7 +48,7 @@ async def test_aws_fallback_mocked(mocker, loop):
     assert kwargs['timeout'] == 5
     assert kwargs['headers']['Content-Type'] == 'application/x-www-form-urlencoded'
     assert kwargs['headers']['X-Amz-Date'] == '20320101T000000Z'
-    await fallback.close()
+    await fallback.shutdown()
 
 
 @pytest.mark.skipif(os.getenv('TEST_AWS_ACCESS_KEY') is None, reason='aws env vars not set')
@@ -70,4 +70,4 @@ async def test_aws_fallback_live(loop):
         html_body='<h1>hello</h1>',
     )
     assert len(msg_id) == 60
-    await fallback.close()
+    await fallback.shutdown()

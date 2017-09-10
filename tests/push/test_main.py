@@ -46,6 +46,6 @@ async def test_add_participant_fallback(mocked_pusher, db_conn, conv):
         'to': ['testing@other.com'],
         'bcc': [],
         'subject': 'Test Conversation',
-        'plain_body': RegexStr('^adding testing@other.com to the conversation.*'),
-        'html_body': RegexStr('<p>adding.*'),
+        'plain_body': RegexStr('adding testing@other.com to the conversation.*'),
+        'html_body': RegexStr('.*<div id="content">\n<p>adding.*'),
     } == m
