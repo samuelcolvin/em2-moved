@@ -1,4 +1,3 @@
-from tests.conftest import python_dict  # NOQA
 
 
 async def test_publish(cli, url, foreign_server, get_conv, debug):
@@ -32,7 +31,6 @@ async def test_add_participant(cli, url, foreign_server, get_conv):
     })
     assert r.status == 204, await r.text()
     obj = await get_conv('key12345678')
-    print(python_dict(obj))
     assert {
         'actions': [
             {

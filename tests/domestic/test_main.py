@@ -11,7 +11,7 @@ from cryptography.fernet import Fernet
 from em2 import VERSION
 from em2.core import Components, Verbs
 
-from ..conftest import AnyInt, CloseToNow, RegexStr, python_dict  # noqa
+from ..conftest import AnyInt, CloseToNow, RegexStr
 
 
 async def test_valid_cookie_list_convs(cli, conv, url, db_conn):
@@ -201,7 +201,6 @@ async def test_add_message_get(cli, conv, url, db_conn):
     assert r.status == 200, await r.text()
     obj = await r.json()
     new_msg_key = await db_conn.fetchval("SELECT key FROM messages WHERE body = 'reply'")
-    print(python_dict(obj))
     assert {
         'actions': [
             {

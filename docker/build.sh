@@ -27,6 +27,9 @@ rsync -i -a ../setup.py tmp/
 rsync -i -a Dockerfile tmp/
 mv private.pem tmp/
 
+# using /home/root/smtp_html_template.html should make overriding this file easier
+rsync -i -a  ../em2/extras/smtp_html_template.html tmp/smtp_html_template.html
+
 echo "building docker image..."
 docker build tmp -t em2 --build-arg EM2_COMMIT=`git rev-parse --short HEAD`
 echo "done."
