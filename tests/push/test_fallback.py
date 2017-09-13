@@ -38,8 +38,8 @@ async def test_aws_fallback_mocked(mocker, loop):
         to=['to@remote.com'],
         bcc=['bcc@remote.com'],
         subject='the subject',
-        plain_body='hello',
-        html_body='<h1>hello</h1>',
+        body='hello',
+        action=type('Action', (), {'conv_key': 'testing', 'item': 'msg-test'}),
     )
     assert mock_post.called
     assert mock_post.call_args[0] == ('https://email.eu-west-1.amazonaws.com/',)
@@ -66,8 +66,8 @@ async def test_aws_fallback_live(loop):
         to=['success@simulator.amazonses.com'],
         bcc=[],
         subject='the subject',
-        plain_body='hello',
-        html_body='<h1>hello</h1>',
+        body='hello',
+        action=type('Action', (), {'conv_key': 'testing', 'item': 'msg-test'}),
     )
     assert len(msg_id) == 60
     await fallback.shutdown()

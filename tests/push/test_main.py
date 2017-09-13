@@ -41,11 +41,12 @@ async def test_add_participant_fallback(mocked_pusher, db_conn, conv):
 
     assert len(mocked_pusher.fallback.messages) == 1
     m = mocked_pusher.fallback.messages[0]
+    action = m.pop('action')
+    assert action.conv_key == 'key12345678'
     assert {
         'e_from': 'testing@example.com',
         'to': ['testing@other.com'],
         'bcc': [],
         'subject': 'Test Conversation',
-        'plain_body': RegexStr('adding testing@other.com to the conversation.*'),
-        'html_body': RegexStr('.*<div id="content">\n<p>adding.*'),
+        'body': 'adding testing@other.com to the conversation',
     } == m

@@ -53,13 +53,13 @@ class FallbackHandler:
             to=to,
             bcc=bcc,
             subject=subject,
-            plain_body=self.plain_format(body, action.conv_key),
-            html_body=self.html_format(body, action.conv_key),
+            body=body,
+            action=action,
         )
         logger.info('message sent conv %.6s, smtp message id %0.6s', action.conv_key, msg_id)
 
-    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str,
-                           plain_body: str, html_body: str):
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str, body: str,
+                           action: Action):
         raise NotImplementedError()
 
     def plain_format(self, body: str, conv_id: str) -> str:
@@ -71,6 +71,7 @@ class FallbackHandler:
 
 
 class LogFallbackHandler(FallbackHandler):
-    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str,
-                           plain_body: str, html_body: str):
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str, body: str,
+                           action: Action):
+        plain_body = self.plain_format(body, action.conv_key)
         logger.info('%s > %s, subject: "%s"\n%s', e_from, to, subject, indent(plain_body, '  '))

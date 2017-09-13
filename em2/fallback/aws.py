@@ -1,15 +1,18 @@
+import base64
 import hashlib
 import hmac
 import logging
 import re
 from binascii import hexlify
 from datetime import datetime
+from email.message import EmailMessage
 from functools import reduce
 from typing import List
 from urllib.parse import urlencode
 
 import aiohttp
 
+from em2.core import Action
 from em2.exceptions import ConfigException, FallbackPushError
 
 from . import FallbackHandler
@@ -103,14 +106,21 @@ class AwsFallbackHandler(FallbackHandler):
             'Authorization': authorization_header
         }
 
-    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str,
-                           plain_body: str, html_body: str):
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str, body: str,
+                           action: Action):
+
+        msg = EmailMessage()
+        msg['Subject'] = subject
+        msg['From'] = e_from
+        msg['To'] = ','.join(to)
+        msg['EM2-ID'] = action.conv_key + ':' + action.item
+        msg.set_content(self.plain_format(body, action.conv_key))
+        msg.add_alternative(self.html_format(body, action.conv_key), subtype='html')
+
         data = {
-            'Action': 'SendEmail',
+            'Action': 'SendRawEmail',
             'Source': e_from,
-            'Message.Subject.Data': subject,
-            'Message.Body.Text.Data': plain_body,
-            'Message.Body.Html.Data': html_body,
+            'RawMessage.Data': base64.b64encode(msg.as_string().encode())
         }
         data.update({f'Destination.ToAddresses.member.{i + 1}': t.encode() for i, t in enumerate(to)})
         data.update({f'Destination.BccAddresses.member.{i + 1}': t.encode() for i, t in enumerate(bcc)})

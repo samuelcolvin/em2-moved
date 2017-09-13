@@ -264,20 +264,8 @@ list all participants (em2 and fallback) in the email body, then
 
 easiest just to send to everyone, need to know if a conv is new to a participant to include all previous messages.
 
-### Either
+Send to everyone, SMTP and EM2, add a 
 
-Send "to" each SMTP recipient
-
-set reply-to to a unique address on the platform, leave the platform to forward the message other SMTP participants
-
-(Will have problem with "forging" emails from the original SMTP address)
-
-### Or
-
-cc to all SMTP addresses, cc to a unique address for each em2 domain "<conv-key>.<message-key>@platform.com",
-this might involve multiple email addresses for each platform but that's fine.
-
-Second solution should work better and look more normal for SMTP users.
 
 ----------------------------------
 
