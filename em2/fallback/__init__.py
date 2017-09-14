@@ -3,7 +3,7 @@ from textwrap import indent
 from typing import List
 
 from em2 import Settings
-from em2.core import Components, Verbs, Action
+from em2.core import Action
 from em2.utils.markdown import markdown
 
 logger = logging.getLogger('em2.fallback')
@@ -32,26 +32,13 @@ class FallbackHandler:
                 _to.append(addr)
         return _from, _to, _bcc
 
-    async def push(self, *, action: Action, addresses, conv_subject):
+    async def push(self, *, action: Action, addresses, conv_subject, body):
         e_from, to, bcc = self.get_from_to_bcc(action, addresses)
-        subject = conv_subject
-        if action.component == Components.MESSAGE:
-            if action.verb == Verbs.ADD:
-                body = action.body
-            else:
-                raise NotImplementedError()
-        elif action.component == Components.PARTICIPANT:
-            if action.verb == Verbs.ADD:
-                body = f'adding {action.item} to the conversation'
-            elif action.verb == Verbs.DELETE:
-                body = f'removing {action.item} from the conversation'
-            else:
-                raise NotImplementedError()
         msg_id = await self.send_message(
             e_from=e_from,
             to=to,
             bcc=bcc,
-            subject=subject,
+            subject=conv_subject,
             body=body,
             action=action,
         )
