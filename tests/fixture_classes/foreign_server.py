@@ -57,17 +57,25 @@ async def get(request):
         raise HTTPNotFound()
 
 
+async def create(request):
+    return Response(status=204)
+
+
 async def act(request):
     return Response(status=201)
 
 
 async def logging_middleware(app, handler):
     async def _handler(request):
-        r = await handler(request)
-        msg = f'{request.method} {request.path_qs} > {r.status}'
-        # print(msg)
-        request.app['request_log'].append(msg)
-        return r
+        try:
+            r = await handler(request)
+        except Exception as exc:
+            request.app['request_log'].append(f'{request.method} {request.path_qs} > {exc.status}')
+            raise
+        else:
+            # print(msg)
+            request.app['request_log'].append(f'{request.method} {request.path_qs} > {r.status}')
+            return r
     return _handler
 
 
@@ -77,6 +85,7 @@ def create_test_app(loop):
     app.router.add_post('/auth/', auth)
     app.router.add_get('/get/{conv:[a-z0-9]+}/', get)
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', act)
+    app.router.add_post('/create/{conv:[a-z0-9]+}/', create)
 
     app.update(
         request_log=[]

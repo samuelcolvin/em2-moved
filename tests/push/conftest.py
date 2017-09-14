@@ -44,3 +44,8 @@ def mocked_pusher(loop, settings, db_conn, foreign_server):
 @pytest.fixture
 def conv(loop, create_conv):
     return loop.run_until_complete(create_conv(creator=test_addr, published=True))
+
+
+@pytest.fixture
+def draft_conv(loop, create_conv):
+    return loop.run_until_complete(create_conv(creator=test_addr))

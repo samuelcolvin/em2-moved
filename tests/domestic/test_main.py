@@ -118,7 +118,7 @@ async def test_add_message(cli, conv, url, db_conn):
     r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
     new_conv_key = (await r.json())['key']
-    parent_key = await db_conn.fetchval("SELECT key FROM actions where component='message'")
+    parent_key = await db_conn.fetchval("SELECT key FROM actions where verb='publish'")
     data = {'body': 'hello', 'parent': parent_key}
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
@@ -191,7 +191,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
     r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
     new_conv_key = (await r.json())['key']
-    parent_key = await db_conn.fetchval("SELECT key FROM actions where component='message'")
+    parent_key = await db_conn.fetchval("SELECT key FROM actions where verb='publish'")
     data = {'body': 'reply', 'relationship': 'sibling', 'parent': parent_key}
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
@@ -206,13 +206,13 @@ async def test_add_message_get(cli, conv, url, db_conn):
             {
                 'actor': 'testing@example.com',
                 'body': None,
-                'component': 'message',
+                'component': None,
                 'key': RegexStr('pub-.*'),
                 'message': 'msg-firstmessagekeyx',
                 'parent': None,
                 'participant': None,
                 'ts': CloseToNow(),
-                'verb': 'add'
+                'verb': 'publish'
             },
             {
                 'actor': conv.creator_address,
@@ -321,8 +321,8 @@ async def test_publish_conv(cli, conv, url, db_conn):
             'id': AnyInt(),
             'conv': conv.id,
             'key': RegexStr(r'^pub-.*'),
-            'verb': 'add',
-            'component': 'message',
+            'verb': 'publish',
+            'component': None,
             'timestamp': CloseToNow(),
             'actor': actor_id,
             'parent': None,
@@ -347,7 +347,7 @@ async def test_publish_conv_foreign_part(cli, conv, url, db_conn, foreign_server
 
     assert foreign_server.app['request_log'] == [
         'POST /auth/ > 201',
-        RegexStr('POST /[0-9a-f]+/message/add/msg-firstmessagekeyx > 201'),
+        RegexStr('POST /create/[0-9a-f]+/ > 204'),
     ]
 
 
@@ -361,18 +361,18 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
 
     assert foreign_server.app['request_log'] == [
         'POST /auth/ > 201',
-        RegexStr('POST /[0-9a-f]+/message/add/msg-firstmessagekeyx > 201'),
+        RegexStr('POST /create/[0-9a-f]+/ > 204'),
     ]
 
     new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
-    parent = await db_conn.fetchval("SELECT key FROM actions where component='message'")
+    parent = await db_conn.fetchval("SELECT key FROM actions where verb='publish'")
     r = await cli.post(url_, json={'parent': parent, 'body': 'hello'})
     assert r.status == 201, await r.text()
 
     assert foreign_server.app['request_log'] == [
         'POST /auth/ > 201',
-        RegexStr(f'POST /{new_conv_key}/message/add/msg-firstmessagekeyx > 201'),
+        RegexStr(f'POST /create/{new_conv_key}/ > 204'),
         RegexStr(f'POST /{new_conv_key}/message/add/msg-[0-9a-z]+ > 201'),
     ]
 
@@ -387,7 +387,7 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
 
     assert foreign_server.app['request_log'] == [
         'POST /auth/ > 201',
-        RegexStr('POST /[0-9a-f]+/message/add/msg-firstmessagekeyx > 201'),
+        RegexStr('POST /create/[0-9a-f]+/ > 204'),
     ]
 
     new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
@@ -397,7 +397,7 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     print(foreign_server.app['request_log'])
     assert foreign_server.app['request_log'] == [
         'POST /auth/ > 201',
-        RegexStr(f'POST /{new_conv_key}/message/add/msg-firstmessagekeyx > 201'),
+        RegexStr(f'POST /create/{new_conv_key}/ > 204'),
         RegexStr(f'POST /{new_conv_key}/participant/add/new@foreign.com > 201'),
     ]
 
@@ -415,8 +415,8 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, debug):
             async for msg in ws:
                 assert msg.tp == WSMsgType.text
                 data = json.loads(msg.data)
-                assert data['component'] == 'message'
-                assert data['verb'] == 'add'
+                assert data['component'] is None
+                assert data['verb'] == 'publish'
                 assert data['actor'] == conv.creator_address
                 got_message = True
                 break

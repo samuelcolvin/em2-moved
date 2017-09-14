@@ -63,6 +63,9 @@ services:
       EM2_AUTH_UPDATE_SESSION_URL: 'http://localhost:8000/auth/update-session/'
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
       EM2_SECURE_COOKIES: 'false'
+      EM2_FALLBACK_USERNAME: ${EM2_FALLBACK_USERNAME}
+      EM2_FALLBACK_PASSWORD: ${EM2_FALLBACK_PASSWORD}
+      EM2_FALLBACK_ENDPOINT: ${EM2_FALLBACK_ENDPOINT}
     restart: always
     networks:
       default:
@@ -83,6 +86,9 @@ services:
       EM2_EXTERNAL_DOMAIN: ${EM2_EXTERNAL_DOMAIN}
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
       EM2_RUN_SETUP_CHECK: 'false'
+      EM2_FALLBACK_USERNAME: ${EM2_FALLBACK_USERNAME}
+      EM2_FALLBACK_PASSWORD: ${EM2_FALLBACK_PASSWORD}
+      EM2_FALLBACK_ENDPOINT: ${EM2_FALLBACK_ENDPOINT}
     restart: always
     depends_on:
     - postgres

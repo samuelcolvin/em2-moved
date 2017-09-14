@@ -35,7 +35,6 @@ class FallbackHandler:
     async def push(self, *, action: Action, addresses, conv_subject):
         e_from, to, bcc = self.get_from_to_bcc(action, addresses)
         subject = conv_subject
-        # subject = 'Re: ' + conv_subject
         if action.component == Components.MESSAGE:
             if action.verb == Verbs.ADD:
                 body = action.body

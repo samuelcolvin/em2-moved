@@ -2,7 +2,7 @@
 
 async def test_publish(cli, url, foreign_server, get_conv, debug):
     assert foreign_server.app['request_log'] == []
-    url_ = url('act', conv='key12345678', component='message', verb='add', item='')
+    url_ = url('create', conv='key12345678')
     r = await cli.post(url_, data='foobar', headers={
         'em2-auth': 'already-authenticated.com:123:whatever',
         'em2-actor': 'test@already-authenticated.com',
@@ -107,6 +107,42 @@ async def test_conv_wrong_address(cli, url, foreign_server):
         'em2-action-key': '123',
         'em2-participant': 'foo@bar.com',
     })
+    assert r.status == 400, await r.text()
+    assert 'participant "foo@bar.com" not linked to this platform' == await r.text()
+    assert foreign_server.app['request_log'] == []
+
+
+async def test_publish_conv_exists(cli, url, foreign_server, get_conv, debug):
+    assert foreign_server.app['request_log'] == []
+    url_ = url('create', conv='key12345678')
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-actor': 'test@already-authenticated.com',
+        'em2-timestamp': '1',
+        'em2-action-key': 'yyyyyyyyyyyyyyyyyyyy',
+        'em2-participant': 'testing@local.com',
+    }
+    r = await cli.post(url_, data='foobar', headers=headers)
+    assert r.status == 204, await r.text()
+    obj = await get_conv('key12345678')
+    assert obj['details']['subject'] == 'Test Conversation'
+    r = await cli.post(url_, data='foobar', headers=headers)
+    assert r.status == 409, await r.text()
+    assert foreign_server.app['request_log'] == [
+        'POST /auth/ > 201',
+        'GET /get/key12345678/ > 200',
+    ]
+
+
+async def test_publish_wrong_address(cli, url, foreign_server):
+    headers = {
+        'em2-auth': 'already-authenticated.com:123:whatever',
+        'em2-actor': 'test@already-authenticated.com',
+        'em2-timestamp': '1',
+        'em2-action-key': '123',
+        'em2-participant': 'foo@bar.com',
+    }
+    r = await cli.post(url('create', conv='key12345678'), data='foobar', headers=headers)
     assert r.status == 400, await r.text()
     assert 'participant "foo@bar.com" not linked to this platform' == await r.text()
     assert foreign_server.app['request_log'] == []

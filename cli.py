@@ -329,6 +329,7 @@ def make_session(ctx):
     session = requests.Session()
     cookie_path = Path('em2-cookie-{[address]}.json'.format(ctx.obj))
     if cookie_path.exists():
+        print('found cookie file: {}'.format(cookie_path))
         with cookie_path.open() as f:
             cookies = json.load(f)
 

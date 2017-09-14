@@ -4,7 +4,7 @@ Views dedicated to propagation of data between platforms.
 import logging
 
 from aiohttp import web
-from aiohttp.web import HTTPBadRequest, HTTPForbidden, HTTPNotFound
+from aiohttp.web import HTTPBadRequest, HTTPConflict, HTTPForbidden, HTTPNotFound
 
 from em2.core import ApplyAction, Components, GetConv, Verbs
 from em2.utils import get_domain
@@ -124,3 +124,31 @@ class Act(ForeignView):
         await apply_action.run()
         await self.pusher.push(apply_action.action_id, transmit=False)
         return web.Response(status=201)
+
+
+class Create(ForeignView):
+    get_conv_sql = """
+    SELECT id FROM conversations WHERE key = $1
+    """
+
+    async def call(self, request):
+        platform = await self.auth.validate_platform_token(self.required_header('em2-auth'))
+        logger.info('publish by %s', platform)
+
+        actor_address = self.required_header('em2-actor')
+        address_domain = get_domain(actor_address)
+
+        await self.auth.check_domain_platform(address_domain, platform)
+
+        conv_key = request.match_info['conv']
+        if await self.conn.fetchval(self.get_conv_sql, conv_key):
+            raise HTTPConflict(text=f'conversation "{conv_key}" already exists')
+
+        action_key = self.required_header('em2-action-key')
+        participant = self.required_header('em2-participant')
+        prt_domain = get_domain(participant)
+        if not prt_domain or not await self.pusher.domain_is_local(prt_domain):
+            raise HTTPBadRequest(text=f'participant "{participant}" not linked to this platform')
+
+        await self.pusher.create_conv(platform, conv_key, participant, action_key)
+        return web.Response(status=204)

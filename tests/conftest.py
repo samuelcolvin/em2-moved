@@ -142,8 +142,8 @@ def create_conv(db_conn):
         await db_conn.execute('INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)', *args)
         if published:
             await db_conn.execute("""
-                INSERT INTO actions (key, conv, actor, verb, component, message)
-                SELECT 'pub-add-message-1234', $1, $2, 'add', 'message', m.id
+                INSERT INTO actions (key, conv, actor, verb, message)
+                SELECT 'pub-add-message-1234', $1, $2, 'publish', m.id
                 FROM messages as m
                 WHERE m.conv = $1
                 LIMIT 1

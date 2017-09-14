@@ -16,7 +16,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from . import Settings
-from .core import Action, CreateForeignConv, gen_random
+from .core import Action, CreateForeignConv, Verbs, gen_random
 from .exceptions import Em2ConnectionError, FailedInboundAuthentication, FailedOutboundAuthentication
 from .utils import get_domain
 from .utils.encoding import msg_encode, to_unix_ms
@@ -119,7 +119,7 @@ class Pusher(Actor):
             remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(*prts)
 
             logger.info('%s.%s %.6s to %d participants: %d em2 nodes, local %d, fallback %d',
-                        action.component, action.verb, action.conv_key,
+                        action.component or 'conv', action.verb, action.conv_key,
                         len(prts), len(remote_nodes), len(local_recipients), len(fallback_addresses))
 
             if local_recipients:
@@ -167,7 +167,10 @@ class Pusher(Actor):
         Push action to participants on remote nodes.
         """
         item = action.item or ''
-        path = f'{action.conv_key}/{action.component}/{action.verb}/{item}'
+        if action.verb == Verbs.PUBLISH:
+            path = f'create/{action.conv_key}/'
+        else:
+            path = f'{action.conv_key}/{action.component}/{action.verb}/{item}'
         universal_headers = {
             'content-type': 'application/em2',
             'em2-actor': action.actor,

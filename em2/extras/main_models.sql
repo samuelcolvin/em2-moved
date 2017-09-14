@@ -45,7 +45,7 @@ CREATE TABLE messages (
 CREATE INDEX message_key ON messages USING btree (key);
 
 -- see core.Verbs enum which matches this
-CREATE TYPE VERB AS ENUM ('add', 'modify', 'delete', 'recover', 'lock', 'unlock');
+CREATE TYPE VERB AS ENUM ('publish', 'add', 'modify', 'delete', 'recover', 'lock', 'unlock');
 -- see core.Components enum which matches this
 CREATE TYPE COMPONENT AS ENUM ('subject', 'expiry', 'label', 'message', 'participant', 'attachment');
 
@@ -54,7 +54,7 @@ CREATE TABLE actions (
   key CHAR(20) NOT NULL,
   conv INT NOT NULL REFERENCES conversations ON DELETE CASCADE,
   verb VERB NOT NULL,
-  component COMPONENT NOT NULL,
+  component COMPONENT,
   actor INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
   timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   parent INT REFERENCES actions,

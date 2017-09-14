@@ -51,6 +51,7 @@ class Verbs(str, Enum):
     """
     Verb types, used for both urls and in db ENUM see models.sql
     """
+    PUBLISH = 'publish'
     ADD = 'add'
     MODIFY = 'modify'
     DELETE = 'delete'
@@ -236,7 +237,7 @@ class ApplyAction(FetchOr404Mixin):
         if deleted:
             raise HTTPBadRequest(text='you cannot add messages after a deleted message')
 
-        if not self.data.body:
+        if not self.data.body:  # TODO move up
             raise HTTPBadRequest(text='body can not be empty when adding a message')
         self.body = self.data.body
         if self._remote_action:

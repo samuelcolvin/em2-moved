@@ -74,13 +74,13 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
             {
                 'actor': 'test@already-authenticated.com',
                 'body': None,
-                'component': 'message',
+                'component': None,
                 'key': 'pub-add-message-1234',
                 'message': 'msg-firstmessagekeyx',
                 'parent': None,
                 'participant': None,
                 'ts': CloseToNow(),
-                'verb': 'add'
+                'verb': 'publish'
             },
             {
                 'actor': 'test@already-authenticated.com',

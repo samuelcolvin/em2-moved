@@ -139,8 +139,8 @@ class Publish(View):
     """
     delete_actions_sql = 'DELETE FROM actions WHERE conv = $1'
     create_action_sql = """
-    INSERT INTO actions (key, conv, actor, verb, component, message)
-    SELECT $1, $2, $3, 'add', 'message', m.id
+    INSERT INTO actions (key, conv, actor, verb, message)
+    SELECT $1, $2, $3, 'publish', m.id
     FROM messages as m
     WHERE m.conv = $2
     LIMIT 1
