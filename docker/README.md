@@ -6,6 +6,6 @@ To build:
 
     ./build/build.sh
 
-To run the compose example:
+To run the compose example (with `activate.sh` activated):
 
-    compose -f docker/docker-compose.yml -p em2 up
+    compose up -d

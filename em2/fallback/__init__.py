@@ -42,7 +42,7 @@ class FallbackHandler:
             body=body,
             action=action,
         )
-        logger.info('message sent conv %.6s, smtp message id %0.6s', action.conv_key, msg_id)
+        logger.info('message sent conv %.6s, smtp message id %0.12s...', action.conv_key, msg_id)
 
     async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str, body: str,
                            action: Action):

@@ -33,3 +33,14 @@ rsync -i -a  ../em2/extras/smtp_html_template.html tmp/smtp_html_template.html
 echo "building docker image..."
 docker build tmp -t em2 --build-arg EM2_COMMIT=`git rev-parse --short HEAD`
 echo "done."
+
+# creating the network here saves lots of time when working with compose
+echo "checking network exists..."
+status=0
+docker network inspect em2 >/dev/null 2>&1 || status=1
+if [ $status -eq 0 ]; then
+    echo 'docker network "em2" already exists'
+else
+    echo 'docker network "em2" network...'
+    docker network create --driver=bridge --subnet=172.20.0.0/16 em2
+fi

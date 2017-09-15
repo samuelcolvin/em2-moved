@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import traceback
 from functools import update_wrapper
 
@@ -10,6 +11,7 @@ from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError
 
 JSON_CONTENT_TYPE = 'application/json'
+logger = logging.getLogger('em2.utils')
 
 
 class _JsonHTTPError:
@@ -125,7 +127,8 @@ async def _fetch404(func, sql, *args, msg=None):
         # TODO add debug
         msg = msg or 'unable to find value in db'
         tb = ''.join(traceback.format_stack())
-        raise web_exceptions.HTTPNotFound(text=f'{msg}\nsql:\n{sql}\ntraceback:{tb}')
+        logger.error('%s\nsql:\n%s\ntraceback:%s', msg, sql, tb)
+        raise web_exceptions.HTTPNotFound(text=msg)
     return val
 
 

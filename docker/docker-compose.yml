@@ -6,10 +6,9 @@ volumes:
 
 networks:
   default:
-    driver: bridge
-    ipam:
-      config:
-      - subnet: 172.20.0.0/16
+    external:
+      # network is created by build.sh to save time on compose up
+      name: em2
 
 services:
   logs:
@@ -66,6 +65,7 @@ services:
       EM2_FALLBACK_USERNAME: ${EM2_FALLBACK_USERNAME}
       EM2_FALLBACK_PASSWORD: ${EM2_FALLBACK_PASSWORD}
       EM2_FALLBACK_ENDPOINT: ${EM2_FALLBACK_ENDPOINT}
+      EM2_FALLBACK_CLS: ${EM2_FALLBACK_CLS}
     restart: always
     networks:
       default:
@@ -89,6 +89,7 @@ services:
       EM2_FALLBACK_USERNAME: ${EM2_FALLBACK_USERNAME}
       EM2_FALLBACK_PASSWORD: ${EM2_FALLBACK_PASSWORD}
       EM2_FALLBACK_ENDPOINT: ${EM2_FALLBACK_ENDPOINT}
+      EM2_FALLBACK_CLS: ${EM2_FALLBACK_CLS}
     restart: always
     depends_on:
     - postgres
