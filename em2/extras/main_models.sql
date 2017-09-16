@@ -67,12 +67,14 @@ CREATE TABLE actions (
 );
 CREATE INDEX action_key ON actions USING btree (key);
 
+-- see core.ActionStatuses enum which matches this
 CREATE TYPE ACTION_STATUS AS ENUM ('pending', 'temporary_failure', 'failed', 'successful');
 
-CREATE TABLE actions_status (
+CREATE TABLE actions_states (
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
-  status ACTION_STATUS NOT NULL DEFAULT 'pending',
-  platform VARCHAR(255),
+  ref VARCHAR(100),
+  status ACTION_STATUS NOT NULL,
+  platform VARCHAR(255),  -- null for fallback
   errors JSONB[]
 );
 

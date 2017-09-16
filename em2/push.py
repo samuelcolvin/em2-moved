@@ -18,6 +18,7 @@ from Crypto.Signature import PKCS1_v1_5
 from . import Settings
 from .core import Action, Components, CreateForeignConv, Verbs, gen_random
 from .exceptions import Em2ConnectionError, FailedInboundAuthentication, FailedOutboundAuthentication
+from .fallback import FallbackHandler
 from .utils import get_domain
 from .utils.encoding import msg_encode, to_unix_ms
 
@@ -48,7 +49,7 @@ class Pusher(Actor):
         self._early_token_expiry = self.settings.COMMS_PUSH_TOKEN_EARLY_EXPIRY
         self.db = None
         self.session = None
-        self.fallback = None
+        self.fallback: FallbackHandler = None
         self._resolver = None
         kwargs['redis_settings'] = self.settings.redis
         super().__init__(**kwargs)
@@ -62,7 +63,7 @@ class Pusher(Actor):
         connector = aiohttp.TCPConnector(resolver=resolver, verify_ssl=self.settings.COMMS_VERIFY_SSL)
         self.session = aiohttp.ClientSession(loop=self.loop, connector=connector, read_timeout=10, conn_timeout=10)
 
-        self.fallback = self.settings.fallback_cls(self.settings, self.loop)
+        self.fallback = self.settings.fallback_cls(settings=self.settings, loop=self.loop, db=self.db)
         await self.db.startup()
         await self.fallback.startup()
 
@@ -112,12 +113,17 @@ class Pusher(Actor):
     WHERE conv = $1
     """
 
+    success_action_sql = """
+    INSERT INTO actions_states (action, ref, platform, status)
+    VALUES ($1, $2, $3, 'successful')
+    """
+
     @concurrent
     async def push(self, action_id, transmit=True):
         async with self.db.acquire() as conn:
             *args, message_key, prt_address = await conn.fetchrow(self.action_detail_sql, action_id)
             # TODO perhaps need to add other fields required to understand the action
-            action = Action(*args, message_key or prt_address)
+            action = Action(action_id, *args, message_key or prt_address)
 
             prts = await conn.fetch(self.prts_sql, action.conv_id)  # TODO more info e.g. bcc etc.
 
@@ -209,7 +215,8 @@ class Pusher(Actor):
             else:
                 raise NotImplementedError()
         addresses = {r['address'] for r in prts}
-        await self.fallback.push(action=action, addresses=addresses, conv_subject=subject, body=body)
+        msg_id = await self.fallback.push(action=action, addresses=addresses, conv_subject=subject, body=body)
+        await conn.fetchval(self.success_action_sql, action.id, msg_id, None)
 
     async def _post(self, domain, address, path, universal_headers, data):
         token = await self.authenticate(domain)

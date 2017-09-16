@@ -64,7 +64,10 @@ class AwsFallbackHandler(FallbackHandler):
         self._host = _AWS_HOST.format(region=self.region)
         self._endpoint = _AWS_ENDPOINT.format(host=self._host)
         if self.settings.fallback_webhook_auth:
-            self.auth_header = f'Basic {base64.b64encode(self.settings.fallback_webhook_auth).decode()}'
+            pw = self.settings.fallback_webhook_auth
+            if b':' not in pw:
+                pw += b':'
+            self.auth_header = f'Basic {base64.b64encode(pw).decode()}'
         else:
             self.auth_header = None
 
@@ -159,4 +162,4 @@ class AwsFallbackHandler(FallbackHandler):
         # TODO check X-SES-Spam-Verdict, X-SES-Virus-Verdict from data['headers']
         message = self._decode_json(data.get('Message'), 'Message')
         smtp_content = base64.b64decode(message['content']).decode()
-        self.process_smtp_message(smtp_content)
+        await self.process_smtp_message(smtp_content)

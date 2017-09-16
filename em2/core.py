@@ -66,6 +66,13 @@ class Relationships(str, Enum):
     CHILD = 'child'
 
 
+@unique
+class ActionStatuses(str, Enum):
+    temporary_failure = 'temporary_failure'
+    failed = 'failed'
+    successful = 'successful'
+
+
 class Database:
     def __init__(self, settings: Settings, loop):
         self._loop = loop
@@ -88,6 +95,7 @@ class Database:
 
 
 class Action(NamedTuple):
+    id: int
     action_key: str
     conv_key: str
     conv_id: int

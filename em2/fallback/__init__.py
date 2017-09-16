@@ -15,10 +15,11 @@ logger = logging.getLogger('em2.fallback')
 
 
 class FallbackHandler:
-    def __init__(self, settings: Settings, loop=None):
+    def __init__(self, settings: Settings, loop=None, db=None):
         self.settings = settings
         self.loop = loop
         self.html_template = settings.smtp_html_template.read_text()
+        self.db = db
 
     async def startup(self):
         pass
@@ -48,6 +49,7 @@ class FallbackHandler:
             action=action,
         )
         logger.info('message sent conv %.6s, smtp message id %0.12s...', action.conv_key, msg_id)
+        return msg_id
 
     async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str, body: str,
                            action: Action):
@@ -63,36 +65,43 @@ class FallbackHandler:
     async def process_webhook(self, request):
         pass
 
-    def process_smtp_message(self, smtp_content: str):
+    async def process_smtp_message(self, smtp_content: str):
         # TODO deal with non multipart
         msg: Message = email.message_from_string(smtp_content)
         # debug(dict(msg))
-        # TODO check X-SES-Spam-Verdict, X-SES-Virus-Verdict
+        # find which conversation this relates to
+        in_reply_to = msg['In-Reply-To']
+        async with self.db.acquire() as conn:
+            # TODO search action states for in_reply_to, if not found, look in other headers like references (outlook)
+            # TODO, need to remove names etc.
+            recipients = msg['To'].split(',')
+            assert in_reply_to
+            assert conn
+            assert recipients
 
-        # text/html is generally the best representation of the email
-        body = None
-        is_html = True
-        for m in msg.walk():
-            ct = m['Content-Type']
-            if 'text' in ct:
-                body = m.get_payload()
-            if 'text/html' in ct:
-                if m['Content-Transfer-Encoding'] == 'quoted-printable':
-                    body = quopri.decodestring(body).decode()
-                is_html = True
-                break
-        if not body:
-            logger.error('Unable to body in email', extra={'raw-smtp': smtp_content})
-        if is_html:
-            soup = BeautifulSoup(body, 'html.parser')
-            print(soup.prettify())
+            # text/html is generally the best representation of the email
+            body = None
+            is_html = True
+            for m in msg.walk():
+                ct = m['Content-Type']
+                if 'text' in ct:
+                    body = m.get_payload()
+                if 'text/html' in ct:
+                    if m['Content-Transfer-Encoding'] == 'quoted-printable':
+                        body = quopri.decodestring(body).decode()
+                    is_html = True
+                    break
+            if not body:
+                logger.error('Unable to body in email', extra={'raw-smtp': smtp_content})
 
-            # if this is a gmail email, remove the extra content
-            soup.select_one('div.gmail_extra') and soup.select_one('div.gmail_extra').decompose()
+            if is_html:
+                soup = BeautifulSoup(body, 'html.parser')
 
-            # could do more things here like remove outer div.
-            body = soup.prettify().strip('\n')
-            print(body)  # TODO
+                # if this is a gmail email, remove the extra content
+                soup.select_one('div.gmail_extra') and soup.select_one('div.gmail_extra').decompose()
+
+                body = soup.prettify().strip('\n')
+                print(body)  # TODO
 
 
 class LogFallbackHandler(FallbackHandler):
