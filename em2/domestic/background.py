@@ -63,7 +63,7 @@ class Background:
             raise_task_exception=True,
         )
         async with drain:
-            logger.info('starting background drain loop...')
+            logger.info('starting background drain loop')
             async for _, raw_data in drain.iter(jobs_key, pop_timeout=30):
                 if raw_data:
                     drain.add(self._send_action, raw_data)

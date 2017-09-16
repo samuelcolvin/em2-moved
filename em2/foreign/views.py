@@ -13,7 +13,7 @@ from em2.utils.web import ViewMain, WebModel, get_ip, raw_json_response
 logger = logging.getLogger('em2.f.views')
 
 
-class ForeignView(ViewMain):
+class View(ViewMain):
     def __init__(self, request):
         super().__init__(request)
         self.auth = self.app['authenticator']
@@ -25,7 +25,7 @@ class ForeignView(ViewMain):
             raise HTTPBadRequest(text=f'header "{name}" missing')
 
 
-class Authenticate(ForeignView):
+class Authenticate(View):
     class Headers(WebModel):
         platform: str
         timestamp: int
@@ -47,7 +47,7 @@ class Authenticate(ForeignView):
         return web.Response(status=201, headers={'em2-key': key})
 
 
-class Get(ForeignView):
+class Get(View):
     async def call(self, request):
         platform = await self.auth.validate_platform_token(self.required_header('em2-auth'))
 
@@ -61,7 +61,7 @@ class Get(ForeignView):
         return raw_json_response(json_str)
 
 
-class Act(ForeignView):
+class Act(View):
     find_conv_sql = """
     SELECT c.id, r.id
     FROM conversations AS c
@@ -126,7 +126,7 @@ class Act(ForeignView):
         return web.Response(status=201)
 
 
-class Create(ForeignView):
+class Create(View):
     get_conv_sql = """
     SELECT id FROM conversations WHERE key = $1
     """
@@ -151,4 +151,10 @@ class Create(ForeignView):
             raise HTTPBadRequest(text=f'participant "{participant}" not linked to this platform')
 
         await self.pusher.create_conv(platform, conv_key, participant, action_key)
+        return web.Response(status=204)
+
+
+class FallbackWebhook(View):
+    async def call(self, request):
+        await self.app['fallback'].process_webhook(request)
         return web.Response(status=204)

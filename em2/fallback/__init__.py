@@ -1,6 +1,11 @@
+import email
 import logging
+import quopri
+from email.message import Message
 from textwrap import indent
 from typing import List
+
+from bs4 import BeautifulSoup
 
 from em2 import Settings
 from em2.core import Action
@@ -54,6 +59,40 @@ class FallbackHandler:
     def html_format(self, body: str, conv_id: str) -> str:
         body_html = markdown(body)
         return self.html_template % dict(body_html=body_html, conv_id=conv_id)
+
+    async def process_webhook(self, request):
+        pass
+
+    def process_smtp_message(self, smtp_content: str):
+        # TODO deal with non multipart
+        msg: Message = email.message_from_string(smtp_content)
+        # debug(dict(msg))
+        # TODO check X-SES-Spam-Verdict, X-SES-Virus-Verdict
+
+        # text/html is generally the best representation of the email
+        body = None
+        is_html = True
+        for m in msg.walk():
+            ct = m['Content-Type']
+            if 'text' in ct:
+                body = m.get_payload()
+            if 'text/html' in ct:
+                if m['Content-Transfer-Encoding'] == 'quoted-printable':
+                    body = quopri.decodestring(body).decode()
+                is_html = True
+                break
+        if not body:
+            logger.error('Unable to body in email', extra={'raw-smtp': smtp_content})
+        if is_html:
+            soup = BeautifulSoup(body, 'html.parser')
+            print(soup.prettify())
+
+            # if this is a gmail email, remove the extra content
+            soup.select_one('div.gmail_extra') and soup.select_one('div.gmail_extra').decompose()
+
+            # could do more things here like remove outer div.
+            body = soup.prettify().strip('\n')
+            print(body)  # TODO
 
 
 class LogFallbackHandler(FallbackHandler):

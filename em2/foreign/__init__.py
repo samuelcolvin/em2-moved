@@ -4,7 +4,7 @@ from aiohttp.web import Application, Response
 
 from em2 import VERSION
 from em2.utils.web import JSON_CONTENT_TYPE, db_conn_middleware
-from .views import Act, Authenticate, Create, Get
+from .views import Act, Authenticate, Create, FallbackWebhook, Get
 
 logger = logging.getLogger('em2.foreign')
 
@@ -27,6 +27,7 @@ async def app_startup(app):
         db=settings.db_cls(settings=settings, loop=app.loop),
         authenticator=settings.authenticator_cls(settings=settings, loop=app.loop),
         pusher=settings.pusher_cls(settings=settings, loop=app.loop),
+        fallback=settings.fallback_cls(settings=settings, loop=app.loop)
     )
     await app['db'].startup()
     await app['pusher'].log_redis_info(logger.debug)
@@ -49,5 +50,6 @@ def create_foreign_app(settings):
     app.router.add_get('/get/{conv:[a-z0-9]{8,}}/', Get.view(), name='get')
     app.router.add_post('/create/{conv:[a-z0-9]+}/', Create.view(), name='create')
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', Act.view(), name='act')
+    app.router.add_post('/fallback-webhook/', FallbackWebhook.view(), name='fallback-webhook')
     app.router.add_get('/', index, name='index')
     return app
