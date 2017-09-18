@@ -70,7 +70,7 @@ CREATE INDEX action_key ON actions USING btree (key);
 -- see core.ActionStatuses enum which matches this
 CREATE TYPE ACTION_STATUS AS ENUM ('pending', 'temporary_failure', 'failed', 'successful');
 
-CREATE TABLE actions_states (
+CREATE TABLE action_states (
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   ref VARCHAR(100),
   status ACTION_STATUS NOT NULL,

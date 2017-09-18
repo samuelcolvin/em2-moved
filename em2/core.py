@@ -134,14 +134,14 @@ RETURNING address, id
 
 async def create_missing_recipients(conn, addresses):
     part_addresses = set(addresses)
-    prts = {}
+    recips = {}
     for address, id in await conn.fetch(GET_EXISTING_RECIPS_SQL, part_addresses):
-        prts[address] = id
+        recips[address] = id
         part_addresses.remove(address)
 
     if part_addresses:
-        prts.update(dict(await conn.fetch(SET_MISSING_RECIPS_SQL, part_addresses)))
-    return prts
+        recips.update(dict(await conn.fetch(SET_MISSING_RECIPS_SQL, part_addresses)))
+    return recips
 
 
 class ApplyAction(FetchOr404Mixin):
@@ -190,7 +190,6 @@ class ApplyAction(FetchOr404Mixin):
         self.item_key, recipient_id, message_id, parent_id = None, None, None, None
         async with self.conn.transaction():
             if self.data.component is Components.MESSAGE:
-
                 if self.data.verb is Verbs.ADD:
                     self.item_key, message_id, parent_id = await self._add_message()
                 else:

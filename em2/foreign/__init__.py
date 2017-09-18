@@ -24,14 +24,15 @@ async def index(request):
 async def app_startup(app):
     settings = app['settings']
     db = settings.db_cls(settings=settings, loop=app.loop)
+    pusher = settings.pusher_cls(settings=settings, loop=app.loop)
     app.update(
         db=db,
         authenticator=settings.authenticator_cls(settings=settings, loop=app.loop),
-        pusher=settings.pusher_cls(settings=settings, loop=app.loop),
-        fallback=settings.fallback_cls(settings=settings, loop=app.loop, db=db)
+        pusher=pusher,
+        fallback=settings.fallback_cls(settings=settings, loop=app.loop, db=db, pusher=pusher)
     )
     await db.startup()
-    await app['pusher'].log_redis_info(logger.debug)
+    await pusher.log_redis_info(logger.debug)
 
 
 async def app_cleanup(app):

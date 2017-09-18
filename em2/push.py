@@ -114,7 +114,7 @@ class Pusher(Actor):
     """
 
     success_action_sql = """
-    INSERT INTO actions_states (action, ref, platform, status)
+    INSERT INTO action_states (action, ref, platform, status)
     VALUES ($1, $2, $3, 'successful')
     """
 
@@ -456,10 +456,6 @@ class Pusher(Actor):
             redis.set(key, value),
             redis.expireat(key, expires_at),
         )
-
-    async def key_exists(self, platform_token: str):
-        async with await self.get_redis_conn() as redis:
-            return bool(await redis.exists(platform_token.encode()))
 
     @staticmethod
     def _now_unix():

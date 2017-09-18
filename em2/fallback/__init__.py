@@ -5,21 +5,23 @@ from email.message import Message
 from textwrap import indent
 from typing import List
 
+from aiohttp.web_exceptions import HTTPForbidden
 from bs4 import BeautifulSoup
 
 from em2 import Settings
-from em2.core import Action
+from em2.core import Action, ApplyAction, Components, Verbs, Relationships, create_missing_recipients, gen_random
 from em2.utils.markdown import markdown
 
 logger = logging.getLogger('em2.fallback')
 
 
 class FallbackHandler:
-    def __init__(self, settings: Settings, loop=None, db=None):
+    def __init__(self, settings: Settings, loop, db=None, pusher=None):
         self.settings = settings
         self.loop = loop
         self.html_template = settings.smtp_html_template.read_text()
         self.db = db
+        self.pusher = pusher
 
     async def startup(self):
         pass
@@ -65,19 +67,55 @@ class FallbackHandler:
     async def process_webhook(self, request):
         pass
 
-    async def process_smtp_message(self, smtp_content: str):
+    find_from_ref_sql = """
+    SELECT c.id, a.key
+    FROM action_states as states
+    JOIN actions AS a ON states.action = a.id
+    JOIN conversations AS c ON a.conv = c.id
+    WHERE states.ref = $1
+    LIMIT 1
+    """
+    actor_in_conv_sql = """
+    SELECT r.id
+    FROM recipients as r
+    JOIN participants AS p ON r.id = p.recipient
+    JOIN conversations AS c ON p.conv = c.id
+    WHERE c.id = $1 AND c.published = TRUE AND r.address = $2
+    """
+
+    async def process_smtp_message(self, smtp_content: str):  # noqa: C901 (ignore complexity)
         # TODO deal with non multipart
         msg: Message = email.message_from_string(smtp_content)
         # debug(dict(msg))
+        if msg['EM2-ID']:
+            # this is an em2 message and should be received via the proper route too
+            return
+
+        _, actor_addr = email.utils.parseaddr(msg['From'])
+        assert actor_addr, actor_addr
+
+        in_reply_to = msg['In-Reply-To'].lstrip('< ').rstrip('> ')
+        recipients = email.utils.getaddresses(msg.get_all('To', []) + msg.get_all('Cc', []))
+        recipients = [a for n, a in recipients]
+        timestamp = email.utils.parseaddr(msg['Date'])
         # find which conversation this relates to
-        in_reply_to = msg['In-Reply-To']
         async with self.db.acquire() as conn:
-            # TODO search action states for in_reply_to, if not found, look in other headers like references (outlook)
-            # TODO, need to remove names etc.
-            recipients = msg['To'].split(',')
-            assert in_reply_to
-            assert conn
-            assert recipients
+            conv_id = parent_id = actor_id = None
+            if in_reply_to:
+                r = conn.fetchrow(self.find_from_ref_sql, in_reply_to)
+                if r:
+                    conv_id, parent_id = r
+            else:
+                # TODO look in other headers like "References", I guess might have to search in subject too
+                pass
+
+            if conv_id:
+                actor_id = await conn.fetchval(self.actor_in_conv_sql, conv_id, actor_addr)
+                if not actor_id:
+                    raise HTTPForbidden(text='from address not associated with the conversation')
+
+            recipient_lookup = await create_missing_recipients(conn, recipients)
+            recipients_ids = list(recipient_lookup.values())
 
             # text/html is generally the best representation of the email
             body = None
@@ -98,10 +136,37 @@ class FallbackHandler:
                 soup = BeautifulSoup(body, 'html.parser')
 
                 # if this is a gmail email, remove the extra content
-                soup.select_one('div.gmail_extra') and soup.select_one('div.gmail_extra').decompose()
+                gmail_extra = soup.select_one('div.gmail_extra')
+                if gmail_extra:
+                    gmail_extra.decompose()
 
                 body = soup.prettify().strip('\n')
-                print(body)  # TODO
+
+            if conv_id:
+                apply_action = ApplyAction(
+                    conn,
+                    remote_action=True,
+                    action_key=gen_random('smtp'),
+                    conv=conv_id,
+                    published=True,
+                    actor=actor_id,
+                    timestamp=timestamp,
+                    component=Components.MESSAGE,
+                    verb=Verbs.ADD,
+                    item=gen_random('msg'),
+                    parent=parent_id,
+                    body=body,
+                    relationship=Relationships.SIBLING,
+                )
+                await apply_action.run()
+
+                # TODO more actions to add any extra recipients to the conversation
+                assert recipients_ids
+                action_id = apply_action.action_id
+            else:
+                # TODO create conversation
+                pass
+        await self.pusher.push(action_id, transmit=False)
 
 
 class LogFallbackHandler(FallbackHandler):
