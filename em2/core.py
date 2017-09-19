@@ -30,7 +30,9 @@ def gen_random(prefix):
     :return: prefix plus 16 char alphanumeric (lowercase) random string
     """
     # TODO move to utils
-    return prefix + '-' + base64.b32encode(os.urandom(10))[:16].decode().lower()
+    p_len = len(prefix)
+    assert p_len < 5, p_len
+    return prefix + '-' + base64.b32encode(os.urandom(10))[:19 - p_len].decode().lower()
 
 
 @unique

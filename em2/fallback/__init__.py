@@ -68,7 +68,7 @@ class FallbackHandler:
         pass
 
     find_from_ref_sql = """
-    SELECT c.id, a.key
+    SELECT c.id, a.key, a.component
     FROM action_states as states
     JOIN actions AS a ON states.action = a.id
     JOIN conversations AS c ON a.conv = c.id
@@ -82,6 +82,14 @@ class FallbackHandler:
     JOIN conversations AS c ON p.conv = c.id
     WHERE c.id = $1 AND c.published = TRUE AND r.address = $2
     """
+    latest_message_action_sql = """
+    SELECT a.key
+    FROM actions AS a
+    JOIN conversations AS c ON a.conv = c.id
+    WHERE c.id = $1 AND a.message IS NOT NULL
+    ORDER BY a.id DESC
+    LIMIT 1
+    """
 
     async def process_smtp_message(self, smtp_content: str):  # noqa: C901 (ignore complexity)
         # TODO deal with non multipart
@@ -94,17 +102,17 @@ class FallbackHandler:
         _, actor_addr = email.utils.parseaddr(msg['From'])
         assert actor_addr, actor_addr
 
-        in_reply_to = msg['In-Reply-To'].lstrip('< ').rstrip('> ')
+        in_reply_to = msg['In-Reply-To']
         recipients = email.utils.getaddresses(msg.get_all('To', []) + msg.get_all('Cc', []))
         recipients = [a for n, a in recipients]
-        timestamp = email.utils.parseaddr(msg['Date'])
+        timestamp = email.utils.parsedate_to_datetime(msg['Date'])
         # find which conversation this relates to
         async with self.db.acquire() as conn:
-            conv_id = parent_id = actor_id = None
+            conv_id = parent_key = parent_component = actor_id = None
             if in_reply_to:
-                r = conn.fetchrow(self.find_from_ref_sql, in_reply_to)
+                r = await conn.fetchrow(self.find_from_ref_sql, in_reply_to.lstrip('< ').rstrip('> '))
                 if r:
-                    conv_id, parent_id = r
+                    conv_id, parent_key, parent_component = r
             else:
                 # TODO look in other headers like "References", I guess might have to search in subject too
                 pass
@@ -141,24 +149,29 @@ class FallbackHandler:
                     gmail_extra.decompose()
 
                 body = soup.prettify().strip('\n')
-
             if conv_id:
-                apply_action = ApplyAction(
-                    conn,
-                    remote_action=True,
-                    action_key=gen_random('smtp'),
-                    conv=conv_id,
-                    published=True,
-                    actor=actor_id,
-                    timestamp=timestamp,
-                    component=Components.MESSAGE,
-                    verb=Verbs.ADD,
-                    item=gen_random('msg'),
-                    parent=parent_id,
-                    body=body,
-                    relationship=Relationships.SIBLING,
-                )
-                await apply_action.run()
+                if body:
+                    if parent_component == Components.MESSAGE:
+                        add_msg_parent_key = parent_key
+                    else:
+                        add_msg_parent_key = await conn.fetchval(self.latest_message_action_sql, conv_id)
+
+                    apply_action = ApplyAction(
+                        conn,
+                        remote_action=True,
+                        action_key=gen_random('smtp'),
+                        conv=conv_id,
+                        published=True,
+                        actor=actor_id,
+                        timestamp=timestamp,
+                        component=Components.MESSAGE,
+                        verb=Verbs.ADD,
+                        item=gen_random('msg'),
+                        parent=add_msg_parent_key,
+                        body=body,
+                        relationship=Relationships.SIBLING,
+                    )
+                    await apply_action.run()
 
                 # TODO more actions to add any extra recipients to the conversation
                 assert recipients_ids
