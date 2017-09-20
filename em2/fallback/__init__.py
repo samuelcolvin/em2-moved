@@ -9,7 +9,9 @@ from aiohttp.web_exceptions import HTTPForbidden
 from bs4 import BeautifulSoup
 
 from em2 import Settings
-from em2.core import Action, ApplyAction, Components, Verbs, Relationships, create_missing_recipients, gen_random
+from em2.core import Action, ApplyAction, Components, Verbs, Relationships, create_missing_recipients, gen_random, \
+    CreateForeignConv, generate_conv_key
+from em2.utils import to_utc_naive
 from em2.utils.markdown import markdown
 
 logger = logging.getLogger('em2.fallback')
@@ -105,10 +107,10 @@ class FallbackHandler:
         in_reply_to = msg['In-Reply-To']
         recipients = email.utils.getaddresses(msg.get_all('To', []) + msg.get_all('Cc', []))
         recipients = [a for n, a in recipients]
-        timestamp = email.utils.parsedate_to_datetime(msg['Date'])
-        # find which conversation this relates to
+        timestamp = to_utc_naive(email.utils.parsedate_to_datetime(msg['Date']))
         async with self.db.acquire() as conn:
             conv_id = parent_key = parent_component = actor_id = None
+            # find which conversation this relates to
             if in_reply_to:
                 r = await conn.fetchrow(self.find_from_ref_sql, in_reply_to.lstrip('< ').rstrip('> '))
                 if r:
@@ -172,13 +174,37 @@ class FallbackHandler:
                         relationship=Relationships.SIBLING,
                     )
                     await apply_action.run()
+                    action_id = apply_action.action_id
 
                 # TODO more actions to add any extra recipients to the conversation
                 assert recipients_ids
-                action_id = apply_action.action_id
             else:
-                # TODO create conversation
-                pass
+                creator = CreateForeignConv(conn)
+                action_key = gen_random('smtp')
+                msg_key = gen_random('msg')
+                subject = msg['Subject'] or '-'
+                conv_id, action_id = await creator.run(action_key, {
+                    'details': {
+                        'key': generate_conv_key(actor_addr, timestamp, subject),
+                        'creator': actor_addr,
+                        'subject': subject,
+                        'ts': timestamp,
+                    },
+                    'participants': [{'address': r} for r in recipients + [actor_addr]],
+                    'messages': [{
+                        'key': msg_key,
+                        'body': body or '',
+                    }],
+                    'actions': [{
+                        'key': action_key,
+                        'verb': Verbs.PUBLISH,
+                        'component': None,
+                        'body': body,
+                        'ts': timestamp,
+                        'actor': actor_addr,
+                        'message': msg_key,
+                    }]
+                })
         await self.pusher.push(action_id, transmit=False)
 
 

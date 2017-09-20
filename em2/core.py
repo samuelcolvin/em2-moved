@@ -12,6 +12,7 @@ from asyncpg.pool import Pool  # noqa
 from pydantic import BaseModel, EmailStr, NoneStr, ValidationError, constr
 
 from . import Settings
+from .utils import to_utc_naive
 from .utils.encoding import to_unix_ms
 from .utils.web import FetchOr404Mixin, WebModel
 
@@ -216,7 +217,7 @@ class ApplyAction(FetchOr404Mixin):
                 self.body,
             )
             if self._remote_action:
-                args += self.data.timestamp.replace(tzinfo=None),
+                args += to_utc_naive(self.data.timestamp),
                 self.action_id = await self.conn.fetchval(self.create_action_sql, *args)
             else:
                 self.action_id, action_timestamp = await self.conn.fetchrow(self.create_action_auto_ts_sql, *args)
@@ -250,18 +251,18 @@ class ApplyAction(FetchOr404Mixin):
             raise HTTPBadRequest(text='body can not be empty when adding a message')
         self.body = self.data.body
         if self._remote_action:
-            item_key = self.data.item
+            message_key = self.data.item
         else:
-            item_key = gen_random('msg')
+            message_key = gen_random('msg')
         relationship = self.data.relationship or Relationships.SIBLING
         if relationship == Relationships.SIBLING:
             position[-1] += 1
         else:
             # TODO maybe want to limit child depth here
             position.append(1)
-        args = item_key, self.data.conv, after_id, relationship, position, self.body
+        args = message_key, self.data.conv, after_id, relationship, position, self.body
         message_id = await self.conn.fetchval(self._add_message_sql, *args)
-        return item_key, message_id, parent_id
+        return message_key, message_id, parent_id
 
     _find_message_by_key_sql = """
     SELECT m.id
@@ -453,7 +454,7 @@ class _ConvDetails(BaseModel):
     creator: EmailStr
     subject: constr(max_length=255)
     ts: datetime  # TODO check this is less than now
-    published: bool  # not actually used, in foreign -> create conv, assumed true
+    published: bool = True  # not actually used, in foreign -> create conv, assumed true
 
 
 class _Participant(BaseModel):
@@ -462,8 +463,8 @@ class _Participant(BaseModel):
 
 class _ConvMessage(BaseModel):
     key: constr(min_length=20, max_length=20)
-    deleted: bool
     body: str
+    deleted: bool = False
     after: Optional[constr(min_length=20, max_length=20)] = None
     relationship: Optional[Relationships] = None
 
@@ -471,20 +472,20 @@ class _ConvMessage(BaseModel):
 class _Action(BaseModel):
     key: constr(min_length=20, max_length=20)
     verb: Verbs
-    component: Components
+    component: Optional[Components]
     body: NoneStr
     ts: datetime
     actor: EmailStr
-    parent: Optional[constr(min_length=20, max_length=20)]
-    message: Optional[constr(min_length=20, max_length=20)]
-    participant: Optional[EmailStr]
+    parent: Optional[constr(min_length=20, max_length=20)] = None
+    message: Optional[constr(min_length=20, max_length=20)] = None
+    participant: Optional[EmailStr] = None
 
 
 class FullConv(BaseModel):
     details: _ConvDetails
     participants: List[_Participant]
     messages: List[_ConvMessage]
-    actions: Optional[List[_Action]] = None
+    actions: List[_Action]
 
 
 class CreateForeignConv:
@@ -514,11 +515,11 @@ class CreateForeignConv:
         else:
             if any(a.key == trigger_action_key for a in conv.actions):
                 async with self.conn.transaction():
-                    return await self._trans(conv)
+                    return await self._trans(conv, trigger_action_key)
             else:
                 logger.warning('invalid conversation no listed action matches trigger action: %s', trigger_action_key)
 
-    async def _trans(self, conv: FullConv):
+    async def _trans(self, conv: FullConv, trigger_action_key: str):
         deets = conv.details
 
         creator_recip_id = await get_create_recipient(self.conn, deets.creator)
@@ -560,4 +561,4 @@ class CreateForeignConv:
                 action.body if action.component == Components.MESSAGE else None,
                 action.ts,
             )
-        return conv_id
+        return conv_id, action_lookup[trigger_action_key]

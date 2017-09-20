@@ -302,8 +302,6 @@ class Pusher(Actor):
                     remote_nodes[node] = {address}
         return remote_nodes, local_recipients, fallback_addresses
 
-    get_action_id_sql = 'SELECT a.id FROM actions AS a WHERE a.conv = $1 AND a.key = $2'
-
     @concurrent
     async def create_conv(self, domain, conv_key, participant_address, trigger_action_key):
         logger.info('getting conv %.6s from %s', conv_key, domain)
@@ -326,10 +324,9 @@ class Pusher(Actor):
 
         async with self.db.acquire() as conn:
             creator = CreateForeignConv(conn)
-            conv_id = await creator.run(trigger_action_key, data)
+            conv_id, action_id = await creator.run(trigger_action_key, data)
             if not conv_id:
                 return 1
-            action_id = await conn.fetchval(self.get_action_id_sql, conv_id, trigger_action_key)
         await self.push.direct(action_id, transmit=False)
         return 0
 
