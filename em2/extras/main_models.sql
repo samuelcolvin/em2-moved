@@ -77,5 +77,5 @@ CREATE TABLE action_states (
   platform VARCHAR(255),  -- null for fallback
   errors JSONB[]
 );
-
+CREATE INDEX action_state_ref ON action_states USING btree (ref);
 -- TODO attachments

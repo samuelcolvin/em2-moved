@@ -20,7 +20,7 @@ from em2.exceptions import ConfigException, FallbackPushError
 
 from . import FallbackHandler
 
-logger = logging.getLogger('em2.fallback.ses')
+logger = logging.getLogger('em2.fallback.aws')
 
 _AWS_HOST = 'email.{region}.amazonaws.com'
 _AWS_ENDPOINT = 'https://{host}/'
@@ -142,11 +142,13 @@ class AwsFallbackHandler(FallbackHandler):
             text = await r.text()
         if status_code != 200:
             raise FallbackPushError(f'bad response {r.status} != 200: {text}')
-        msg_id = re.search('<MessageId>(.+?)</MessageId>', text)
-        return msg_id.groups()[0]
+        msg_id = re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
+        return msg_id + f'@{self.region}.amazonses.com'
 
     async def process_webhook(self, request):
-        if self.auth_header and not compare_digest(self.auth_header, request.headers.get('Authorization', '')):
+        auth_header = request.headers.get('Authorization', '')
+        if self.auth_header and not compare_digest(self.auth_header, auth_header):
+            logger.warning('invalid auth header: "%s"', auth_header)
             raise HTTPUnauthorized(text='invalid auth header')
 
         # content type is plain text for SNS, so we have to decode json manually

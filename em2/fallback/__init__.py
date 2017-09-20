@@ -69,12 +69,13 @@ class FallbackHandler:
     async def process_webhook(self, request):
         pass
 
-    find_from_ref_sql = """
+    find_from_refs_sql = """
     SELECT c.id, a.key, a.component
     FROM action_states as states
     JOIN actions AS a ON states.action = a.id
     JOIN conversations AS c ON a.conv = c.id
-    WHERE states.ref = $1
+    WHERE states.ref = any($1)
+    ORDER BY a.id DESC
     LIMIT 1
     """
     actor_in_conv_sql = """
@@ -104,20 +105,19 @@ class FallbackHandler:
         _, actor_addr = email.utils.parseaddr(msg['From'])
         assert actor_addr, actor_addr
 
-        in_reply_to = msg['In-Reply-To']
         recipients = email.utils.getaddresses(msg.get_all('To', []) + msg.get_all('Cc', []))
         recipients = [a for n, a in recipients]
+        # TODO check at least one recipient is associated with this domain
         timestamp = to_utc_naive(email.utils.parsedate_to_datetime(msg['Date']))
         async with self.db.acquire() as conn:
             conv_id = parent_key = parent_component = actor_id = None
             # find which conversation this relates to
-            if in_reply_to:
-                r = await conn.fetchrow(self.find_from_ref_sql, in_reply_to.lstrip('< ').rstrip('> '))
-                if r:
-                    conv_id, parent_key, parent_component = r
-            else:
-                # TODO look in other headers like "References", I guess might have to search in subject too
-                pass
+            msg_ids = set()
+            for f in (msg['In-Reply-To'], msg['References']):
+                msg_ids.update(msg_id.strip('<> ') for msg_id in (f or '').split('\n') if msg_id)
+            r = await conn.fetchrow(self.find_from_refs_sql, msg_ids)
+            if r:
+                conv_id, parent_key, parent_component = r
 
             if conv_id:
                 actor_id = await conn.fetchval(self.actor_in_conv_sql, conv_id, actor_addr)
@@ -205,6 +205,10 @@ class FallbackHandler:
                         'message': msg_key,
                     }]
                 })
+            msg_id = msg.get('Message-ID', '').strip('<> ')
+            await conn.execute("""
+            INSERT INTO action_states (action, ref, status) VALUES ($1, $2, 'successful')
+            """, action_id, msg_id)
         await self.pusher.push(action_id, transmit=False)
 
 

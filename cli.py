@@ -45,11 +45,12 @@ def cli(ctx, **kwargs):
 
 @cli.command()
 @click.pass_context
-def gen_session_key(ctx):
+def gen_session_keys(ctx):
     print(f"""
-    New secret key:
+    New secret keys:
 
-    export EM2_SECRET_SESSION_KEY='{Fernet.generate_key().decode()}'
+    export EM2_AUTH_SESSION_SECRET='{Fernet.generate_key().decode()}'
+    export EM2_AUTH_INVITATION_SECRET='{Fernet.generate_key().decode()}'
     """)
 
 
@@ -217,8 +218,11 @@ def modify_message(ctx, parent, conversation, item, body):
 
 
 async def _watch(ctx):
-    name, value = get_cookie(ctx)
-    async with aiohttp.ClientSession(cookies={name: value}) as session:
+    cookie_path = Path('em2-cookie-{[address]}.json'.format(ctx.obj))
+    with cookie_path.open() as f:
+        cookies = json.load(f)
+
+    async with aiohttp.ClientSession(cookies=cookies) as session:
         while True:
             try:
                 print(f'connecting to ws...')

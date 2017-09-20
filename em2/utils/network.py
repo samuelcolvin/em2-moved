@@ -41,8 +41,8 @@ def wait_for_services(settings, *, delay=5, loop=None):
     loop.run_until_complete(asyncio.gather(*coros, loop=loop))
 
 
-async def check_server(settings: Settings, expected_status=200):
-    url = f'http://127.0.0.1:{settings.web_port}/'
+async def check_server(settings: Settings, path='/', expected_status=200):
+    url = f'http://127.0.0.1:{settings.web_port}' + path
     try:
         async with ClientSession() as session:
             async with session.get(url) as r:

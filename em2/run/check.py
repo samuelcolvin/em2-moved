@@ -18,6 +18,13 @@ def command(func):
 def web_check(settings):
     from em2.utils.network import check_server
     loop = asyncio.get_event_loop()
+    loop.run_until_complete(check_server(settings, '/d/')) and exit(1)
+
+
+@command
+def auth_check(settings):
+    from em2.utils.network import check_server
+    loop = asyncio.get_event_loop()
     loop.run_until_complete(check_server(settings)) and exit(1)
 
 

@@ -50,7 +50,7 @@ async def test_aws_fallback_mocked(mocker, loop):
     )
     assert mock_post.called
     assert mock_post.call_args[0] == ('https://email.eu-west-1.amazonaws.com/',)
-    assert msg_id == '123'
+    assert msg_id == '123@eu-west-1.amazonses.com'
     kwargs = mock_post.call_args[1]
     assert kwargs['timeout'] == 5
     assert kwargs['headers']['Content-Type'] == 'application/x-www-form-urlencoded'
