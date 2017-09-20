@@ -1,9 +1,12 @@
+import base64
 import email
 import json
 import os
+from asyncio import Future
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from aiohttp.web_exceptions import HTTPBadRequest, HTTPUnauthorized
 
 from em2 import Settings
 from em2.core import ApplyAction, GetConv
@@ -249,3 +252,46 @@ async def test_smtp_em2_too(cli, url, db_conn, conv):
     r = await cli.post(url('fallback-webhook'), data=msg.as_string())
     assert r.status == 204, await r.text()
     assert 1 == await db_conn.fetchval('SELECT count(*) FROM messages')
+
+
+class MockRequest:
+    def __init__(self, text, headers: dict=None):
+        self._text = text
+        self.headers = headers or {}
+
+    async def text(self):
+        return self._text
+
+
+async def test_aws_receive_smtp(mocker, loop):
+    settings = Settings(fallback_username='x', fallback_password='y', fallback_endpoint='z',
+                        fallback_webhook_auth='foobar')
+    fallback = AwsFallbackHandler(settings, loop=loop)
+
+    process_smtp_message = mocker.patch.object(fallback, 'process_smtp_message')
+    f = Future()
+    f.set_result(None)
+    process_smtp_message.return_value = f
+    message = json.dumps({'content': base64.b64encode(b'test message body').decode()})
+    data = json.dumps({'Message': message})
+    mock_request = MockRequest(data, headers={'Authorization': 'Basic Zm9vYmFyOg=='})
+    await fallback.process_webhook(mock_request)
+    process_smtp_message.assert_called_with('test message body')
+
+
+async def test_aws_receive_smtp_no_auth(loop):
+    settings = Settings(fallback_username='x', fallback_password='y', fallback_endpoint='z',
+                        fallback_webhook_auth='foobar')
+    fallback = AwsFallbackHandler(settings, loop=loop)
+
+    with pytest.raises(HTTPUnauthorized):
+        await fallback.process_webhook(MockRequest('x', headers={'Authorization': 'Basic XZm9vYmFyOg=='}))
+
+
+async def test_aws_receive_smtp_invalid_json(loop):
+    settings = Settings(fallback_username='x', fallback_password='y', fallback_endpoint='z',
+                        fallback_webhook_auth='foobar')
+    fallback = AwsFallbackHandler(settings, loop=loop)
+    data = json.dumps({'other': 123})
+    with pytest.raises(HTTPBadRequest):
+        await fallback.process_webhook(MockRequest(data, headers={'Authorization': 'Basic Zm9vYmFyOg=='}))
