@@ -76,7 +76,7 @@ async def test_aws_fallback_live(loop):
         body='hello',
         action=type('Action', (), {'conv_key': 'testing', 'item': 'msg-test'}),
     )
-    assert len(msg_id) == 60
+    assert len(msg_id) == 84
     await fallback.shutdown()
 
 
