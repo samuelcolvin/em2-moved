@@ -47,6 +47,10 @@ CONV_DETAILS = {
 }
 
 
+async def index(request):
+    return json_response({'status': 'ok'})
+
+
 async def get(request):
     assert request.headers['em2-auth']
     participant = request.headers['em2-participant']
@@ -82,6 +86,7 @@ async def logging_middleware(app, handler):
 def create_test_app(loop):
     app = Application(middlewares=[logging_middleware])
 
+    app.router.add_get('/', index)
     app.router.add_post('/auth/', auth)
     app.router.add_get('/get/{conv:[a-z0-9]+}/', get)
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', act)

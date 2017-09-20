@@ -13,7 +13,7 @@ from typing import List
 from urllib.parse import urlencode
 
 import aiohttp
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPUnauthorized
+from aiohttp.web_exceptions import HTTPUnauthorized
 
 from em2.core import Action
 from em2.exceptions import ConfigException, FallbackPushError
@@ -145,21 +145,24 @@ class AwsFallbackHandler(FallbackHandler):
         msg_id = re.search('<MessageId>(.+?)</MessageId>', text)
         return msg_id.groups()[0]
 
-    @staticmethod
-    def _decode_json(s: str, description: str):
-        try:
-            return json.loads(s)
-        except (ValueError, TypeError):
-            raise HTTPBadRequest(text=f'invalid json in {description}')
-
     async def process_webhook(self, request):
         if self.auth_header and not compare_digest(self.auth_header, request.headers.get('Authorization', '')):
             raise HTTPUnauthorized(text='invalid auth header')
+
         # content type is plain text for SNS, so we have to decode json manually
-        # see https://forums.aws.amazon.com/thread.jspa?threadID=69413, we also have to decode json twice :-(
-        # TODO catch more errors here, eg. missing 'content'
-        data = self._decode_json(await request.text(), 'body')
-        # TODO check X-SES-Spam-Verdict, X-SES-Virus-Verdict from data['headers']
-        message = self._decode_json(data.get('Message'), 'Message')
-        smtp_content = base64.b64decode(message['content']).decode()
-        await self.process_smtp_message(smtp_content)
+        data = json.loads(await request.text())
+        sns_type = data['Type']
+        if sns_type == 'SubscriptionConfirmation':
+            logger.info('confirming aws Subscription')
+            async with self.session.head(data['SubscribeURL'], timeout=5) as r:
+                assert r.status == 200, r.status
+        else:
+            assert sns_type == 'Notification', sns_type
+            message = json.loads(data.get('Message'))
+            if message['notificationType'] == 'Received':
+                # TODO check X-SES-Spam-Verdict, X-SES-Virus-Verdict from message['headers']
+                smtp_content = base64.b64decode(message['content']).decode()
+                await self.process_smtp_message(smtp_content)
+            else:
+                logger.warning('unknown aws webhooks: "%s"', message['notificationType'],
+                               extra={'data': {'message': message, 'raw_webhook': data}})
