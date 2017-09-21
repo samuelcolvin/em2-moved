@@ -16,7 +16,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from . import Settings
-from .core import Action, Components, CreateForeignConv, Verbs, gen_random
+from .core import Action, CreateForeignConv, Verbs, gen_random
 from .exceptions import Em2ConnectionError, FailedInboundAuthentication, FailedOutboundAuthentication
 from .fallback import FallbackHandler
 from .utils import get_domain
@@ -102,17 +102,6 @@ class Pusher(Actor):
     WHERE p.conv = $1
     """
 
-    conv_subject_sql = """
-    SELECT subject
-    FROM conversations
-    WHERE id = $1
-    """
-    first_msg_sql = """
-    SELECT body
-    FROM messages
-    WHERE conv = $1
-    """
-
     success_action_sql = """
     INSERT INTO action_states (action, ref, platform, status)
     VALUES ($1, $2, $3, 'successful')
@@ -141,7 +130,7 @@ class Pusher(Actor):
                     await self.foreign_push(remote_nodes, action)
 
                 if fallback_addresses:
-                    await self.fallback_push(action, prts, conn)
+                    await self.fallback.push(action, prts, conn)
             # TODO save actions_status
 
     async def domestic_push(self, recipient_ids, action: Action):
@@ -196,27 +185,6 @@ class Pusher(Actor):
         ]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
-
-    async def fallback_push(self, action: Action, prts, conn):
-        subject = await conn.fetchval(self.conv_subject_sql, action.conv_id)
-        if action.verb == Verbs.PUBLISH:
-            # we need the message body to send
-            body = await conn.fetchval(self.first_msg_sql, action.conv_id)
-        elif action.component == Components.MESSAGE:
-            if action.verb == Verbs.ADD:
-                body = action.body
-            else:
-                raise NotImplementedError()
-        elif action.component == Components.PARTICIPANT:
-            if action.verb == Verbs.ADD:
-                body = f'adding {action.item} to the conversation'
-            elif action.verb == Verbs.DELETE:
-                body = f'removing {action.item} from the conversation'
-            else:
-                raise NotImplementedError()
-        addresses = {r['address'] for r in prts}
-        msg_id = await self.fallback.push(action=action, addresses=addresses, conv_subject=subject, body=body)
-        await conn.fetchval(self.success_action_sql, action.id, msg_id, None)
 
     async def _post(self, domain, address, path, universal_headers, data):
         token = await self.authenticate(domain)

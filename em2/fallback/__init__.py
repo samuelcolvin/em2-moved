@@ -9,8 +9,8 @@ from aiohttp.web_exceptions import HTTPForbidden
 from bs4 import BeautifulSoup
 
 from em2 import Settings
-from em2.core import Action, ApplyAction, Components, Verbs, Relationships, create_missing_recipients, gen_random, \
-    CreateForeignConv, generate_conv_key
+from em2.core import (Action, ApplyAction, Components, CreateForeignConv, Verbs, Relationships,
+                      create_missing_recipients, gen_random, generate_conv_key)
 from em2.utils import to_utc_naive
 from em2.utils.markdown import markdown
 
@@ -30,8 +30,9 @@ def get_smtp_body(msg: Message, smtp_content):
                 body = quopri.decodestring(body).decode()
             is_html = True
             break
+
     if not body:
-        logger.error('Unable to body in email', extra={'raw-smtp': smtp_content})
+        logger.warning('Unable to find body in email', extra={'data': {'raw-smtp': smtp_content}})
 
     if is_html:
         soup = BeautifulSoup(body, 'html.parser')
@@ -70,7 +71,39 @@ class FallbackHandler:
                 _to.append(addr)
         return _from, _to, _bcc
 
-    async def push(self, *, action: Action, addresses, conv_subject, body):
+    conv_subject_sql = """
+    SELECT subject
+    FROM conversations
+    WHERE id = $1
+    """
+    first_msg_sql = """
+    SELECT body
+    FROM messages
+    WHERE conv = $1
+    """
+    success_action_sql = """
+    INSERT INTO action_states (action, ref, status)
+    VALUES ($1, $2, 'successful')
+    """
+
+    async def push(self, action: Action, participants, conn):
+        conv_subject = await conn.fetchval(self.conv_subject_sql, action.conv_id)
+        if action.verb == Verbs.PUBLISH:
+            # we need the message body to send
+            body = await conn.fetchval(self.first_msg_sql, action.conv_id)
+        elif action.component == Components.MESSAGE:
+            if action.verb == Verbs.ADD:
+                body = action.body
+            else:
+                raise NotImplementedError()
+        elif action.component == Components.PARTICIPANT:
+            if action.verb == Verbs.ADD:
+                body = f'adding {action.item} to the conversation'
+            elif action.verb == Verbs.DELETE:
+                body = f'removing {action.item} from the conversation'
+            else:
+                raise NotImplementedError()
+        addresses = {r['address'] for r in participants}
         e_from, to, bcc = self.get_from_to_bcc(action, addresses)
         msg_id = await self.send_message(
             e_from=e_from,
@@ -81,7 +114,7 @@ class FallbackHandler:
             action=action,
         )
         logger.info('message sent conv %.6s, smtp message id %0.12s...', action.conv_key, msg_id)
-        return msg_id
+        await conn.fetchval(self.success_action_sql, action.id, msg_id)
 
     async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str, body: str,
                            action: Action):
