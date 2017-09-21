@@ -54,7 +54,7 @@ def create_foreign_app(settings):
     app.router.add_post('/auth/', Authenticate.view(), name='authenticate')
     app.router.add_get('/get/{conv:[a-z0-9]{8,}}/', Get.view(), name='get')
     app.router.add_post('/create/{conv:[a-z0-9]+}/', Create.view(), name='create')
-    app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', Act.view(), name='act')
     app.router.add_post('/fallback-webhook/', FallbackWebhook.view(), name='fallback-webhook')
+    app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', Act.view(), name='act')
     app.router.add_get('/', index, name='index')
     return app

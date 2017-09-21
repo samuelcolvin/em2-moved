@@ -17,6 +17,34 @@ from em2.utils.markdown import markdown
 logger = logging.getLogger('em2.fallback')
 
 
+def get_smtp_body(msg: Message, smtp_content):
+    # text/html is generally the best representation of the email
+    body = None
+    is_html = True
+    for m in msg.walk():
+        ct = m['Content-Type']
+        if 'text' in ct:
+            body = m.get_payload()
+        if 'text/html' in ct:
+            if m['Content-Transfer-Encoding'] == 'quoted-printable':
+                body = quopri.decodestring(body).decode()
+            is_html = True
+            break
+    if not body:
+        logger.error('Unable to body in email', extra={'raw-smtp': smtp_content})
+
+    if is_html:
+        soup = BeautifulSoup(body, 'html.parser')
+
+        # if this is a gmail email, remove the extra content
+        gmail_extra = soup.select_one('div.gmail_extra')
+        if gmail_extra:
+            gmail_extra.decompose()
+
+        body = soup.prettify().strip('\n')
+    return body
+
+
 class FallbackHandler:
     def __init__(self, settings: Settings, loop, db=None, pusher=None):
         self.settings = settings
@@ -94,7 +122,7 @@ class FallbackHandler:
     LIMIT 1
     """
 
-    async def process_smtp_message(self, smtp_content: str):  # noqa: C901 (ignore complexity)
+    async def process_smtp_message(self, smtp_content: str):
         # TODO deal with non multipart
         msg: Message = email.message_from_string(smtp_content)
         # debug(dict(msg))
@@ -104,6 +132,7 @@ class FallbackHandler:
 
         _, actor_addr = email.utils.parseaddr(msg['From'])
         assert actor_addr, actor_addr
+        actor_addr = actor_addr.lower()
 
         recipients = email.utils.getaddresses(msg.get_all('To', []) + msg.get_all('Cc', []))
         recipients = [a for n, a in recipients]
@@ -122,35 +151,13 @@ class FallbackHandler:
             if conv_id:
                 actor_id = await conn.fetchval(self.actor_in_conv_sql, conv_id, actor_addr)
                 if not actor_id:
+                    logger.warning('actor "%s" not associated with conversation %d', actor_addr, conv_id)
                     raise HTTPForbidden(text='from address not associated with the conversation')
 
             recipient_lookup = await create_missing_recipients(conn, recipients)
             recipients_ids = list(recipient_lookup.values())
 
-            # text/html is generally the best representation of the email
-            body = None
-            is_html = True
-            for m in msg.walk():
-                ct = m['Content-Type']
-                if 'text' in ct:
-                    body = m.get_payload()
-                if 'text/html' in ct:
-                    if m['Content-Transfer-Encoding'] == 'quoted-printable':
-                        body = quopri.decodestring(body).decode()
-                    is_html = True
-                    break
-            if not body:
-                logger.error('Unable to body in email', extra={'raw-smtp': smtp_content})
-
-            if is_html:
-                soup = BeautifulSoup(body, 'html.parser')
-
-                # if this is a gmail email, remove the extra content
-                gmail_extra = soup.select_one('div.gmail_extra')
-                if gmail_extra:
-                    gmail_extra.decompose()
-
-                body = soup.prettify().strip('\n')
+            body = get_smtp_body(msg, smtp_content)
             if conv_id:
                 if body:
                     if parent_component == Components.MESSAGE:

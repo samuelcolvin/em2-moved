@@ -425,28 +425,38 @@ class GetConv(FetchOr404Mixin):
     ) t;
     """
 
+    action_states_sql = """
+    SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
+    FROM (
+      SELECT a.key AS action, s.ref AS ref, s.status AS status, s.platform AS platform, s.errors AS errors
+      FROM action_states AS s
+      JOIN actions AS a ON s.action = a.id
+      WHERE a.conv = $1
+      ORDER BY a.id
+    ) t;
+    """
+
     def __init__(self, conn):
         self.conn = conn
 
-    async def run(self, conv_key, participant_address):
+    async def run(self, conv_key, participant_address, inc_states=False):
         conv_id = await self.fetchval404(
             self.get_conv_id_sql,
             participant_address,
             conv_key + '%',
             msg=f'conversation {conv_key} not found'
         )
-        details = await self.conn.fetchval(self.conv_details_sql, conv_id)
-        messages = await self.conn.fetchval(self.messages_sql, conv_id)
-        parts = await self.conn.fetchval(self.participants_sql, conv_id)
-        actions = await self.conn.fetchval(self.actions_sql, conv_id)
-        return (
-            '{'
-            f'"details":{details},'
-            f'"messages":{messages},'
-            f'"participants":{parts},'
-            f'"actions":{actions or "null"}'
-            '}'
-        )
+        fields = [
+            ('details', await self.conn.fetchval(self.conv_details_sql, conv_id)),
+            ('messages', await self.conn.fetchval(self.messages_sql, conv_id)),
+            ('participants', await self.conn.fetchval(self.participants_sql, conv_id)),
+            ('actions', await self.conn.fetchval(self.actions_sql, conv_id)),
+        ]
+        if inc_states:
+            fields.append(
+                ('action_states', await self.conn.fetchval(self.action_states_sql, conv_id))
+            )
+        return '{' + ','.join(f'"{k}":{"null" if v is None else v}' for k, v in fields) + '}'
 
 
 class _ConvDetails(BaseModel):

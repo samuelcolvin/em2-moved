@@ -43,7 +43,8 @@ class VList(View):
 class Get(View):
     async def call(self, request):
         conv_key = request.match_info['conv']
-        json_str = await GetConv(self.conn).run(conv_key, self.session.address)
+        inc_states = bool(request.query.get('states'))
+        json_str = await GetConv(self.conn).run(conv_key, self.session.address, inc_states=inc_states)
         return raw_json_response(json_str)
 
 

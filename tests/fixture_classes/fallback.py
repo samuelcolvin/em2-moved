@@ -9,6 +9,7 @@ class TestFallbackHandler(LogFallbackHandler):
     async def send_message(self, **kwargs):
         await super().send_message(**kwargs)
         self.messages.append(kwargs)
+        return f'msg-id-{len(self.messages)}'
 
     async def process_webhook(self, request):
         smtp_content = await request.text()

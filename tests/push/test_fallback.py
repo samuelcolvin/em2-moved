@@ -103,6 +103,7 @@ def create_message(in_reply_to):
     msg['Subject'] = 'testing'
     msg['From'] = 'testing@other.com'
     msg['To'] = 'testing@example.com'
+    msg['Message-ID'] = '<foobar@sender.com>'
     if in_reply_to:
         msg['In-Reply-To'] = in_reply_to
     n = datetime.now().astimezone(timezone(timedelta(hours=1)))
@@ -141,7 +142,7 @@ async def test_smtp_create(cli, url, db_conn):
     assert r.status == 204, await r.text()
     assert 1 == await db_conn.fetchval('SELECT count(*) FROM conversations')
     conv_key = await db_conn.fetchval('SELECT key FROM conversations')
-    json_str = await GetConv(db_conn).run(conv_key, 'testing@example.com')
+    json_str = await GetConv(db_conn).run(conv_key, 'testing@example.com', inc_states=True)
     conv_data = json.loads(json_str)
     assert {
         'details': {
@@ -179,6 +180,15 @@ async def test_smtp_create(cli, url, db_conn):
                 'parent': None,
                 'message': RegexStr('msg-.*'),
                 'participant': None,
+            },
+        ],
+        'action_states': [
+            {
+                'action': RegexStr('smtp-.*'),
+                'ref': 'foobar@sender.com',
+                'status': 'successful',
+                'platform': None,
+                'errors': None,
             },
         ],
     } == conv_data
