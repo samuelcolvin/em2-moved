@@ -111,7 +111,6 @@ class Act(View):
             remote_action=True,
             action_key=action_key,
             conv=conv_id,
-            published=True,
             actor=actor_id,
             timestamp=self.required_header('em2-timestamp'),
             component=component,

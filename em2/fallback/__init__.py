@@ -81,6 +81,13 @@ class FallbackHandler:
     FROM messages
     WHERE conv = $1
     """
+    conv_msg_ids_sql = """
+    SELECT s.ref
+    FROM action_states AS s
+    JOIN actions AS a ON s.action = a.id
+    WHERE s.ref IS NOT NULL AND s.platform IS NULL AND a.conv = $1
+    ORDER BY a.id DESC
+    """
     success_action_sql = """
     INSERT INTO action_states (action, ref, status)
     VALUES ($1, $2, 'successful')
@@ -111,6 +118,12 @@ class FallbackHandler:
         e_msg['From'] = e_from
         e_msg['To'] = ','.join(to)
         e_msg['EM2-ID'] = action.conv_key + ':' + action.item
+        msg_ids = await conn.fetch(self.conv_msg_ids_sql, action.conv_id)
+        if msg_ids:
+            msg_ids = [r[0] for r in msg_ids]
+            e_msg['In-Reply-To'] = f'<{msg_ids[0]}>'
+            e_msg['References'] = ' '.join(f'<{msg_id}>' for msg_id in msg_ids)
+
         e_msg.set_content(self.plain_format(body, action.conv_key))
         e_msg.add_alternative(self.html_format(body, action.conv_key), subtype='html')
 
@@ -176,8 +189,10 @@ class FallbackHandler:
             conv_id = parent_key = parent_component = actor_id = None
             # find which conversation this relates to
             msg_ids = set()
+            # until we're on the separator used
+            logger.debug('References: %r', msg['References'])
             for f in (msg['In-Reply-To'], msg['References']):
-                msg_ids.update(msg_id.strip('<> ') for msg_id in (f or '').split('\n') if msg_id)
+                msg_ids.update(msg_id.strip('<>\r\n') for msg_id in (f or '').split(' ') if msg_id)
             r = await conn.fetchrow(self.find_from_refs_sql, msg_ids)
             if r:
                 conv_id, parent_key, parent_component = r

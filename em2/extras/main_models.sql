@@ -78,4 +78,6 @@ CREATE TABLE action_states (
   errors JSONB[]
 );
 CREATE INDEX action_state_ref ON action_states USING btree (ref);
+-- might need index on platform
+
 -- TODO attachments

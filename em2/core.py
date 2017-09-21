@@ -106,7 +106,7 @@ class Action(NamedTuple):
     component: Components
     actor: str
     timestamp: datetime
-    parent: str
+    parent: str  # key of the parent action
     body: str
     relationship: Relationships
     item: str
@@ -151,10 +151,10 @@ class ApplyAction(FetchOr404Mixin):
     class Data(WebModel):
         action_key: constr(min_length=20, max_length=20)
         conv: int
-        published: bool
         verb: Verbs
         component: Components
         actor: int
+        published = True
         timestamp: Optional[datetime] = None
         item: Optional[constr(max_length=255)] = None
         parent: Optional[constr(min_length=20, max_length=20)] = None
