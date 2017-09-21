@@ -4,6 +4,7 @@ import json
 import os
 from asyncio import Future
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 
 import pytest
 from aiohttp.web_exceptions import HTTPUnauthorized
@@ -40,13 +41,18 @@ async def test_aws_fallback_mocked(mocker, loop):
     mock_now = mocker.patch.object(fallback, '_now')
     mock_now.return_value = datetime(2032, 1, 1)
 
+    e_msg = EmailMessage()
+    e_msg['Subject'] = 'the subject'
+    e_msg['From'] = 'from@local.com'
+    e_msg['To'] = 'to@remote.com'
+    e_msg.set_content('hello')
+    e_msg.add_alternative('<p>hello</p>', subtype='html')
+
     msg_id = await fallback.send_message(
         e_from='from@local.com',
         to=['to@remote.com'],
         bcc=['bcc@remote.com'],
-        subject='the subject',
-        body='hello',
-        action=type('Action', (), {'conv_key': 'testing', 'item': 'msg-test'}),
+        email_msg=e_msg,
     )
     assert mock_post.called
     assert mock_post.call_args[0] == ('https://email.eu-west-1.amazonaws.com/',)
@@ -68,13 +74,19 @@ async def test_aws_fallback_live(loop):
 
     fallback = AwsFallbackHandler(settings, loop=loop)
     await fallback.startup()
+
+    e_msg = EmailMessage()
+    e_msg['Subject'] = 'the subject'
+    e_msg['From'] = 'testing@imber.io'
+    e_msg['To'] = 'success@simulator.amazonses.com'
+    e_msg.set_content('hello')
+    e_msg.add_alternative('<p>hello</p>', subtype='html')
+
     msg_id = await fallback.send_message(
         e_from='testing@imber.io',
         to=['success@simulator.amazonses.com'],
         bcc=[],
-        subject='the subject',
-        body='hello',
-        action=type('Action', (), {'conv_key': 'testing', 'item': 'msg-test'}),
+        email_msg=e_msg,
     )
     assert len(msg_id) == 84
     await fallback.shutdown()

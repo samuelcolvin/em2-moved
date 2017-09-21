@@ -1,7 +1,7 @@
 import email
 import logging
 import quopri
-from email.message import Message
+from email.message import Message, EmailMessage
 from textwrap import indent
 from typing import List
 
@@ -105,19 +105,20 @@ class FallbackHandler:
                 raise NotImplementedError()
         addresses = {r['address'] for r in participants}
         e_from, to, bcc = self.get_from_to_bcc(action, addresses)
-        msg_id = await self.send_message(
-            e_from=e_from,
-            to=to,
-            bcc=bcc,
-            subject=conv_subject,
-            body=body,
-            action=action,
-        )
+
+        e_msg = EmailMessage()
+        e_msg['Subject'] = conv_subject
+        e_msg['From'] = e_from
+        e_msg['To'] = ','.join(to)
+        e_msg['EM2-ID'] = action.conv_key + ':' + action.item
+        e_msg.set_content(self.plain_format(body, action.conv_key))
+        e_msg.add_alternative(self.html_format(body, action.conv_key), subtype='html')
+
+        msg_id = await self.send_message(e_from=e_from, to=to, bcc=bcc, email_msg=e_msg)
         logger.info('message sent conv %.6s, smtp message id %0.12s...', action.conv_key, msg_id)
         await conn.fetchval(self.success_action_sql, action.id, msg_id)
 
-    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str, body: str,
-                           action: Action):
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], email_msg: EmailMessage):
         raise NotImplementedError()
 
     def plain_format(self, body: str, conv_id: str) -> str:
@@ -253,7 +254,5 @@ class FallbackHandler:
 
 
 class LogFallbackHandler(FallbackHandler):
-    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], subject: str, body: str,
-                           action: Action):
-        plain_body = self.plain_format(body, action.conv_key)
-        logger.info('%s > %s, subject: "%s"\n%s', e_from, to, subject, indent(plain_body, '  '))
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], email_msg: EmailMessage):
+        logger.info('%s > %s\n%s', e_from, to, email_msg['Subject'], indent(email_msg.as_string(), '  '))

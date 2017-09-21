@@ -41,14 +41,14 @@ async def test_add_participant_fallback(mocked_pusher, db_conn, conv):
 
     assert len(mocked_pusher.fallback.messages) == 1
     m = mocked_pusher.fallback.messages[0]
-    action = m.pop('action')
-    assert action.conv_key == 'key12345678'
+    email_msg = m.pop('email_msg')
+    assert email_msg['Subject'] == 'Test Conversation'
+    assert 'key12345678' in email_msg.as_string()
+    assert 'adding testing@other.com to the conversation' in email_msg.as_string()
     assert {
         'e_from': 'testing@example.com',
         'to': ['testing@other.com'],
         'bcc': [],
-        'subject': 'Test Conversation',
-        'body': 'adding testing@other.com to the conversation',
     } == m
 
 
@@ -80,12 +80,11 @@ async def test_publish_fallback(mocked_pusher, db_conn, draft_conv):
 
     assert len(mocked_pusher.fallback.messages) == 1
     m = mocked_pusher.fallback.messages[0]
-    action = m.pop('action')
-    assert action.conv_key == 'key12345678'
+    email_msg = m.pop('email_msg')
+    assert email_msg['Subject'] == 'Test Conversation'
+    assert 'key12345678' in email_msg.as_string()
     assert {
         'e_from': 'testing@example.com',
         'to': ['testing@other.com'],
         'bcc': [],
-        'subject': 'Test Conversation',
-        'body': 'this is the message',
     } == m
