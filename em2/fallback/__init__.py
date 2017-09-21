@@ -37,7 +37,7 @@ def get_smtp_body(msg: Message, smtp_content):
         soup = BeautifulSoup(body, 'html.parser')
 
         # if this is a gmail email, remove the extra content
-        gmail_extra = soup.select_one('div.gmail_extra')
+        gmail_extra = soup.select_one('div.gmail_extra') or soup.select_one('div.gmail_signature')
         if gmail_extra:
             gmail_extra.decompose()
 

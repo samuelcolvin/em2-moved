@@ -115,11 +115,20 @@ def create(ctx, subject, body, participants):
 
 @cli.command()
 @click.pass_context
+@click.option('--states/--no-states', default=True)
 @click.argument('conversation')
-def get(ctx, conversation):
+def get(ctx, states, conversation):
     session = make_session(ctx)
-    r = session.get(url(ctx, f'/c/{conversation}/'))
+    r = session.get(url(ctx, f'/c/{conversation}/' + ('?states=1' if states else '')))
     print_response(r)
+    if r.status_code == 200:
+        data = r.json()
+        print('-' * 30, 'Summary', '-' * 30)
+        print(f'# {green(data["details"]["subject"])} ({blue(data["details"]["key"][:6])})')
+        print('participants:', ', '.join(red(p['address']) for p in data['participants']))
+        for msg in data['messages']:
+            print(blue(msg['key']))
+            print(green(msg['body']) + '\n')
 
 
 @cli.command()
