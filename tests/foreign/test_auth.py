@@ -70,23 +70,23 @@ async def test_real_domain_does_not_exists(settings, loop, redis):
 
 async def test_domain_uses_true(mocker, settings, loop, redis):
     auth = DnsMockAuthenticator(settings, loop=loop)
-    mocker.spy(auth, '_mx_hosts')
+    mocker.spy(auth.dns, 'mx_hosts')
     await auth.check_domain_platform('local.com', 'em2.platform.example.com:0')
     await auth.check_domain_platform('local.com', 'em2.platform.example.com:0')
     await auth.check_domain_platform('local.com', 'em2.platform.example.com:0')
     await auth.close()
-    assert auth._mx_hosts.call_count == 1
+    assert auth.dns.mx_hosts.call_count == 1
 
 
 async def test_domain_uses_false(mocker, settings, loop, redis):
     auth = DnsMockAuthenticator(settings, loop=loop)
-    mocker.spy(auth, '_mx_hosts')
+    mocker.spy(auth.dns, 'mx_hosts')
     with pytest.raises(HTTPForbidden):
         await auth.check_domain_platform('local.com', 'other.com')
     await auth._check_domain_uses_platform('local.com', 'other.com')
     await auth._check_domain_uses_platform('local.com', 'other.com')
     await auth.close()
-    assert auth._mx_hosts.call_count == 3
+    assert auth.dns.mx_hosts.call_count == 3
 
 
 async def test_setup_check_pass(settings, loop, cli):

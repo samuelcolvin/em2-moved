@@ -98,7 +98,7 @@ class Act(View):
 
                 participant = self.required_header('em2-participant')
                 prt_domain = get_domain(participant)
-                if not prt_domain or not await self.pusher.domain_is_local(prt_domain):
+                if not prt_domain or not await self.pusher.dns.domain_is_local(prt_domain):
                     raise HTTPBadRequest(text=f'participant "{participant}" not linked to this platform')
 
                 await self.pusher.create_conv(platform, conv_key, participant, action_key)
@@ -147,7 +147,7 @@ class Create(View):
         action_key = self.required_header('em2-action-key')
         participant = self.required_header('em2-participant')
         prt_domain = get_domain(participant)
-        if not prt_domain or not await self.pusher.domain_is_local(prt_domain):
+        if not prt_domain or not await self.pusher.dns.domain_is_local(prt_domain):
             raise HTTPBadRequest(text=f'participant "{participant}" not linked to this platform')
 
         await self.pusher.create_conv(platform, conv_key, participant, action_key)

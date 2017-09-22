@@ -11,32 +11,17 @@ class DNSMockedPusher(Pusher):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._mx_query_count = 0
-        self._foreign_port = None
         self.settings = self.settings.copy()
-
-    @property
-    def resolver(self):
-        return MockDNSResolver(self._foreign_port)
+        self.dns = MockDNSResolver(self.settings, self.loop)
 
     @classmethod
     def _get_http_resolver(cls):
         return MockAsyncResolver()
 
     def set_foreign_port(self, port):
-        self._foreign_port = port
         self.settings.EXTERNAL_DOMAIN += f':{port}'
+        self.dns._port = port
         self.session.connector._resolver.mock_resolve_port = port
-
-
-class NullPusher(Pusher):
-    async def push(self, action, data):
-        pass
-
-    async def get_node(self, domain):
-        pass
-
-    async def authenticate(self, node_domain: str):
-        pass
 
 
 class MockAsyncResolver(AsyncResolver):

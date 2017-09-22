@@ -4,19 +4,17 @@ import logging
 from datetime import datetime
 from typing import Dict, Set, Tuple
 
-import aiodns
 import aiohttp
-from aiodns.error import DNSError
 from aiohttp import ClientError
 from arq import Actor, concurrent, cron
 from arq.jobs import DatetimeJob
-from async_timeout import timeout
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from . import Settings
 from .core import Action, CreateForeignConv, Verbs, gen_random
+from .dns import DNSResolver
 from .exceptions import Em2ConnectionError, FailedInboundAuthentication, FailedOutboundAuthentication
 from .fallback import FallbackHandler
 from .utils import get_domain
@@ -50,7 +48,7 @@ class Pusher(Actor):
         self.db = None
         self.session = None
         self.fallback: FallbackHandler = None
-        self._resolver = None
+        self.dns = DNSResolver(self.settings, self.loop)
         kwargs['redis_settings'] = self.settings.redis
         super().__init__(**kwargs)
         logger.debug('initialising pusher %s', self)
@@ -213,7 +211,7 @@ class Pusher(Actor):
         if self.settings.DEBUG and domain == 'localhost.example.com':
             # special case for testing
             return self.LOCAL
-        async for host in self.mx_hosts(domain):
+        async for host in self.dns.mx_hosts(domain):
             node = None
             if host == self.settings.EXTERNAL_DOMAIN:
                 node = self.LOCAL
@@ -234,7 +232,7 @@ class Pusher(Actor):
 
     async def _is_em2_node(self, host):
         # see if any of the hosts TXT records start with with the prefix for em2 public keys
-        dns_results = await self.dns_query(host, 'TXT')
+        dns_results = await self.dns.query(host, 'TXT')
         return any(r.text.decode().startswith('v=em2key') for r in dns_results)
 
     async def categorise_addresses(self, *parts: str) -> Tuple[Dict[str, Set[str]], Set[str], Set[str]]:
@@ -310,7 +308,10 @@ class Pusher(Actor):
                 token = await self._authenticate_request(node_domain)
                 _, expires_at, _ = token.split(':', 2)
                 expire_token_at = int(expires_at) - self._early_token_expiry
-                await self.set_exat(redis, token_key, token, expire_token_at)
+                await asyncio.gather(
+                    redis.set(token_key, token),
+                    redis.expireat(token_key, expire_token_at),
+                )
         logger.info('successfully authenticated with %s', node_domain)
         return token
 
@@ -343,13 +344,6 @@ class Pusher(Actor):
         signer = PKCS1_v1_5.new(key)
         signature = base64.urlsafe_b64encode(signer.sign(h)).decode()
         yield 'signature', signature
-
-    async def domain_is_local(self, domain: str) -> bool:
-        # TODO results should be cached
-        async for host in self.mx_hosts(domain):
-            if host == self.settings.EXTERNAL_DOMAIN:
-                return True
-        return False
 
     @cron(hour=3, minute=0, run_at_startup=True)
     async def setup_check(self, _retry=0, _retry_delay=2):
@@ -395,33 +389,6 @@ class Pusher(Actor):
         else:
             logger.warning('setup check: failed, http_pass=%s dns_pass=%s', http_pass, dns_pass)
         return http_pass, dns_pass
-
-    @property
-    def resolver(self):
-        if self._resolver is None:
-            self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=self.settings.COMMS_DNS_IPS)
-        return self._resolver
-
-    async def mx_hosts(self, host):
-        results = await self.dns_query(host, 'MX')
-        results = [(r.priority, r.host) for r in results]
-        results.sort()
-        for _, host in results:
-            yield host
-
-    async def dns_query(self, host, qtype):
-        try:
-            with timeout(5, loop=self.loop):
-                return await self.resolver.query(host, qtype)
-        except (DNSError, ValueError, asyncio.TimeoutError) as e:
-            logger.warning('%s query error on %s, %s %s', qtype, host, e.__class__.__name__, e)
-            return []
-
-    async def set_exat(self, redis, key: bytes, value: str, expires_at: int):
-        await asyncio.gather(
-            redis.set(key, value),
-            redis.expireat(key, expires_at),
-        )
 
     @staticmethod
     def _now_unix():

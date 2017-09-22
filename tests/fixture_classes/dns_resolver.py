@@ -7,6 +7,7 @@ from aiodns.error import DNSError
 # to generate public and private keys
 # openssl genrsa -out private.pem 4096
 # openssl rsa -in private.pem -pubout > public.pem
+from em2.dns import DNSResolver
 
 KEY_DIR = (Path(__file__).parent / 'keys').absolute()
 
@@ -44,9 +45,11 @@ class MXQueryResult(NamedTuple):
     host: str
 
 
-class MockDNSResolver:
-    def __init__(self, port=0):
-        self._port = port
+class MockDNSResolver(DNSResolver):
+    def __init__(self, settings, loop):
+        self.settings = settings
+        self.loop = loop
+        self._port = 0
 
     async def query(self, host, qtype):
         if qtype == 'TXT':

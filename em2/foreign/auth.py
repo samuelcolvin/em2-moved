@@ -5,17 +5,15 @@ import os
 from datetime import datetime
 from textwrap import wrap
 
-import aiodns
-from aiodns.error import DNSError
 from aiohttp.web_exceptions import HTTPForbidden
 from arq import RedisMixin
 from arq.jobs import DatetimeJob
-from async_timeout import timeout
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from em2 import Settings
+from em2.dns import DNSResolver
 from em2.exceptions import FailedInboundAuthentication
 from em2.utils.encoding import to_unix_ms
 
@@ -34,6 +32,7 @@ class Authenticator(RedisMixin):
         self._resolver = None
         self._past_ts_limit, self._future_ts_limit = self.settings.COMMS_AUTHENTICATION_TS_LENIENCY
         self._token_length = self.settings.COMMS_PLATFORM_TOKEN_LENGTH
+        self.dns = DNSResolver(self.settings, self.loop)
 
     async def authenticate_platform(self, platform: str, timestamp: int, signature: str):
         """
@@ -69,7 +68,7 @@ class Authenticator(RedisMixin):
             raise HTTPForbidden(text=f'"{domain}" does not use "{platform}"')
 
     async def get_public_key(self, platform: str):
-        dns_results = await self._dns_query(platform, 'TXT')
+        dns_results = await self.dns.query(platform, 'TXT')
         logger.info('got %d TXT records for %s', len(dns_results), platform)
         key_data = self._get_public_key_from_dns(dns_results)
         # return the key in a format openssl / RSA.importKey can cope with
@@ -108,7 +107,7 @@ class Authenticator(RedisMixin):
             cache_p = await redis.get(cache_key)
             if cache_p and cache_p.decode() == platform_domain:
                 return True
-            async for host in self._mx_hosts(domain):
+            async for host in self.dns.mx_hosts(domain):
                 if host == platform_domain:
                     await redis.setex(cache_key, self.settings.COMMS_DOMAIN_CACHE_TIMEOUT, host.encode())
                     return True
@@ -131,24 +130,3 @@ class Authenticator(RedisMixin):
 
     def _generate_random(self):
         return base64.urlsafe_b64encode(os.urandom(self._token_length))[:self._token_length].decode()
-
-    @property
-    def resolver(self):
-        if self._resolver is None:
-            self._resolver = aiodns.DNSResolver(loop=self.loop, nameservers=self.settings.COMMS_DNS_IPS)
-        return self._resolver
-
-    async def _dns_query(self, host, qtype):
-        try:
-            with timeout(5, loop=self.loop):
-                return await self.resolver.query(host, qtype)
-        except (DNSError, ValueError, asyncio.TimeoutError) as e:
-            logger.warning('%s query error on %s, %s %s', qtype, host, e.__class__.__name__, e)
-            return []
-
-    async def _mx_hosts(self, host):
-        results = await self._dns_query(host, 'MX')
-        results = [(r.priority, r.host) for r in results]
-        results.sort()
-        for _, host in results:
-            yield host

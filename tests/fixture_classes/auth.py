@@ -37,9 +37,9 @@ class SimpleAuthenticator(Authenticator):
 
 
 class DnsMockAuthenticator(Authenticator):
-    @property
-    def resolver(self):
-        return MockDNSResolver()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dns = MockDNSResolver(self.settings, self.loop)
 
 
 class FixedDnsMockAuthenticator(DnsMockAuthenticator):
