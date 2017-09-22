@@ -2,7 +2,6 @@ import asyncio
 import logging
 
 import aiodns
-from aiodns.error import DNSError
 from async_timeout import timeout
 
 from . import Settings
@@ -18,9 +17,7 @@ class DNSResolver:
 
     async def mx_hosts(self, host):
         results = await self.query(host, 'MX')
-        results = [(r.priority, r.host) for r in results]
-        results.sort()
-        for _, host in results:
+        for _, host in sorted((r.priority, r.host) for r in results):
             yield host
 
     async def domain_is_local(self, domain: str) -> bool:
@@ -30,10 +27,16 @@ class DNSResolver:
                 return True
         return False
 
+    async def is_em2_node(self, host):
+        # see if any of the hosts TXT records start with with the prefix for em2 public keys
+        dns_results = await self.query(host, 'TXT')
+        return any(r.text.decode().startswith('v=em2key') for r in dns_results)
+
     async def query(self, host, qtype):
+        # could use an lru & ttl cache
         try:
             with timeout(5, loop=self.loop):
                 return await self._resolver.query(host, qtype)
-        except (DNSError, ValueError, asyncio.TimeoutError) as e:
+        except (aiodns.error.DNSError, ValueError, asyncio.TimeoutError) as e:
             logger.debug('%s query error on %s, %s %s', qtype, host, e.__class__.__name__, e)
             return []

@@ -14,14 +14,28 @@ async def test_setup_check_pass(settings, loop, setup_check_server):
     await pusher.shutdown()
 
 
-async def test_setup_check_fail(settings, loop):
+async def test_setup_check_fail(settings, loop, foreign_server):
     settings = settings.copy(update={
-        'EXTERNAL_DOMAIN': 'example.com',
+        'EXTERNAL_DOMAIN': f'localhost:{foreign_server.port}/status/400',
         'authenticator_cls': Authenticator,
     })
     pusher = Pusher(settings, loop=loop, worker=True)
     await pusher.startup()
-    http_pass, dns_pass = await pusher.setup_check.direct(_retry=3, _retry_delay=0.01)
+    http_pass, dns_pass = await pusher.setup_check.direct(_retry_delay=0.01)
+    assert http_pass is False
+    assert dns_pass is False
+
+    await pusher.shutdown()
+
+
+async def test_setup_check_fail_client_error(settings, loop, debug):
+    settings = settings.copy(update={
+        'EXTERNAL_DOMAIN': f'localhost:123456',
+        'authenticator_cls': Authenticator,
+    })
+    pusher = Pusher(settings, loop=loop, worker=True)
+    await pusher.startup()
+    http_pass, dns_pass = await pusher.setup_check.direct(_retry_delay=0.01)
     assert http_pass is False
     assert dns_pass is False
 

@@ -18,15 +18,7 @@ class FailedInboundAuthentication(HTTPBadRequest, Em2Exception):
         super().__init__(text='Authenticate failed: ' + text)
 
 
-class FailedOutboundAuthentication(Em2Exception):
-    pass
-
-
-class PushError(Em2Exception):
-    pass
-
-
-class FallbackPushError(PushError):
+class FallbackPushError(Em2Exception):
     pass
 
 

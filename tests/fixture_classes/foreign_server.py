@@ -69,6 +69,10 @@ async def act(request):
     return Response(status=201)
 
 
+async def status(request):
+    return Response(status=int(request.match_info['status']))
+
+
 async def logging_middleware(app, handler):
     async def _handler(request):
         try:
@@ -91,6 +95,7 @@ def create_test_app(loop):
     app.router.add_get('/get/{conv:[a-z0-9]+}/', get)
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', act)
     app.router.add_post('/create/{conv:[a-z0-9]+}/', create)
+    app.router.add_route('*', '/status/{status:\d+}/', status)
 
     app.update(
         request_log=[]

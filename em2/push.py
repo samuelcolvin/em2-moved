@@ -2,10 +2,11 @@ import asyncio
 import base64
 import logging
 from datetime import datetime
-from typing import Dict, Set, Tuple
+from enum import IntEnum
+from typing import Dict, Optional, Set, Tuple
 
 import aiohttp
-from aiohttp import ClientError
+from aiohttp.hdrs import METH_GET, METH_POST
 from arq import Actor, concurrent, cron
 from arq.jobs import DatetimeJob
 from Crypto.Hash import SHA256
@@ -15,12 +16,17 @@ from Crypto.Signature import PKCS1_v1_5
 from . import Settings
 from .core import Action, CreateForeignConv, Verbs, gen_random
 from .dns import DNSResolver
-from .exceptions import Em2ConnectionError, FailedInboundAuthentication, FailedOutboundAuthentication
+from .exceptions import Em2ConnectionError, FailedInboundAuthentication
 from .fallback import FallbackHandler
 from .utils import get_domain
 from .utils.encoding import msg_encode, to_unix_ms
 
 logger = logging.getLogger('em2.push')
+
+
+class ReadMethod(IntEnum):
+    text = 1
+    json = 2
 
 
 class Pusher(Actor):
@@ -179,13 +185,13 @@ class Pusher(Actor):
         universal_headers = {k: v for k, v in universal_headers.items() if v is not None}
         data = action.body and action.body.encode()
         cos = [
-            self._post(node, addresses.pop(), path, universal_headers, data)
+            self.foreign_post(node, addresses.pop(), path, universal_headers, data)
             for node, addresses in node_lookup.items()
         ]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 
-    async def _post(self, domain, address, path, universal_headers, data):
+    async def foreign_post(self, domain, address, path, universal_headers, data):
         token = await self.authenticate(domain)
         headers = {
             'em2-auth': token,
@@ -194,11 +200,10 @@ class Pusher(Actor):
         }
         url = f'{self.settings.COMMS_PROTO}://{domain}/{path}'
         logger.info('posting to %s', url)
-
-        async with self.session.post(url, data=data, headers=headers) as r:
-            if r.status not in (201, 204):
-                text = await r.text()
-                logger.warning('%s POST failed %d: %s', url, r.status, text)
+        try:
+            await self._request(METH_POST, url, data=data, headers=headers, expected_statuses={201, 204})
+        except Em2ConnectionError:
+            pass
 
     async def get_node(self, domain: str) -> str:
         """
@@ -215,7 +220,7 @@ class Pusher(Actor):
             node = None
             if host == self.settings.EXTERNAL_DOMAIN:
                 node = self.LOCAL
-            elif await self._is_em2_node(host):
+            elif await self.dns.is_em2_node(host):
                 try:
                     await self.authenticate(host)
                 except Em2ConnectionError:
@@ -229,11 +234,6 @@ class Pusher(Actor):
                 return node
         logger.info('no em2 node found for %s, falling back', domain)
         return self.FALLBACK
-
-    async def _is_em2_node(self, host):
-        # see if any of the hosts TXT records start with with the prefix for em2 public keys
-        dns_results = await self.dns.query(host, 'TXT')
-        return any(r.text.decode().startswith('v=em2key') for r in dns_results)
 
     async def categorise_addresses(self, *parts: str) -> Tuple[Dict[str, Set[str]], Set[str], Set[str]]:
         remote_nodes = {}
@@ -278,15 +278,9 @@ class Pusher(Actor):
             'em2-auth': await self.authenticate(domain),
             'em2-participant': participant_address,
         }
-        text = None
         try:
-            async with self.session.get(url, headers=headers) as r:
-                text = await r.text()
-                if r.status != 200:
-                    raise ClientError(f'status {r.status} not 200')
-                data = await r.json()
-        except (ValueError, ClientError) as e:
-            logger.warning('%s request failed: %s, text="%s"', url, e, text)
+            r, data = await self._request(METH_GET, url, headers=headers, read=ReadMethod.json)
+        except Em2ConnectionError:
             return 1
 
         async with self.db.acquire() as conn:
@@ -317,19 +311,46 @@ class Pusher(Actor):
 
     async def _authenticate_request(self, node_domain):
         url = f'{self.settings.COMMS_PROTO}://{node_domain}/auth/'
-        # TODO more error checks
         headers = {f'em2-{k}': str(v) for k, v in self._auth_data()}
-        try:
-            async with self.session.post(url, headers=headers) as r:
-                if r.status != 201:
-                    body = await r.text()
-                    raise FailedOutboundAuthentication(f'{url} response {r.status} != 201, response:\n{body}')
-        except aiohttp.ClientError as e:
-            # TODO log error rather than raising
-            logger.info('ClientOSError: %e, url: %s', e, url)
-            raise Em2ConnectionError(f'cannot connect to "{url}"') from e
-        key = r.headers['em2-key']
-        return key
+        r, _ = await self._request(METH_POST, url, headers=headers, expected_statuses={201})
+        return r.headers['em2-key']
+
+    async def _request(self, method, url, *,
+                       data=None,
+                       headers=None,
+                       read: Optional[ReadMethod] = None,
+                       expected_statuses: Set[int]={200},
+                       retry_delay=2):
+        exc = response_data = None
+        for i in range(5):
+            try:
+                # TODO check timeouts are caught
+                async with self.session.request(method, url, data=data, headers=headers, timeout=5) as r:
+                    # always read entire response before closing the connection
+                    if read == ReadMethod.text or r.status not in expected_statuses:
+                        response_data = await r.text()
+                    elif read == ReadMethod.json:
+                        response_data = await r.json()
+            except (aiohttp.ClientError, aiohttp.ClientConnectionError, ValueError) as e:
+                exc = f'{e.__class__.__name__}: {e}'
+            else:
+                if r.status in expected_statuses:
+                    logger.debug('%s /%s -> %s', method, url, r.status)
+                    return r, response_data
+                exc = f'bad response: {r.status}'
+                if r.status <= 500:
+                    # responses greater than 500 might be temporary and should be retried
+                    break
+            logger.info('%s %s: connection error, retrying...', method, url)
+            await asyncio.sleep(retry_delay)
+        logger.warning('error on %s to %s, %s', method, url, exc, extra={'data': {
+            'method': method,
+            'url': url,
+            'data': data,
+            'headers': headers,
+            'response_data': response_data
+        }})
+        raise Em2ConnectionError(exc)
 
     def _auth_data(self):
         yield 'platform', self.settings.EXTERNAL_DOMAIN
@@ -346,7 +367,7 @@ class Pusher(Actor):
         yield 'signature', signature
 
     @cron(hour=3, minute=0, run_at_startup=True)
-    async def setup_check(self, _retry=0, _retry_delay=2):
+    async def setup_check(self, _retry_delay=2):
         """
         Check whether this node has the correct dns settings.
         """
@@ -355,22 +376,16 @@ class Pusher(Actor):
         http_pass, dns_pass = False, False
         foreign_app_url = f'{self.settings.COMMS_PROTO}://{self.settings.EXTERNAL_DOMAIN}/'
         try:
-            async with self.session.get(foreign_app_url) as r:
-                if r.status == 200:
-                    data = await r.json()
-                    if data['domain'] == self.settings.EXTERNAL_DOMAIN:
-                        http_pass = True
-                    else:
-                        logger.warning('setup check: http domain mismatch: "%s" vs. "%s"',
-                                       data['domain'], self.settings.EXTERNAL_DOMAIN)
-                else:
-                    raise aiohttp.ClientError(f'setup check: {foreign_app_url} response {r.status} not 200')
-        except (aiohttp.ClientError, ValueError) as e:
-            if _retry < 5:
-                logger.info('setup check: error checking http, retrying...')
-                await asyncio.sleep(_retry_delay)
-                return await self.setup_check.direct(_retry=_retry + 1, _retry_delay=_retry_delay)
-            logger.warning('setup check: error checking http %s: %s', e.__class__.__name__, e)
+            r, _ = await self._request(METH_GET, foreign_app_url, retry_delay=_retry_delay)
+        except Em2ConnectionError:
+            pass
+        else:
+            data = await r.json()
+            if data['domain'] == self.settings.EXTERNAL_DOMAIN:
+                http_pass = True
+            else:
+                logger.warning('setup check: http domain mismatch: "%s" vs. "%s"',
+                               data['domain'], self.settings.EXTERNAL_DOMAIN)
 
         authenticator = self.settings.authenticator_cls(self.settings, loop=self.loop)
         try:
