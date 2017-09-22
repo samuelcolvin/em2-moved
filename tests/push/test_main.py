@@ -47,7 +47,6 @@ async def test_add_participant_fallback(mocked_pusher, db_conn, conv):
     email_msg = m.pop('email_msg')
     assert email_msg['Subject'] == 'Test Conversation'
     html = email_msg.get_payload()[1].get_payload()
-    assert 'key123' in html
     assert 'adding testing@other.com to the conversation' in html
     assert 'key12345678' in email_msg['EM2-ID']
     assert {
@@ -78,7 +77,7 @@ async def test_publish_fallback(mocked_pusher, db_conn, draft_conv):
     assert email_msg['In-Reply-To'] is None
     assert email_msg['References'] is None
     html = email_msg.get_payload()[1].get_payload()
-    assert 'key123' in html
+    assert '<p>this is the message</p>' in html
     assert 'key12345678' in email_msg['EM2-ID']
     assert {
         'e_from': 'testing@example.com',

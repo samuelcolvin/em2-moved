@@ -50,7 +50,6 @@ class FallbackHandler:
     def __init__(self, settings: Settings, loop, db=None, pusher=None):
         self.settings = settings
         self.loop = loop
-        self.html_template = settings.smtp_html_template.read_text()
         self.db = db
         self.pusher = pusher
 
@@ -124,22 +123,18 @@ class FallbackHandler:
             e_msg['In-Reply-To'] = f'<{msg_ids[0]}>'
             e_msg['References'] = ' '.join(f'<{msg_id}>' for msg_id in msg_ids)
 
-        e_msg.set_content(self.plain_format(body, action.conv_key))
-        e_msg.add_alternative(self.html_format(body, action.conv_key), subtype='html')
+        e_msg.set_content(body)
+        e_msg.add_alternative(self.html_format(body, action), subtype='html')
 
         msg_id = await self.send_message(e_from=e_from, to=to, bcc=bcc, email_msg=e_msg)
         logger.info('message sent conv %.6s, smtp message id %0.12s...', action.conv_key, msg_id)
         await conn.fetchval(self.success_action_sql, action.id, msg_id)
 
-    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], email_msg: EmailMessage):
+    async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], email_msg: EmailMessage) -> str:
         raise NotImplementedError()
 
-    def plain_format(self, body: str, conv_id: str) -> str:
-        return body + '\n\n--\nconv: {:.6}'.format(conv_id)
-
-    def html_format(self, body: str, conv_id: str) -> str:
-        body_html = markdown(body)
-        return self.html_template % dict(body_html=body_html, conv_id=conv_id)
+    def html_format(self, body: str, action: Action) -> str:
+        return markdown(body)
 
     async def process_webhook(self, request):
         pass
@@ -189,13 +184,12 @@ class FallbackHandler:
             conv_id = parent_key = parent_component = actor_id = None
             # find which conversation this relates to
             msg_ids = set()
-            # until we're on the separator used
-            logger.debug('References: %r', msg['References'])
             for f in (msg['In-Reply-To'], msg['References']):
                 msg_ids.update(msg_id.strip('<>\r\n') for msg_id in (f or '').split(' ') if msg_id)
-            r = await conn.fetchrow(self.find_from_refs_sql, msg_ids)
-            if r:
-                conv_id, parent_key, parent_component = r
+            if msg_ids:
+                r = await conn.fetchrow(self.find_from_refs_sql, msg_ids)
+                if r:
+                    conv_id, parent_key, parent_component = r
 
             if conv_id:
                 actor_id = await conn.fetchval(self.actor_in_conv_sql, conv_id, actor_addr)

@@ -78,7 +78,6 @@ class Settings(BaseSettings):
     fallback_password: str = None
     fallback_endpoint: str = None
     fallback_webhook_auth: bytes = None
-    smtp_html_template: Path = THIS_DIR / 'extras' / 'smtp_html_template.html'
 
     R_HOST = 'localhost'
     R_PORT = 6379
