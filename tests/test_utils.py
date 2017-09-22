@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from em2 import Settings
+from em2 import Settings, create_app
 from em2.exceptions import StartupException
 from em2.utils import to_utc_naive
 from em2.utils.network import _wait_port_open, wait_for_services
@@ -26,3 +26,14 @@ async def test_port_not_open(loop):
 ])
 def test_to_utc_naive(input, output):
     assert to_utc_naive(input) == output
+
+
+async def test_create_app(settings, test_client):
+    app = create_app(settings)
+    cli = await test_client(app)
+    r = await cli.get('/f/')
+    assert r.status == 200, await r.text()
+    assert 'em2 foreign interface' in await r.text()
+    r = await cli.get('/d/')
+    assert r.status == 200, await r.text()
+    assert 'domestic interface' in await r.text()
