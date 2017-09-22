@@ -1,5 +1,7 @@
+import re
+
 from aiohttp.web import Application, Response, json_response
-from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPNotFound  # NOQA
+from aiohttp.web_exceptions import HTTPNotFound
 
 
 async def auth(request):
@@ -66,7 +68,12 @@ async def create(request):
 
 
 async def act(request):
-    return Response(status=201)
+    key = request.headers['em2-action-key']
+    m = re.search('error(\d{3})', key)
+    if m:
+        return Response(status=int(m.groups()[0]))
+    else:
+        return Response(status=201)
 
 
 async def status(request):

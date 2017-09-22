@@ -444,7 +444,7 @@ class GetConv(FetchOr404Mixin):
     action_states_sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT a.key AS action, s.ref AS ref, s.status AS status, s.platform AS platform, s.errors AS errors
+      SELECT a.key AS action, s.ref AS ref, s.status AS status, s.node AS node, s.errors AS errors
       FROM action_states AS s
       JOIN actions AS a ON s.action = a.id
       WHERE a.conv = $1

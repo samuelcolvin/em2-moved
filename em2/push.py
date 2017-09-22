@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 import logging
 from datetime import datetime
 from enum import IntEnum
@@ -9,12 +10,13 @@ import aiohttp
 from aiohttp.hdrs import METH_GET, METH_POST
 from arq import Actor, concurrent, cron
 from arq.jobs import DatetimeJob
+from asyncpg.connection import Connection as PGConnection
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 from . import Settings
-from .core import Action, CreateForeignConv, Verbs, gen_random
+from .core import Action, ActionStatuses, CreateForeignConv, Verbs, gen_random
 from .dns import DNSResolver
 from .exceptions import Em2ConnectionError, FailedInboundAuthentication
 from .fallback import FallbackHandler
@@ -106,11 +108,6 @@ class Pusher(Actor):
     WHERE p.conv = $1
     """
 
-    success_action_sql = """
-    INSERT INTO action_states (action, ref, platform, status)
-    VALUES ($1, $2, $3, 'successful')
-    """
-
     @concurrent
     async def push(self, action_id, transmit=True):
         async with self.db.acquire() as conn:
@@ -131,13 +128,13 @@ class Pusher(Actor):
 
             if transmit:
                 if remote_nodes:
-                    await self.foreign_push(remote_nodes, action)
+                    await self.foreign_push(remote_nodes, action, conn)
 
                 if fallback_addresses:
                     await self.fallback.push(action, prts, conn)
             # TODO save actions_status
 
-    async def domestic_push(self, recipient_ids, action: Action):
+    async def domestic_push(self, recipient_ids: Set[int], action: Action):
         async with await self.get_redis_conn() as redis:
             recipient_ids_key = gen_random('rid')
             await asyncio.gather(
@@ -164,7 +161,7 @@ class Pusher(Actor):
                 }
                 await redis.rpush(job_name, msg_encode(job_data))
 
-    async def foreign_push(self, node_lookup, action: Action):
+    async def foreign_push(self, node_lookup: Dict[str, Set[str]], action: Action, conn: PGConnection):
         """
         Push action to participants on remote nodes.
         """
@@ -185,25 +182,45 @@ class Pusher(Actor):
         universal_headers = {k: v for k, v in universal_headers.items() if v is not None}
         data = action.body and action.body.encode()
         cos = [
-            self.foreign_post(node, addresses.pop(), path, universal_headers, data)
+            self._post(node, addresses.pop(), path, universal_headers, data, action, conn)
             for node, addresses in node_lookup.items()
         ]
         # TODO better error checks
         await asyncio.gather(*cos, loop=self.loop)
 
-    async def foreign_post(self, domain, address, path, universal_headers, data):
-        token = await self.authenticate(domain)
-        headers = {
-            'em2-auth': token,
-            'em2-participant': address,
-            **universal_headers
-        }
-        url = f'{self.settings.COMMS_PROTO}://{domain}/{path}'
-        logger.info('posting to %s', url)
+    success_action_sql = """
+    INSERT INTO action_states (action, node, status)
+    VALUES ($1, $2, 'successful')
+    """
+
+    failed_action_sql = """
+    INSERT INTO action_states (action, node, status, errors)
+    VALUES ($1, $2, $3, ARRAY[$4::JSONB])
+    """
+
+    async def _post(self, node_domain, address, path, universal_headers, data, action: Action, conn):
+        # TODO retry on failure and update state on subsequent tries rather than INSERT
+        stage = 'auth'
         try:
+            token = await self.authenticate(node_domain)
+            headers = {
+                'em2-auth': token,
+                'em2-participant': address,
+                **universal_headers
+            }
+            url = f'{self.settings.COMMS_PROTO}://{node_domain}/{path}'
+            logger.info('posting to %s', url)
+            stage = 'post'
             await self._request(METH_POST, url, data=data, headers=headers, expected_statuses={201, 204})
-        except Em2ConnectionError:
-            pass
+        except Em2ConnectionError as exc:
+            e = json.dumps({
+                'stage': stage,
+                'error': str(exc),
+                'ts': datetime.utcnow().isoformat(),
+            })
+            await conn.execute(self.failed_action_sql, action.id, node_domain, ActionStatuses.failed, e)
+        else:
+            await conn.execute(self.success_action_sql, action.id, node_domain)
 
     async def get_node(self, domain: str) -> str:
         """
@@ -235,7 +252,7 @@ class Pusher(Actor):
         logger.info('no em2 node found for %s, falling back', domain)
         return self.FALLBACK
 
-    async def categorise_addresses(self, *parts: str) -> Tuple[Dict[str, Set[str]], Set[str], Set[str]]:
+    async def categorise_addresses(self, *parts: str) -> Tuple[Dict[str, Set[str]], Set[int], Set[str]]:
         remote_nodes = {}
         local_recipients = set()
         fallback_addresses = set()
@@ -335,7 +352,7 @@ class Pusher(Actor):
                 exc = f'{e.__class__.__name__}: {e}'
             else:
                 if r.status in expected_statuses:
-                    logger.debug('%s /%s -> %s', method, url, r.status)
+                    logger.debug('%s %s -> %s', method, url, r.status)
                     return r, response_data
                 exc = f'bad response: {r.status}'
                 if r.status <= 500:

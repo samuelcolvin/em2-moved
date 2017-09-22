@@ -1,13 +1,15 @@
-from em2.core import ApplyAction
+import json
+
+from em2.core import ApplyAction, GetConv
 from em2.fallback import get_email_body
-from tests.conftest import RegexStr
+from tests.conftest import CloseToNow, RegexStr
 
 
 async def test_add_participant_foreign(mocked_pusher, db_conn, conv, foreign_server):
     apply_action = ApplyAction(
         db_conn,
         remote_action=False,
-        action_key='act-testing-add-mess',
+        action_key='act-testing-add--prt',
         conv=conv.id,
         actor=await db_conn.fetchval('SELECT id FROM recipients'),
         component='participant',
@@ -21,6 +23,43 @@ async def test_add_participant_foreign(mocked_pusher, db_conn, conv, foreign_ser
         'POST /auth/ > 201',
         RegexStr('POST /key12345678/participant/add/testing@foreign.com > 201'),
     ]
+
+
+async def test_push_failure(mocked_pusher, db_conn, conv, foreign_server):
+    apply_action = ApplyAction(
+        db_conn,
+        remote_action=False,
+        action_key='act-error500-add-prt',
+        conv=conv.id,
+        actor=await db_conn.fetchval('SELECT id FROM recipients'),
+        component='participant',
+        verb='add',
+        item='testing@foreign.com',
+    )
+    await apply_action.run()
+    await mocked_pusher.push.direct(apply_action.action_id)
+
+    assert foreign_server.app['request_log'] == [
+        'POST /auth/ > 201',
+        RegexStr('POST /key12345678/participant/add/testing@foreign.com > 500'),
+    ]
+    json_str = await GetConv(db_conn).run(conv.key, 'testing@example.com', inc_states=True)
+    conv_data = json.loads(json_str)
+    assert [
+        {
+            'action': 'act-error500-add-prt',
+            'ref': None,
+            'status': 'failed',
+            'node': f'em2.platform.foreign.com:{foreign_server.port}',
+            'errors': [
+                {
+                    'ts': CloseToNow(),
+                    'error': 'bad response: 500',
+                    'stage': 'post',
+                },
+            ],
+        },
+    ] == conv_data['action_states']
 
 
 async def add_prt(db_conn, conv):

@@ -3,9 +3,10 @@ import logging
 import quopri
 from email.message import EmailMessage
 from textwrap import indent
-from typing import List
+from typing import List, Set
 
 from aiohttp.web_exceptions import HTTPForbidden
+from asyncpg.connection import Connection as PGConnection
 from bs4 import BeautifulSoup
 
 from em2 import Settings
@@ -90,7 +91,7 @@ class FallbackHandler:
     SELECT s.ref
     FROM action_states AS s
     JOIN actions AS a ON s.action = a.id
-    WHERE s.ref IS NOT NULL AND s.platform IS NULL AND a.conv = $1
+    WHERE s.ref IS NOT NULL AND s.node IS NULL AND a.conv = $1
     ORDER BY a.id DESC
     """
     success_action_sql = """
@@ -98,7 +99,7 @@ class FallbackHandler:
     VALUES ($1, $2, 'successful')
     """
 
-    async def push(self, action: Action, participants, conn):
+    async def push(self, action: Action, participants: Set[str], conn: PGConnection):
         conv_subject = await conn.fetchval(self.conv_subject_sql, action.conv_id)
         if action.verb == Verbs.PUBLISH:
             # we need the message body to send

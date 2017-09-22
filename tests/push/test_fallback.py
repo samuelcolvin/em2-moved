@@ -199,7 +199,7 @@ async def test_smtp_create(cli, url, db_conn):
                 'action': RegexStr('smtp-.*'),
                 'ref': 'foobar@sender.com',
                 'status': 'successful',
-                'platform': None,
+                'node': None,
                 'errors': None,
             },
         ],
