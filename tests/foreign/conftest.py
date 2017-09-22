@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 
+from em2.core import MsgFormat
 from em2.foreign import create_foreign_app
 
 from ..conftest import ConvInfo, shutdown_modify_app, startup_modify_app
@@ -69,8 +70,10 @@ def act_headers(request):
                 'em2-actor': self.dft_actor,
                 'em2-timestamp': datetime.now().strftime('%s'),
                 'em2-action-key': key,
+                'em2-msg-format': MsgFormat.markdown
             }
             headers.update({f'em2-{k.replace("_", "-")}': v for k, v in kwargs.items()})
+            headers = {k: v for k, v in headers.items() if v}
             self.action_stack.insert(0, key)
             return headers
 

@@ -57,6 +57,7 @@ async def test_add_participant(cli, url, foreign_server, get_conv):
                 'deleted': False,
                 'after': None,
                 'body': 'this is the message',
+                'format': 'markdown',
                 'key': 'msg-firstmessagekeyx',
                 'relationship': None
             }

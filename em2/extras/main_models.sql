@@ -30,6 +30,7 @@ CREATE TABLE participants (
 
 -- see core.Relationships enum which matches this
 CREATE TYPE RELATIONSHIP AS ENUM ('sibling', 'child');
+CREATE TYPE MSG_FORMAT AS ENUM ('markdown', 'plain', 'html');
 
 CREATE TABLE messages (
   id SERIAL PRIMARY KEY,
@@ -40,6 +41,7 @@ CREATE TABLE messages (
   position INT[] NOT NULL DEFAULT ARRAY[1],
   deleted BOOLEAN DEFAULT FALSE,
   body TEXT,
+  format MSG_FORMAT NOT NULL DEFAULT 'markdown',
   UNIQUE (conv, key)
 );
 CREATE INDEX message_key ON messages USING btree (key);

@@ -238,6 +238,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
                 'deleted': False,
                 'after': None,
                 'body': 'this is the message',
+                'format': 'markdown',
                 'relationship': None,
                 'key': 'msg-firstmessagekeyx'
             },
@@ -245,6 +246,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
                 'deleted': False,
                 'after': 'msg-firstmessagekeyx',
                 'body': 'reply',
+                'format': 'markdown',
                 'relationship': 'sibling',
                 'key': new_msg_key
             }
@@ -292,6 +294,7 @@ async def test_add_part_get(cli, conv, url, db_conn):
                 'deleted': False,
                 'after': None,
                 'body': 'this is the message',
+                'format': 'markdown',
                 'relationship': None,
                 'key': 'msg-firstmessagekeyx'
             }

@@ -32,6 +32,7 @@ async def test_get_conv(cli, conv, url):
                 'deleted': False,
                 'after': None,
                 'body': 'this is the message',
+                'format': 'markdown',
                 'key': 'msg-firstmessagekeyx',
                 'relationship': None
             }
@@ -54,6 +55,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
             'em2-timestamp': datetime.now().strftime('%s'),
             'em2-parent': 'pub-add-message-1234',
             'em2-action-key': 'x' * 20,
+            'em2-msg-format': 'markdown',
         }
     )
     assert r.status == 201, await r.text()
@@ -117,6 +119,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'deleted': False,
                 'after': None,
                 'body': 'this is the message',
+                'format': 'markdown',
                 'key': 'msg-firstmessagekeyx',
                 'relationship': None,
             },
@@ -124,6 +127,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'deleted': False,
                 'after': 'msg-firstmessagekeyx',
                 'body': 'foobar',
+                'format': 'markdown',
                 'key': 'msg-secondmessagekey',
                 'relationship': Relationships.SIBLING,
             }

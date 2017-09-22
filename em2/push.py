@@ -80,7 +80,7 @@ class Pusher(Actor):
     # see core.Action for order of returned values
     action_detail_sql = """
     SELECT a.key, c.key, c.id, a.verb, a.component, actor_r.address, a.timestamp, parent.key, a.body, m.relationship,
-    m.key, prt_r.address
+    m.format, m.key, prt_r.address
     FROM actions AS a
     JOIN conversations AS c ON a.conv = c.id
 
@@ -176,6 +176,7 @@ class Pusher(Actor):
             'em2-action-key': action.action_key,
             'em2-parent': action.parent,
             'em2-relationship': action.relationship,
+            'em2-msg-format': action.msg_format,
         }
         universal_headers = {k: v for k, v in universal_headers.items() if v is not None}
         data = action.body and action.body.encode()

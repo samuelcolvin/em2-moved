@@ -139,6 +139,7 @@ class TestAct:
             {
                 'after': None,
                 'body': 'this is the message',
+                'format': 'markdown',
                 'deleted': False,
                 'key': 'msg-firstmessagekeyx',
                 'relationship': None
@@ -146,6 +147,7 @@ class TestAct:
             {
                 'after': 'msg-firstmessagekeyx',
                 'body': 'foobar',
+                'format': 'markdown',
                 'deleted': False,
                 'key': 'msg-secondmessagekey',
                 'relationship': 'child'
@@ -173,6 +175,7 @@ class TestAct:
                 'after': None,
                 'body': 'this is the message',
                 'deleted': False,
+                'format': 'markdown',
                 'key': 'msg-firstmessagekeyx',
                 'relationship': None
             },
@@ -180,6 +183,7 @@ class TestAct:
                 'after': 'msg-firstmessagekeyx',
                 'body': 'foobar',
                 'deleted': False,
+                'format': 'markdown',
                 'key': 'msg-secondmessagekey',
                 'relationship': 'sibling'
             },
@@ -187,6 +191,7 @@ class TestAct:
                 'after': 'msg-secondmessagekey',
                 'body': 'foobar',
                 'deleted': False,
+                'format': 'markdown',
                 'key': 'msg-fourthmessagekey',
                 'relationship': 'child'
             },
@@ -194,6 +199,7 @@ class TestAct:
                 'after': 'msg-secondmessagekey',
                 'body': 'foobar',
                 'deleted': False,
+                'format': 'markdown',
                 'key': 'msg-third-messagekey',
                 'relationship': 'sibling'
             }
@@ -207,3 +213,35 @@ class TestAct:
         r = await self.cli.post(url_, data='foobar', headers=self.act_headers(parent=self.act_headers.action_stack[0]))
         assert r.status == 400, await r.text()
         assert 'you cannot add messages after a deleted message' == await r.text()
+
+    async def test_add_msg_plain(self):
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item='msg-secondmessagekey')
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers(msg_format='html',
+                                                                              parent='pub-add-message-1234'))
+        assert r.status == 201, await r.text()
+        obj = await self.get_conv(self.conv)
+        assert obj['messages'][1] == {
+            'after': 'msg-firstmessagekeyx',
+            'body': 'foobar',
+            'deleted': False,
+            'format': 'html',
+            'key': 'msg-secondmessagekey',
+            'relationship': 'sibling',
+        }
+
+    async def test_mod_message_format(self):
+        obj = await self.get_conv(self.conv)
+        assert obj['messages'][0]['format'] == 'markdown'
+
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='modify', item='msg-firstmessagekeyx')
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers(msg_format='plain',
+                                                                              parent='pub-add-message-1234'))
+        assert r.status == 201, await r.text()
+        obj = await self.get_conv(self.conv)
+        assert obj['messages'][0]['format'] == 'plain'
+
+    async def test_no_msg_format(self):
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item='msg-secondmessagekey')
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers(msg_format=None))
+        assert r.status == 400, await r.text()
+        assert 'parent may not be null when adding a message' == await r.text()

@@ -1,4 +1,5 @@
 from em2.core import ApplyAction
+from em2.fallback import get_email_body
 from tests.conftest import RegexStr
 
 
@@ -46,8 +47,9 @@ async def test_add_participant_fallback(mocked_pusher, db_conn, conv):
     m = mocked_pusher.fallback.messages[0]
     email_msg = m.pop('email_msg')
     assert email_msg['Subject'] == 'Test Conversation'
-    html = email_msg.get_payload()[1].get_payload()
-    assert 'adding testing@other.com to the conversation' in html
+    body, is_html = get_email_body(email_msg)
+    assert is_html is False
+    assert 'adding testing@other.com to the conversation' in body
     assert 'key12345678' in email_msg['EM2-ID']
     assert {
         'e_from': 'testing@example.com',
@@ -76,8 +78,9 @@ async def test_publish_fallback(mocked_pusher, db_conn, draft_conv):
     assert email_msg['Subject'] == 'Test Conversation'
     assert email_msg['In-Reply-To'] is None
     assert email_msg['References'] is None
-    html = email_msg.get_payload()[1].get_payload()
-    assert '<p>this is the message</p>' in html
+    body, is_html = get_email_body(email_msg)
+    assert is_html
+    assert '<p>this is the message</p>' in body
     assert 'key12345678' in email_msg['EM2-ID']
     assert {
         'e_from': 'testing@example.com',

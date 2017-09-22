@@ -1,7 +1,7 @@
 import email
 import logging
 import quopri
-from email.message import Message, EmailMessage
+from email.message import EmailMessage
 from textwrap import indent
 from typing import List
 
@@ -10,26 +10,32 @@ from bs4 import BeautifulSoup
 
 from em2 import Settings
 from em2.core import (Action, ApplyAction, Components, CreateForeignConv, Verbs, Relationships,
-                      create_missing_recipients, gen_random, generate_conv_key)
+                      create_missing_recipients, gen_random, generate_conv_key, MsgFormat)
 from em2.utils import to_utc_naive
 from em2.utils.markdown import markdown
 
 logger = logging.getLogger('em2.fallback')
 
 
-def get_smtp_body(msg: Message, smtp_content):
-    # text/html is generally the best representation of the email
+def get_email_body(msg: EmailMessage):
     body = None
-    is_html = True
-    for m in msg.walk():
-        ct = m['Content-Type']
-        if 'text' in ct:
-            body = m.get_payload()
-        if 'text/html' in ct:
-            if m['Content-Transfer-Encoding'] == 'quoted-printable':
-                body = quopri.decodestring(body).decode()
-            is_html = True
-            break
+    if msg.is_multipart():
+        for m in msg.walk():
+            ct = m['Content-Type']
+            if 'text' in ct:
+                body = m.get_payload()
+                if 'text/html' in ct:
+                    if m['Content-Transfer-Encoding'] == 'quoted-printable':
+                        body = quopri.decodestring(body).decode()
+                    return body, True
+    else:
+        body = msg.get_payload()
+    return body, False
+
+
+def get_smtp_body(msg: EmailMessage, smtp_content):
+    # text/html is generally the best representation of the email
+    body, is_html = get_email_body(msg)
 
     if not body:
         logger.warning('Unable to find body in email', extra={'data': {'raw-smtp': smtp_content}})
@@ -42,8 +48,8 @@ def get_smtp_body(msg: Message, smtp_content):
         if gmail_extra:
             gmail_extra.decompose()
 
-        body = soup.prettify().strip('\n')
-    return body
+        body = soup.prettify()
+    return body.strip('\n')
 
 
 class FallbackHandler:
@@ -124,7 +130,8 @@ class FallbackHandler:
             e_msg['References'] = ' '.join(f'<{msg_id}>' for msg_id in msg_ids)
 
         e_msg.set_content(body)
-        e_msg.add_alternative(self.html_format(body, action), subtype='html')
+        if action.msg_format in {MsgFormat.markdown or MsgFormat.html}:
+            e_msg.add_alternative(self.html_format(body, action), subtype='html')
 
         msg_id = await self.send_message(e_from=e_from, to=to, bcc=bcc, email_msg=e_msg)
         logger.info('message sent conv %.6s, smtp message id %0.12s...', action.conv_key, msg_id)
@@ -134,7 +141,7 @@ class FallbackHandler:
         raise NotImplementedError()
 
     def html_format(self, body: str, action: Action) -> str:
-        return markdown(body)
+        return markdown(body) if action.msg_format == MsgFormat.markdown else body
 
     async def process_webhook(self, request):
         pass
@@ -166,8 +173,7 @@ class FallbackHandler:
 
     async def process_smtp_message(self, smtp_content: str):
         # TODO deal with non multipart
-        msg: Message = email.message_from_string(smtp_content)
-        # debug(dict(msg))
+        msg: EmailMessage = email.message_from_string(smtp_content)
         if msg['EM2-ID']:
             # this is an em2 message and should be received via the proper route too
             return

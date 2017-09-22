@@ -169,6 +169,7 @@ async def test_smtp_create(cli, url, db_conn):
                 'after': None,
                 'relationship': None,
                 'body': 'hello EM2, this is SMTP',
+                'format': 'markdown',
                 'deleted': False,
             },
         ],

@@ -70,6 +70,13 @@ class Relationships(str, Enum):
 
 
 @unique
+class MsgFormat(str, Enum):
+    markdown = 'markdown'
+    plain = 'plain'
+    html = 'html'
+
+
+@unique
 class ActionStatuses(str, Enum):
     temporary_failure = 'temporary_failure'
     failed = 'failed'
@@ -109,6 +116,7 @@ class Action(NamedTuple):
     parent: str  # key of the parent action
     body: str
     relationship: Relationships
+    msg_format: MsgFormat
     item: str
 
 
@@ -160,6 +168,7 @@ class ApplyAction(FetchOr404Mixin):
         parent: Optional[constr(min_length=20, max_length=20)] = None
         body: NoneStr = None
         relationship: Optional[Relationships] = None  # TODO check relationship is set when required
+        msg_format: Optional[MsgFormat] = MsgFormat.markdown
         # TODO: participant permissions and more exotic types
         # TODO: add timezone event originally occurred in
 
@@ -231,7 +240,7 @@ class ApplyAction(FetchOr404Mixin):
     WHERE a.conv = $1 AND a.key = $2
     """
     _add_message_sql = """
-    INSERT INTO messages (key, conv, after, relationship, position, body) VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO messages (key, conv, after, relationship, position, body, format) VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING id
     """
 
@@ -242,13 +251,17 @@ class ApplyAction(FetchOr404Mixin):
         if not self.data.parent:
             raise HTTPBadRequest(text='parent may not be null when adding a message')
 
+        if not self.data.msg_format:
+            raise HTTPBadRequest(text='msg-format may not be null when adding a message')
+
+        if not self.data.body:
+            raise HTTPBadRequest(text='body can not be empty when adding a message')
+
         after_id, deleted, position, parent_id = await self.fetchrow404(self._find_msg_by_action_sql,
                                                                         self.data.conv, self.data.parent)
         if deleted:
             raise HTTPBadRequest(text='you cannot add messages after a deleted message')
 
-        if not self.data.body:  # TODO move up
-            raise HTTPBadRequest(text='body can not be empty when adding a message')
         self.body = self.data.body
         if self._remote_action:
             message_key = self.data.item
@@ -260,7 +273,7 @@ class ApplyAction(FetchOr404Mixin):
         else:
             # TODO maybe want to limit child depth here
             position.append(1)
-        args = message_key, self.data.conv, after_id, relationship, position, self.body
+        args = message_key, self.data.conv, after_id, relationship, position, self.body, self.data.msg_format
         message_id = await self.conn.fetchval(self._add_message_sql, *args)
         return message_key, message_id, parent_id
 
@@ -277,7 +290,7 @@ class ApplyAction(FetchOr404Mixin):
     LIMIT 1
     """
     _delete_recover_message_sql = 'UPDATE messages SET deleted = $1 WHERE id = $2'
-    _modify_message_sql = 'UPDATE messages SET body = $1 WHERE id = $2'
+    _modify_message_sql = 'UPDATE messages SET body = $1, format = $2 WHERE id = $3'
 
     async def _mod_message(self):
         message_key = self.data.item
@@ -313,8 +326,10 @@ class ApplyAction(FetchOr404Mixin):
         elif self.data.verb == Verbs.MODIFY:
             if not self.data.body:
                 raise HTTPBadRequest(text='body can not be empty when modifying a message')
+            if not self.data.msg_format:
+                raise HTTPBadRequest(text='msg-format may not be null when modifying a message')
             self.body = self.data.body
-            await self.conn.execute(self._modify_message_sql, self.data.body, message_id)
+            await self.conn.execute(self._modify_message_sql, self.body, self.data.msg_format, message_id)
         elif self.data.verb in (Verbs.LOCK, Verbs.UNLOCK):
             if parent_verb == self.data.verb:
                 raise HTTPBadRequest(text='you may not re-lock or re-unlock a message')
@@ -386,7 +401,8 @@ class GetConv(FetchOr404Mixin):
     messages_sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT m1.key AS key, m2.key AS after, m1.relationship AS relationship, m1.body AS body, m1.deleted AS deleted
+      SELECT m1.key AS key, m2.key AS after, m1.relationship AS relationship, m1.body AS body, m1.format AS format,
+      m1.deleted AS deleted
       FROM messages AS m1
       LEFT JOIN messages AS m2 ON m1.after = m2.id
       WHERE m1.conv = $1

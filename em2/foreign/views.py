@@ -119,6 +119,7 @@ class Act(View):
             parent=self.request.headers.get('em2-parent'),
             body=await request.text(),
             relationship=self.request.headers.get('em2-relationship'),
+            msg_format=self.request.headers.get('em2-msg-format'),
         )
         await apply_action.run()
         await self.pusher.push(apply_action.action_id, transmit=False)
