@@ -1,6 +1,6 @@
 # these packages are slow to install so it's a pain to have to reinstall them every time a dependency changes
 # hence the split requirements file
-asyncpg==0.12.0
+asyncpg==0.13.0
 cryptography==2.1.1
 misaka==2.1.0
 pycares==2.3.0
