@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     # the domain at which other platforms connect to this node, eg. the "foreign" app's endpoint
     EXTERNAL_DOMAIN = 'em2-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
+    ORIGIN_DOMAIN = 'origin-domain'
 
     fallback_username: str = None
     fallback_password: str = None

@@ -11,6 +11,7 @@ from .conftest import TEST_ADDRESS, TEST_PASSWORD
 
 async def test_index(cli, url):
     r = await cli.get(url('index'))
+    assert r.headers['Access-Control-Allow-Origin'] == 'https://frontend.example.com'
     assert r.status == 200, await r.text()
     assert f'em2 v{VERSION}:- auth interface\n' == await r.text()
 
@@ -220,7 +221,7 @@ async def test_view_sessions(cli, url, authenticate):
 
 async def test_get_account_anon(cli, url):
     r = await cli.get(url('account'))
-    assert r.status == 403, await r.text()
+    assert r.status == 401, await r.text()
     assert {'error': 'cookie missing or invalid'} == await r.json()
 
 
@@ -251,7 +252,7 @@ async def test_logout(cli, url, authenticate):
     assert r.status == 200, await r.text()
 
     r = await cli.get(url('account'))
-    assert r.status == 403, await r.text()
+    assert r.status == 401, await r.text()
 
 
 async def test_logout_keep_cookie(cli, url, authenticate):

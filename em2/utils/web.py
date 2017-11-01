@@ -23,6 +23,9 @@ class JsonError:
     class HTTPBadRequest(_JsonHTTPError, web_exceptions.HTTPBadRequest):
         pass
 
+    class HTTPUnauthorized(_JsonHTTPError, web_exceptions.HTTPUnauthorized):
+        pass
+
     class HTTPForbidden(_JsonHTTPError, web_exceptions.HTTPForbidden):
         pass
 
@@ -67,10 +70,15 @@ async def auth_middleware(request, handler):
         try:
             token = request.app['session_fernet'].decrypt(cookie.encode())
         except InvalidToken:
-            raise JsonError.HTTPForbidden(error='cookie missing or invalid')
+            raise JsonError.HTTPUnauthorized(error='cookie missing or invalid')
         await request.app['activate_session'](request, token.decode())
 
     return await handler(request)
+
+
+async def prepare_add_origin(request, response):
+    # TODO check origin and referrer
+    response.headers['Access-Control-Allow-Origin'] = request.app['settings'].ORIGIN_DOMAIN
 
 
 def get_ip(request):

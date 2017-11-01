@@ -37,6 +37,7 @@ def full_scope_settings():
         pg_main_name='em2_test',
         pg_auth_name='em2_auth_test',
         EXTERNAL_DOMAIN='em2.platform.example.com',
+        ORIGIN_DOMAIN='https://frontend.example.com',
         authenticator_cls='tests.fixture_classes.SimpleAuthenticator',
         db_cls='tests.fixture_classes.TestDatabase',
         pusher_cls='tests.fixture_classes.DNSMockedPusher',

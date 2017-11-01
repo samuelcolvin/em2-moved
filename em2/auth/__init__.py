@@ -8,7 +8,7 @@ from arq import create_pool_lenient
 from cryptography.fernet import Fernet
 
 from em2 import VERSION, Settings
-from em2.utils.web import auth_middleware, db_conn_middleware, set_anon_views
+from em2.utils.web import auth_middleware, db_conn_middleware, prepare_add_origin, set_anon_views
 from .sessions import activate_session
 from .view import AcceptInvitationView, AccountView, LoginView, LogoutView, SessionsView, UpdateSession
 
@@ -42,6 +42,7 @@ async def app_cleanup(app):
 
 def create_auth_app(settings: Settings):
     app = Application(middlewares=(auth_middleware, db_conn_middleware,))
+    app.on_response_prepare.append(prepare_add_origin)
 
     app.on_startup.append(app_startup)
     app.on_cleanup.append(app_cleanup)

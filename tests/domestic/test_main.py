@@ -36,7 +36,8 @@ async def test_list_no_convs(cli, url, db_conn):
 async def test_no_cookie(cli, url):
     cli.session.cookie_jar.clear()
     r = await cli.get(url('list'))
-    assert r.status == 403, await r.text()
+    assert r.headers['Access-Control-Allow-Origin'] == 'https://frontend.example.com'
+    assert r.status == 401, await r.text()
     assert {'error': 'cookie missing or invalid'} == await r.json()
 
 
@@ -47,7 +48,7 @@ async def test_invalid_cookie(cli, url, settings):
     cli.session.cookie_jar.update_cookies(cookies)
 
     r = await cli.get(url('list'))
-    assert r.status == 403, await r.text()
+    assert r.status == 401, await r.text()
     assert {'error': 'cookie missing or invalid'} == await r.json()
 
 
@@ -439,6 +440,7 @@ async def test_get_latest_conv(cli, create_conv, url, db_conn):
 async def test_index_anon(cli, url):
     cli.session.cookie_jar.clear()
     r = await cli.get(url('index'))
+    assert r.headers['Access-Control-Allow-Origin'] == 'https://frontend.example.com'
     assert r.status == 200, await r.text()
     assert f'em2 v{VERSION}:- domestic interface\n' == await r.text()
 
