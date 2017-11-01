@@ -5,7 +5,7 @@ import traceback
 from functools import update_wrapper
 
 from aiohttp import web_exceptions
-from aiohttp.web import Application, Request, Response  # noqa
+from aiohttp.web import Application, Request, Response, middleware  # noqa
 from asyncpg.connection import Connection  # noqa
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError
@@ -47,12 +47,11 @@ class WebModel(BaseModel):
         allow_extra = False
 
 
-async def db_conn_middleware(app, handler):
-    async def _handler(request):
-        async with app['db'].acquire() as conn:
-            request['conn'] = conn
-            return await handler(request)
-    return _handler
+@middleware
+async def db_conn_middleware(request, handler):
+    async with request.app['db'].acquire() as conn:
+        request['conn'] = conn
+        return await handler(request)
 
 
 def set_anon_views(*anon_views):
@@ -61,18 +60,17 @@ def set_anon_views(*anon_views):
     return frozenset(anon_views)
 
 
-async def auth_middleware(app, handler):
-    async def _handler(request):
-        if request.match_info.route.name not in app['anon_views']:
-            cookie = request.cookies.get(app['settings'].cookie_name, '')
-            try:
-                token = app['session_fernet'].decrypt(cookie.encode())
-            except InvalidToken:
-                raise JsonError.HTTPForbidden(error='cookie missing or invalid')
-            await app['activate_session'](request, token.decode())
+@middleware
+async def auth_middleware(request, handler):
+    if request.match_info.route.name not in request.app['anon_views']:
+        cookie = request.cookies.get(request.app['settings'].cookie_name, '')
+        try:
+            token = request.app['session_fernet'].decrypt(cookie.encode())
+        except InvalidToken:
+            raise JsonError.HTTPForbidden(error='cookie missing or invalid')
+        await request.app['activate_session'](request, token.decode())
 
-        return await handler(request)
-    return _handler
+    return await handler(request)
 
 
 def get_ip(request):

@@ -181,7 +181,6 @@ async def test_add_message_invalid_data_model_error(cli, conv, url):
   "parent": {
     "error_msg": "length greater than maximum allowed: 20",
     "error_type": "ValueError",
-    "index": null,
     "track": "ConstrainedStrValue"
   }
 }""" == text
