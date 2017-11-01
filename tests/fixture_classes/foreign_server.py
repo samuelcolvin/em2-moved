@@ -1,6 +1,6 @@
 import re
 
-from aiohttp.web import Application, Response, json_response
+from aiohttp.web import Application, Response, json_response, middleware
 from aiohttp.web_exceptions import HTTPNotFound
 
 
@@ -80,18 +80,17 @@ async def status(request):
     return Response(status=int(request.match_info['status']))
 
 
-async def logging_middleware(app, handler):
-    async def _handler(request):
-        try:
-            r = await handler(request)
-        except Exception as exc:
-            request.app['request_log'].append(f'{request.method} {request.path_qs} > {exc.status}')
-            raise
-        else:
-            # print(msg)
-            request.app['request_log'].append(f'{request.method} {request.path_qs} > {r.status}')
-            return r
-    return _handler
+@middleware
+async def logging_middleware(request, handler):
+    try:
+        r = await handler(request)
+    except Exception as exc:
+        request.app['request_log'].append(f'{request.method} {request.path_qs} > {exc.status}')
+        raise
+    else:
+        # print(msg)
+        request.app['request_log'].append(f'{request.method} {request.path_qs} > {r.status}')
+        return r
 
 
 def create_test_app(loop):
