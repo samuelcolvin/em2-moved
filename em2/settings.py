@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     grecaptcha_secret: str = None
     grecaptcha_url = 'https://www.google.com/recaptcha/api/siteverify'
     # attempts before captcha is required
-    easy_login_attempts = 4
+    easy_login_attempts = 2
 
     # time after which idle sessions expire
     auth_cookie_idle: timedelta = 7 * 86_400

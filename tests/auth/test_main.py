@@ -135,21 +135,28 @@ async def test_login_post_successful(cli, url, auth_db_conn, user):
 ])
 async def test_failed_login(cli, url, user, auth_db_conn, address, password):
     r = await cli.post(url('login'), json={'address': address, 'password': password})
-    assert r.status == 403, await r.text()
+    assert r.status == 401, await r.text()
     assert {'error': 'invalid credentials', 'captcha_required': False} == await r.json()
     assert 0 == len(cli.session.cookie_jar)
     assert 0 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_sessions')
 
 
 async def test_captcha_required(cli, settings, url, user):
-    for _ in range(settings.easy_login_attempts):
+    r = await cli.get(url('login'))
+    assert r.status == 200, await r.text()
+    assert {'msg': 'login', 'captcha_required': False} == await r.json(), await r.text()
+    for _ in range(settings.easy_login_attempts - 1):
+        r = await cli.post(url('login'), json={'address': 'foo@bar.com', 'password': 'foobar'})
+        assert r.status == 401, await r.text()
+        assert {'error': 'invalid credentials', 'captcha_required': False} == await r.json(), await r.text()
+
         r = await cli.get(url('login'))
         assert r.status == 200, await r.text()
         assert {'msg': 'login', 'captcha_required': False} == await r.json(), await r.text()
 
-        r = await cli.post(url('login'), json={'address': 'foo@bar.com', 'password': 'foobar'})
-        assert r.status == 403, await r.text()
-        assert {'error': 'invalid credentials', 'captcha_required': False} == await r.json(), await r.text()
+    r = await cli.post(url('login'), json={'address': 'foo@bar.com', 'password': 'foobar'})
+    assert r.status == 401, await r.text()
+    assert {'error': 'invalid credentials', 'captcha_required': True} == await r.json(), await r.text()
 
     for _ in range(5):
         r = await cli.get(url('login'))
@@ -165,7 +172,10 @@ async def test_captcha_supplied(cli, settings, url, user, g_recaptcha_server):
     address, password = user
     for _ in range(settings.easy_login_attempts):
         r = await cli.post(url('login'), json={'address': 'foo@bar.com', 'password': 'foobar'})
-        assert r.status == 403, await r.text()
+        assert r.status == 401, await r.text()
+
+    r = await cli.get(url('login'))
+    assert {'msg': 'login', 'captcha_required': True} == await r.json(), await r.text()
 
     r = await cli.post(url('login'), json={'address': 'foo@bar.com', 'password': 'foobar'})
     assert r.status == 429, await r.text()
@@ -176,7 +186,7 @@ async def test_captcha_supplied(cli, settings, url, user, g_recaptcha_server):
     assert {'error': 'invalid captcha'} == await r.json()
 
     r = await cli.post(url('login'), json={'address': 'foo@bar.com', 'password': 'foobar', 'grecaptcha': g_good})
-    assert r.status == 403, await r.text()
+    assert r.status == 401, await r.text()
     assert {'error': 'invalid credentials', 'captcha_required': True} == await r.json()
 
     r = await cli.post(url('login'), json={'address': address, 'password': password, 'grecaptcha': g_good})

@@ -31,7 +31,7 @@ def pytest_addoption(parser):
 def full_scope_settings():
     return Settings(
         auth_bcrypt_work_factor=5,  # make tests faster
-        easy_login_attempts=2,
+        easy_login_attempts=4,
         client_ip_header=None,
         secure_cookies=False,
         pg_main_name='em2_test',

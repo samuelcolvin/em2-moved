@@ -101,7 +101,10 @@ class LoginView(View):
                 if bcrypt.checkpw(form.password.encode(), password_hash.encode()):
                     return await self.response_create_session(user_id, form.address, 'login', 'login successful')
                 else:
-                    raise JsonError.HTTPForbidden(error='invalid credentials', captcha_required=captcha_required)
+                    raise JsonError.HTTPUnauthorized(
+                        error='invalid credentials',
+                        captcha_required=login_attempts >= self.settings.easy_login_attempts
+                    )
             else:
                 return json_response(
                     msg='login',
