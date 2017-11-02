@@ -5,6 +5,7 @@ import traceback
 from functools import update_wrapper
 
 from aiohttp import web_exceptions
+from aiohttp.hdrs import METH_OPTIONS, METH_POST
 from aiohttp.web import Application, Request, Response, middleware  # noqa
 from asyncpg.connection import Connection  # noqa
 from cryptography.fernet import InvalidToken
@@ -76,9 +77,25 @@ async def auth_middleware(request, handler):
     return await handler(request)
 
 
+@middleware
+async def access_control_middleware(request, handler):
+    if request.method == METH_OPTIONS:
+        if (request.headers.get('Access-Control-Request-Method') == METH_POST and
+                request.headers.get('Access-Control-Request-Headers').lower() == 'content-type' and
+                request.headers.get('Origin') == request.app['settings'].ORIGIN_DOMAIN):
+            return Response(body=b'ok')
+        else:
+            raise JsonError.HTTPForbidden(error='Access-Control checks failed')
+    # TODO check origin, referrer, and Content-Type
+    return await handler(request)
+
+
 async def prepare_add_origin(request, response):
-    # TODO check origin and referrer
-    response.headers['Access-Control-Allow-Origin'] = request.app['settings'].ORIGIN_DOMAIN
+    response.headers.update({
+        'Access-Control-Allow-Origin': request.app['settings'].ORIGIN_DOMAIN,
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    })
 
 
 def get_ip(request):

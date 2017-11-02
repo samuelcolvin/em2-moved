@@ -9,7 +9,8 @@ from cryptography.fernet import Fernet
 
 from em2 import VERSION
 from em2.core import Components, Verbs, gen_random, get_create_recipient
-from em2.utils.web import auth_middleware, db_conn_middleware, prepare_add_origin, set_anon_views
+from em2.utils.web import (access_control_middleware, auth_middleware, db_conn_middleware, prepare_add_origin,
+                           set_anon_views)
 from .background import Background
 from .views import Act, Create, Get, Publish, VList, Websocket
 
@@ -63,7 +64,7 @@ async def activate_session(request, data):
 
 
 def create_domestic_app(settings, app_name=None):
-    app = Application(middlewares=(auth_middleware, db_conn_middleware))
+    app = Application(middlewares=(access_control_middleware, auth_middleware, db_conn_middleware))
     app.on_response_prepare.append(prepare_add_origin)
 
     app.on_startup.append(app_startup)

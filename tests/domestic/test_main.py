@@ -41,6 +41,27 @@ async def test_no_cookie(cli, url):
     assert {'error': 'cookie missing or invalid'} == await r.json()
 
 
+async def test_access_control_good(cli, url):
+    r = await cli.options(url('list'), headers={
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+        'Origin': 'https://frontend.example.com',
+    })
+    assert r.status == 200, await r.text()
+    assert 'ok' == await r.text()
+
+
+async def test_access_control_wrong(cli, url):
+    r = await cli.options(url('list'), headers={
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+        'Origin': 'https://frontend.wrong.com',
+    })
+    assert r.status == 403, await r.text()
+    obj = await r.json()
+    assert {'error': 'Access-Control checks failed'} == obj
+
+
 async def test_invalid_cookie(cli, url, settings):
     fernet = Fernet(base64.urlsafe_b64encode(b'i am different and 32 bits long!'))
     settings = cli.server.app['settings']

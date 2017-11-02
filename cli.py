@@ -35,7 +35,7 @@ except ImportError as e:
               envvar='EM2_AUTH_INVITATION_SECRET', help='env variable: EM2_AUTH_INVITATION_SECRET')
 @click.option('--address', default='testing@localhost.example.com', envvar='USER_ADDRESS',
               help='env variable: USER_ADDRESS')
-@click.option('--password', default='we-are-testing')
+@click.option('--password', default='applepie890')
 def cli(ctx, **kwargs):
     """
     Run em2 CLI.
