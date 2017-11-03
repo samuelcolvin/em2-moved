@@ -123,9 +123,13 @@ async def test_create_conv(cli, url, db_conn):
     }
     r = await cli.post(url('create'), json=data)
     assert r.status == 201, await r.text()
-    conv_key = await db_conn.fetchval('SELECT key FROM conversations')
+    conv_id, conv_key = await db_conn.fetchrow('SELECT id, key FROM conversations')
     assert {'key': conv_key} == await r.json()
     assert conv_key.startswith('dft-')
+    v = await db_conn.fetch('SELECT address FROM recipients as r '
+                            'JOIN participants as p ON r.id = p.recipient '
+                            'WHERE p.conv = $1', conv_id)
+    assert {r['address'] for r in v} == {'testing@example.com', 'other@example.com'}
 
 
 async def test_add_message_not_published(cli, conv, url):

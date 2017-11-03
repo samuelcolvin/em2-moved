@@ -63,15 +63,14 @@ class Create(View):
 
     async def call(self, request):
         conv = self.ConvModel(**await self.request_json())
-        recip_ids = None
-        if conv.participants:
-            recip_ids = await create_missing_recipients(self.conn, conv.participants)
-            recip_ids = set(recip_ids.values())
+        participants = set(conv.participants)
+        participants.add(self.session.address)
+        recip_ids = await create_missing_recipients(self.conn, participants)
+        recip_ids = set(recip_ids.values())
 
         key = gen_random('dft')
         conv_id = await self.conn.fetchval(self.create_conv_sql, key, self.session.recipient_id, conv.subject)
-        if recip_ids:
-            await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
+        await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
         await self.conn.execute(self.add_message_sql, conv_id, gen_random('msg'), conv.message)
 
         return json_response(key=key, status_=201)
