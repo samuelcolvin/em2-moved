@@ -59,6 +59,15 @@ async def test_post_accept_invitation(cli, url, inv_token, auth_db_conn):
     # TODO test logged in
 
 
+async def test_post_invitation_invalid_address(cli, url, inv_token):
+    assert len(cli.session.cookie_jar) == 0
+    url_ = url('accept-invitation', query=dict(token=inv_token(address='x@foobar.com', first_name='foobar')))
+    r = await cli.post(url_, json={'password': 'thisissecure'})
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert {'error': 'address domain not permitted'} == data
+
+
 async def test_user_exists(cli, url, inv_token, auth_db_conn):
     assert 0 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
     url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))

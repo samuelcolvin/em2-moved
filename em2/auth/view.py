@@ -5,9 +5,10 @@ import bcrypt
 from aiohttp.hdrs import METH_POST
 from aiohttp.web import HTTPTemporaryRedirect
 from cryptography.fernet import InvalidToken
-from pydantic import EmailStr, constr
+from pydantic import EmailStr, constr, validator
 from zxcvbn import zxcvbn
 
+from em2.utils import get_domain
 from em2.utils.encoding import msg_decode
 from em2.utils.web import View as _View
 from em2.utils.web import JsonError, WebModel, get_ip, json_response, raw_json_response
@@ -151,6 +152,10 @@ class AcceptInvitationView(View):
         last_name: constr(max_length=255) = None
         recovery_address: EmailStr = None
 
+        @validator('address')
+        def address_lower(cls, v):
+            return v.lower()
+
     GET_USER_SQL = 'SELECT id FROM auth_users WHERE address = $1'
     CREATE_USER_SQL = """
     INSERT INTO auth_users (node, address, first_name, last_name, recovery_address, password_hash)
@@ -174,7 +179,8 @@ class AcceptInvitationView(View):
     async def call(self, request):
         token = self.request.query.get('token', '-')
         inv: self.Invitation = self.decrypt_token(token)
-        inv.address = inv.address.lower()  # TODO move to model clean method
+        if get_domain(inv.address) not in self.settings.auth_local_domains:
+            raise JsonError.HTTPBadRequest(error='address domain not permitted')
         user_exists = await self.conn.fetchval(self.GET_USER_SQL, inv.address)
         if user_exists:
             raise JsonError.HTTPConflict(text='user with this address already exists')
