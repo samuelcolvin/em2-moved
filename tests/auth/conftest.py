@@ -10,15 +10,10 @@ TEST_ADDRESS = 'testing@example.com'
 TEST_PASSWORD = 'valid-testing-password'
 
 
-async def startup_modify_app(app):
-    app['db'].conn = app['_conn']
-
-
 @pytest.fixture
 def cli(loop, auth_settings, auth_db_conn, test_client, auth_redis):
     app = create_auth_app(auth_settings)
-    app['_conn'] = auth_db_conn
-    app.on_startup.append(startup_modify_app)
+    app['settings']._test_conn = auth_db_conn
     return loop.run_until_complete(test_client(app))
 
 
@@ -32,10 +27,10 @@ def inv_token(settings):
 
 
 @pytest.fixture
-def user(loop, auth_settings, auth_db_conn):
+def user(loop, auth_settings, auth_db_conn, cli):
     async def _create_user():
         hashb = bcrypt.hashpw(TEST_PASSWORD.encode(), bcrypt.gensalt(auth_settings.auth_bcrypt_work_factor))
-        sql = 'INSERT INTO auth_users (address, password_hash)  VALUES ($1, $2)'
+        sql = 'INSERT INTO auth_users (address, password_hash, node) SELECT $1, $2, id FROM auth_nodes LIMIT 1'
         await auth_db_conn.execute(sql, TEST_ADDRESS, hashb.decode())
 
     loop.run_until_complete(_create_user())
@@ -62,7 +57,7 @@ def authenticate(loop, cli, url, inv_token):
     async def _login():
         url_ = url('accept-invitation', query=dict(token=inv_token(last_name='testing')))
         r = await cli.post(url_, json={'password': 'thisissecure'})
-        assert r.status == 200, await r.text()
+        assert r.status == 201, await r.text()
         assert len(cli.session.cookie_jar) == 1
 
     loop.run_until_complete(_login())

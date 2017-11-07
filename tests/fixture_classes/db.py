@@ -1,6 +1,11 @@
 from em2.core import Database
 
 
+class FakeConn:
+    async def execute(self, *args, **kwargs):
+        pass
+
+
 class DummyAcquireContext:
     def __init__(self, conn):
         self.conn = conn
@@ -15,7 +20,7 @@ class DummyAcquireContext:
 class TestDatabase(Database):
     def __init__(self, loop, settings):
         super().__init__(loop, settings)
-        self.conn = None
+        self.conn = getattr(settings, '_test_conn', FakeConn())
 
     async def startup(self):
         pass

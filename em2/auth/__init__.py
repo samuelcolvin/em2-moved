@@ -21,6 +21,9 @@ async def index(request):
     return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} auth interface\n')
 
 
+CREATE_NODE_SQL = 'INSERT INTO auth_nodes (domain) VALUES ($1) RETURNING id'
+
+
 async def app_startup(app):
     settings: Settings = app['settings']
     loop = app.loop or asyncio.get_event_loop()
@@ -30,6 +33,9 @@ async def app_startup(app):
         redis_pool=await create_pool_lenient(settings.redis, loop),
     )
     await app['db'].startup()
+    async with app['db'].acquire() as conn:
+        # TODO this is a hack until proper multi-node support is implemented.
+        app['default_node_id'] = await conn.fetchval(CREATE_NODE_SQL, settings.EXTERNAL_DOMAIN)
 
 
 async def app_cleanup(app):

@@ -38,8 +38,8 @@ class View(_View):
             hashb = bcrypt.hashpw(password.encode(), bcrypt.gensalt(self.settings.auth_bcrypt_work_factor))
             return hashb.decode()
 
-    async def response_create_session(self, user_id, user_address, action, msg):
-        r = json_response(msg=msg)
+    async def response_create_session(self, user_id, user_address, action, **json_data):
+        r = json_response(**json_data)
         token = await self.conn.fetchval(self.CREATE_SESSION_SQL, user_id, session_event(self.request, action))
         expires = int(time())
         cookie = self.app['session_fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
@@ -54,7 +54,11 @@ class LoginView(View):
         password: constr(max_length=72)
         grecaptcha: constr(min_length=20, max_length=1000) = None
 
-    GET_USER_HASH_SQL = 'SELECT id, password_hash FROM auth_users WHERE address = $1'
+    GET_USER_HASH_SQL = """
+    SELECT u.id, n.domain, u.password_hash FROM auth_users as u
+    JOIN auth_nodes AS n ON u.node = n.id
+    WHERE u.address = $1
+    """
 
     async def _check_grecaptcha(self, grecaptcha_response, ip_address):
         data = dict(
@@ -94,12 +98,18 @@ class LoginView(View):
                 # by always checking the password even if the address is not found we rule out use of
                 # timing attack to check if users exist
                 if r:
-                    user_id, password_hash = r
+                    user_id, node_domain, password_hash = r
                 else:
-                    user_id, password_hash = 0, self.app['alt_pw_hash']
+                    user_id, node_domain, password_hash = 0, '-', self.app['alt_pw_hash']
 
                 if bcrypt.checkpw(form.password.encode(), password_hash.encode()):
-                    return await self.response_create_session(user_id, form.address, 'login', 'login successful')
+                    return await self.response_create_session(
+                        user_id,
+                        form.address,
+                        'login',
+                        msg='login successful',
+                        node_url=f'{request.scheme}://{node_domain}',
+                    )
                 else:
                     raise JsonError.HTTPUnauthorized(
                         error='invalid credentials',
@@ -143,10 +153,11 @@ class AcceptInvitationView(View):
 
     GET_USER_SQL = 'SELECT id FROM auth_users WHERE address = $1'
     CREATE_USER_SQL = """
-    INSERT INTO auth_users (address, first_name, last_name, recovery_address, password_hash)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO auth_users (node, address, first_name, last_name, recovery_address, password_hash)
+    VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (address) DO NOTHING RETURNING id
     """
+    GET_NODE_DOMAIN_SQL = 'SELECT domain FROM auth_nodes WHERE id = $1'
 
     def decrypt_token(self, token: str):
         try:
@@ -172,15 +183,24 @@ class AcceptInvitationView(View):
             pw_hash = await self.get_password_hash()
             user_id = await self.conn.fetchval(
                 self.CREATE_USER_SQL,
-                inv.address, inv.first_name, inv.last_name, inv.recovery_address, pw_hash
+                self.app['default_node_id'], inv.address, inv.first_name, inv.last_name, inv.recovery_address, pw_hash
             )
             if not user_id:
                 raise JsonError.HTTPConflict(text='user with this address already exists')
-            return await self.response_create_session(user_id, inv.address, 'user created', 'user created')
+
+            node_domain = await self.conn.fetchval(self.GET_NODE_DOMAIN_SQL, self.app['default_node_id'])
+            return await self.response_create_session(
+                user_id,
+                inv.address,
+                'user created',
+                status_=201,
+                msg='user created',
+                node_url=f'{request.scheme}://{node_domain}',
+            )
         else:
             return json_response(
                 msg='please submit password',
-                fields=inv.values()
+                fields=inv.dict(),
             )
 
 

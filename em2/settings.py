@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     EXTERNAL_DOMAIN = 'em2-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
     # the domain and proto of the "front end" eg. the urls people log in to
-    ORIGIN_DOMAIN = 'https://localhost:3000'
+    ORIGIN_DOMAIN = 'http://localhost:3000'
 
     fallback_username: str = None
     fallback_password: str = None
@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     class Config:
         env_prefix = 'EM2_'
         ignore_extra = False
+        allow_extra = True
 
     @property
     def private_domain_key(self):

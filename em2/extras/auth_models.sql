@@ -2,12 +2,18 @@ DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 CREATE EXTENSION pgcrypto;
 
--- TODO add reference to which node user is on together with available domains
+-- TODO table of supported domains
+
+CREATE TABLE auth_nodes (
+  id SERIAL PRIMARY KEY,
+  domain VARCHAR(255) NOT NULL UNIQUE
+);
 
 CREATE TYPE ACCOUNT_STATUS AS ENUM ('pending', 'active', 'suspended');
 
 CREATE TABLE auth_users (
   id SERIAL PRIMARY KEY,
+  node INT NOT NULL REFERENCES auth_nodes ON DELETE RESTRICT,
   address VARCHAR(255) NOT NULL UNIQUE,
   first_name VARCHAR(63),
   last_name VARCHAR(63),

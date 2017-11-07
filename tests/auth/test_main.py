@@ -43,9 +43,9 @@ async def test_post_accept_invitation(cli, url, inv_token, auth_db_conn):
     assert len(cli.session.cookie_jar) == 0
     url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))
     r = await cli.post(url_, json={'password': 'thisissecure'})
-    assert r.status == 200, await r.text()
+    assert r.status == 201, await r.text()
     data = await r.json()
-    assert {'msg': 'user created'} == data
+    assert {'msg': 'user created', 'node_url': 'http://em2.platform.example.com'} == data
     assert len(cli.session.cookie_jar) == 1
     c = r.headers['Set-Cookie']
     assert c.startswith('em2session=')
@@ -63,7 +63,7 @@ async def test_user_exists(cli, url, inv_token, auth_db_conn):
     assert 0 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
     url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))
     r = await cli.post(url_, json={'password': 'thisissecure'})
-    assert r.status == 200, await r.text()
+    assert r.status == 201, await r.text()
     assert 1 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
 
     r = await cli.post(url_, json={'password': 'thisissecure'})
@@ -106,7 +106,7 @@ async def test_login_post_successful(cli, url, auth_db_conn, user):
     address, password = user
     r = await cli.post(url('login'), json={'address': address, 'password': password})
     assert r.status == 200, await r.text()
-    assert {'msg': 'login successful'} == await r.json()
+    assert {'msg': 'login successful', 'node_url': 'http://em2.platform.example.com'} == await r.json()
     assert len(cli.session.cookie_jar) == 1
     assert 1 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_sessions')
     r = dict(await auth_db_conn.fetchrow('SELECT * FROM auth_sessions'))
@@ -191,7 +191,7 @@ async def test_captcha_supplied(cli, settings, url, user, g_recaptcha_server):
 
     r = await cli.post(url('login'), json={'address': address, 'password': password, 'grecaptcha': g_good})
     assert r.status == 200, await r.text()
-    assert {'msg': 'login successful'} == await r.json()
+    assert {'msg': 'login successful', 'node_url': 'http://em2.platform.example.com'} == await r.json()
 
 
 async def test_get_account(cli, url, authenticate):

@@ -104,6 +104,14 @@ def auth_db_conn(loop, auth_settings, auth_clean_db):
     await_(tr.rollback())
 
 
+# @pytest.fixture
+# def auth_default_node(loop, auth_settings, auth_db_conn):
+#     return loop.run_until_complete(auth_db_conn.fetchval(
+#         'INSERT INTO auth_nodes (domain) VALUES ($1) RETURNING id',
+#         auth_settings.EXTERNAL_DOMAIN
+#     ))
+
+
 @pytest.fixture
 def url(request):
     client = request.getfixturevalue('cli')
