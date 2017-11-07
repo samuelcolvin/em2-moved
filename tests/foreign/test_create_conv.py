@@ -16,6 +16,8 @@ async def test_publish(cli, url, foreign_server, get_conv, debug):
     assert foreign_server.app['request_log'] == [
         'POST /auth/ > 201',
         'GET /get/key12345678/ > 200',
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
     ]
 
 
@@ -70,6 +72,8 @@ async def test_add_participant(cli, url, foreign_server, get_conv):
     assert foreign_server.app['request_log'] == [
         'POST /auth/ > 201',
         'GET /get/key12345678/ > 200',
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
     ]
 
 
@@ -132,6 +136,8 @@ async def test_publish_conv_exists(cli, url, foreign_server, get_conv, debug):
     assert foreign_server.app['request_log'] == [
         'POST /auth/ > 201',
         'GET /get/key12345678/ > 200',
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
     ]
 
 

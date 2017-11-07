@@ -288,3 +288,32 @@ async def test_logout_keep_cookie(cli, url, authenticate):
 
     r = await cli.get(url('account'))
     assert r.status == 403, await r.text()
+
+
+async def test_check_user_node(cli, url, user, settings):
+    r = await cli.get(
+        url('check-user-node'),
+        headers={'Authorization': settings.auth_node_secret},
+        json={'address': TEST_ADDRESS, 'domain': settings.EXTERNAL_DOMAIN},
+    )
+    assert r.status == 200, await r.text()
+    assert {'local': True} == await r.json()
+
+
+async def test_check_user_node_missing(cli, url, user, settings):
+    r = await cli.get(
+        url('check-user-node'),
+        headers={'Authorization': settings.auth_node_secret},
+        json={'address': 'foobar@other.com', 'domain': settings.EXTERNAL_DOMAIN},
+    )
+    assert r.status == 200, await r.text()
+    assert {'local': False} == await r.json()
+
+
+async def test_check_user_node_bad_auth(cli, url, user, settings):
+    r = await cli.get(
+        url('check-user-node'),
+        headers={'Authorization': 'xxx'},
+        json={'address': TEST_ADDRESS, 'domain': settings.EXTERNAL_DOMAIN},
+    )
+    assert r.status == 403, await r.text()

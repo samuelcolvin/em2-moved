@@ -31,7 +31,7 @@ class MockAsyncResolver(AsyncResolver):
         return [{
             'hostname': host,
             'host': '127.0.0.1',
-            'port': self.mock_resolve_port,
+            'port': self.mock_resolve_port or port,
             'family': family,
             'proto': 0,
             'flags': socket.AI_NUMERICHOST,

@@ -61,3 +61,8 @@ def authenticate(loop, cli, url, inv_token):
         assert len(cli.session.cookie_jar) == 1
 
     loop.run_until_complete(_login())
+
+
+@pytest.fixture
+def settings(auth_settings):
+    return auth_settings

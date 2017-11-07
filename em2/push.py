@@ -4,10 +4,11 @@ import json
 import logging
 from datetime import datetime
 from enum import IntEnum
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, Optional, Set, Tuple, Union
 
 import aiohttp
 from aiohttp.hdrs import METH_GET, METH_POST
+from aiohttp.web_response import Response
 from arq import Actor, concurrent, cron
 from arq.jobs import DatetimeJob
 from asyncpg.connection import Connection as PGConnection
@@ -60,6 +61,8 @@ class Pusher(Actor):
         kwargs['redis_settings'] = self.settings.redis
         super().__init__(**kwargs)
         logger.debug('initialising pusher %s', self)
+        self.auth_check_url = settings.auth_server_url + '/check-user-node/'
+        self.auth_check_headers = {'Authorization': settings.auth_node_secret}
 
     async def startup(self):
         assert not self._concurrency_enabled or self.is_shadow, 'pusher db should only be started in shadow mode'
@@ -222,30 +225,29 @@ class Pusher(Actor):
         else:
             await conn.execute(self.success_action_sql, action.id, node_domain)
 
-    async def get_node(self, domain: str) -> str:
+    async def get_node(self, address: str) -> str:
         """
         Find the node for a given participant in a conversation.
 
-        :param domain: domain to find node for
+        :param address: address to find node for
         :return: node's domain or None if em2 is not enabled for this address
         """
-        logger.info('looking for em2 node for "%s"', domain)
+        logger.info('looking for em2 node for "%s"', address)
+        if await self.check_local(address):
+            logger.info('em2 local node found for "%s"', address)
+            return self.LOCAL
+        domain = get_domain(address)
         async for host in self.dns.mx_hosts(domain):
-            node = None
-            if host == self.settings.EXTERNAL_DOMAIN:
-                node = self.LOCAL
-            elif await self.dns.is_em2_node(host):
+            if await self.dns.is_em2_node(host):
                 try:
                     await self.authenticate(host)
                 except Em2ConnectionError:
                     # connection failed domain is probably not em2
                     pass
                 else:
-                    # TODO query host to find associated node
-                    node = host
-            if node:
-                logger.info('em2 node found %s -> %s', domain, node)
-                return node
+                    # TODO query host to find associated node using address
+                    logger.info('em2 node found %s -> %s', domain, host)
+                    return host
         logger.info('no em2 node found for %s, falling back', domain)
         return self.FALLBACK
 
@@ -258,20 +260,19 @@ class Pusher(Actor):
 
         async with await self.get_redis_conn() as redis:
             for recipient_id, address in parts:
-                d = get_domain(address)
 
-                node = local_cache.get(d)
+                node = local_cache.get(address)
                 if not node:
-                    key = self.domain_node_prefix + d.encode()
+                    key = self.domain_node_prefix + address.encode()
                     node_b = await redis.get(key)
                     if node_b:
                         node = node_b.decode()
-                        logger.info('found cached node %s -> %s', d, node)
+                        logger.info('found cached node %s -> %s', address, node)
                     else:
-                        node = await self.get_node(d)
-                        logger.info('got node for %s -> %s', d, node)
+                        node = await self.get_node(address)
+                        logger.info('got node for %s -> %s', address, node)
                         await redis.setex(key, self.settings.COMMS_DNS_CACHE_EXPIRY, node.encode())
-                    local_cache[d] = node
+                    local_cache[address] = node
 
                 if node == self.LOCAL:
                     local_recipients.add(recipient_id)
@@ -323,6 +324,16 @@ class Pusher(Actor):
         logger.info('successfully authenticated with %s', node_domain)
         return token
 
+    async def check_local(self, address: str) -> str:
+        _, data = await self._request(
+            METH_GET,
+            self.auth_check_url,
+            json_data={'address': address, 'domain': self.settings.EXTERNAL_DOMAIN},
+            headers=self.auth_check_headers,
+            retry_delay=0.1,
+        )
+        return data['local']
+
     async def _authenticate_request(self, node_domain):
         url = f'{self.settings.COMMS_PROTO}://{node_domain}/auth/'
         headers = {f'em2-{k}': str(v) for k, v in self._auth_data()}
@@ -331,11 +342,15 @@ class Pusher(Actor):
 
     async def _request(self, method, url, *,
                        data=None,
+                       json_data=None,
                        headers=None,
                        read: Optional[ReadMethod] = None,
                        expected_statuses: Set[int]={200},
-                       retry_delay=2):
+                       retry_delay=2.0) -> Tuple[Response, Union[str, dict]]:
         exc = response_data = None
+        if json_data:
+            data = json.dumps(json_data)
+            read = read or ReadMethod.json
         for i in range(5):
             try:
                 # TODO check timeouts are caught

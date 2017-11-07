@@ -20,6 +20,8 @@ async def test_add_participant_foreign(mocked_pusher, db_conn, conv, foreign_ser
     await mocked_pusher.push.direct(apply_action.action_id)
 
     assert foreign_server.app['request_log'] == [
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr('POST /key12345678/participant/add/testing@foreign.com > 201'),
     ]
@@ -40,6 +42,8 @@ async def test_push_failure(mocked_pusher, db_conn, conv, foreign_server):
     await mocked_pusher.push.direct(apply_action.action_id)
 
     assert foreign_server.app['request_log'] == [
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr('POST /key12345678/participant/add/testing@foreign.com > 500'),
     ]

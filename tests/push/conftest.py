@@ -3,7 +3,7 @@ from aiohttp.web import Application, json_response
 
 from em2.foreign import create_foreign_app
 from tests.conftest import shutdown_modify_app, startup_modify_app
-from tests.fixture_classes import DNSMockedPusher, create_test_app
+from tests.fixture_classes import DNSMockedPusher
 
 test_addr = 'testing@example.com'
 
@@ -28,13 +28,6 @@ def setup_check_server(loop, test_server):
 
     server = loop.run_until_complete(test_server(app))
     return server
-
-
-@pytest.fixture()
-def foreign_server(loop, test_server):
-    app = create_test_app(loop)
-
-    return loop.run_until_complete(test_server(app))
 
 
 @pytest.yield_fixture

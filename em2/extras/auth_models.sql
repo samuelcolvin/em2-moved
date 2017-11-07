@@ -8,6 +8,7 @@ CREATE TABLE auth_nodes (
   id SERIAL PRIMARY KEY,
   domain VARCHAR(255) NOT NULL UNIQUE
 );
+CREATE INDEX node_domain ON auth_nodes USING btree (domain);
 
 CREATE TYPE ACCOUNT_STATUS AS ENUM ('pending', 'active', 'suspended');
 
@@ -22,6 +23,7 @@ CREATE TABLE auth_users (
   recovery_address VARCHAR(63) UNIQUE,
   account_status ACCOUNT_STATUS NOT NULL DEFAULT 'pending'
 );
+CREATE INDEX user_address ON auth_users USING btree (address);
 
 CREATE TABLE auth_sessions (
   token UUID PRIMARY KEY DEFAULT gen_random_uuid(),

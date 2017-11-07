@@ -1,3 +1,5 @@
+import logging
+from secrets import compare_digest
 from time import time
 from urllib.parse import urlencode
 
@@ -14,6 +16,8 @@ from em2.utils.web import View as _View
 from em2.utils.web import JsonError, WebModel, get_ip, json_response, raw_json_response
 
 from .sessions import logout, session_event
+
+logger = logging.getLogger('em2.auth.views')
 
 
 class Password(WebModel):
@@ -237,3 +241,31 @@ class SessionsView(View):
     async def call(self, request):
         s = await self.conn.fetchval(self.sessions_sql, self.request['user_id'])
         return raw_json_response(s)
+
+
+class CheckUserNodeView(View):
+    """
+    Internal only view for em2 nodes to check find out if an address is "local" to them.
+
+    Note: this approach to resolving node for an address doesn't use DNS records, is this a good idea?
+    It means local messaging should work without correct DNS records which is good, but it could cause other problems.
+    """
+    GET_USER_SQL = """
+    SELECT 1 FROM auth_users as u
+    JOIN auth_nodes AS n ON u.node = n.id
+    WHERE u.address = $1 AND n.domain = $2
+    """
+
+    class NodeModel(WebModel):
+        address: str
+        domain: str
+
+    async def call(self, request):
+        auth_header = request.headers.get('Authorization', '')
+        if not compare_digest(self.settings.auth_node_secret, auth_header):
+            logger.warning('invalid auth header: "%s"', auth_header)
+            raise JsonError.HTTPForbidden(error='invalid auth header')
+
+        m = self.NodeModel(**await self.request_json())
+        v = await self.conn.fetchval(self.GET_USER_SQL, m.address, m.domain)
+        return json_response(local=bool(v))

@@ -36,6 +36,7 @@ def full_scope_settings():
         secure_cookies=False,
         pg_main_name='em2_test',
         pg_auth_name='em2_auth_test',
+        auth_server_url='http://auth.example.com',
         EXTERNAL_DOMAIN='em2.platform.example.com',
         ORIGIN_DOMAIN='https://frontend.example.com',
         authenticator_cls='tests.fixture_classes.SimpleAuthenticator',
@@ -48,8 +49,15 @@ def full_scope_settings():
 
 
 @pytest.fixture
-def settings(full_scope_settings):
-    return full_scope_settings.copy()
+def _foreign_server(loop, test_server):
+    app = create_test_app(loop)
+    server = loop.run_until_complete(test_server(app))
+    return server
+
+
+@pytest.fixture
+def settings(full_scope_settings, _foreign_server):
+    return full_scope_settings.copy(update={'auth_server_url': f'http://localhost:{_foreign_server.port}'})
 
 
 @pytest.fixture(scope='session')
@@ -104,14 +112,6 @@ def auth_db_conn(loop, auth_settings, auth_clean_db):
     await_(tr.rollback())
 
 
-# @pytest.fixture
-# def auth_default_node(loop, auth_settings, auth_db_conn):
-#     return loop.run_until_complete(auth_db_conn.fetchval(
-#         'INSERT INTO auth_nodes (domain) VALUES ($1) RETURNING id',
-#         auth_settings.EXTERNAL_DOMAIN
-#     ))
-
-
 @pytest.fixture
 def url(request):
     client = request.getfixturevalue('cli')
@@ -123,11 +123,9 @@ def url(request):
 
 
 @pytest.fixture
-def foreign_server(loop, test_server, cli):
-    app = create_test_app(loop)
-    server = loop.run_until_complete(test_server(app))
-    cli.server.app['pusher'].set_foreign_port(server.port)
-    return server
+def foreign_server(_foreign_server, cli):
+    cli.server.app['pusher'].set_foreign_port(_foreign_server.port)
+    return _foreign_server
 
 
 class ConvInfo(NamedTuple):

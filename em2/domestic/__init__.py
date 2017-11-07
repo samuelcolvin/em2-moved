@@ -72,7 +72,7 @@ def create_domestic_app(settings, app_name=None):
 
     app.update(
         settings=settings,
-        session_fernet=Fernet(settings.auth_secret),
+        session_fernet=Fernet(settings.auth_session_secret),
         name=app_name or gen_random('d'),
         anon_views=set_anon_views('index'),
         activate_session=activate_session,

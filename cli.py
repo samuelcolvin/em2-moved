@@ -49,7 +49,7 @@ def gen_session_keys(ctx):
     print(f"""
     New secret keys:
 
-    export EM2_AUTH_SECRET='{Fernet.generate_key().decode()}'
+    export EM2_AUTH_SESSION_SECRET='{Fernet.generate_key().decode()}'
     export EM2_AUTH_INVITATION_SECRET='{Fernet.generate_key().decode()}'
     """)
 

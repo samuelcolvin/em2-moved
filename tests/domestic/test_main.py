@@ -74,14 +74,14 @@ async def test_invalid_cookie(cli, url, settings):
 
 
 async def test_expired_cookie(cli, url, settings):
-    fernet = Fernet(settings.auth_secret)
+    fernet = Fernet(settings.auth_session_secret)
     data = f'123:{int(time()) - 3600}:foo@bar.com'
     cookies = {settings.cookie_name: fernet.encrypt(data.encode()).decode()}
     cli.session.cookie_jar.update_cookies(cookies)
 
     r = await cli.get(url('list'), allow_redirects=False)
     assert r.status == 307, await r.text()
-    assert r.headers['Location'].startswith('https://auth.example.com/update-session/?r=')
+    assert r.headers['Location'].startswith(f'{settings.auth_server_url}/update-session/?r=')
     return_url = parse_qs(urlparse(r.headers['Location']).query)['r'][0]
     assert return_url == f'http://127.0.0.1:{cli.server.port}{url("list")}'
 
@@ -374,6 +374,8 @@ async def test_publish_conv_foreign_part(cli, conv, url, db_conn, foreign_server
     assert await db_conn.fetchval('SELECT published FROM conversations')
 
     assert foreign_server.app['request_log'] == [
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr('POST /create/[0-9a-f]+/ > 204'),
     ]
@@ -388,6 +390,8 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
     assert r.status == 200, await r.text()
 
     assert foreign_server.app['request_log'] == [
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr('POST /create/[0-9a-f]+/ > 204'),
     ]
@@ -399,6 +403,8 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
     assert r.status == 201, await r.text()
 
     assert foreign_server.app['request_log'] == [
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr(f'POST /create/{new_conv_key}/ > 204'),
         RegexStr(f'POST /{new_conv_key}/message/add/msg-[0-9a-z]+ > 201'),
@@ -414,6 +420,8 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     assert r.status == 200, await r.text()
 
     assert foreign_server.app['request_log'] == [
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr('POST /create/[0-9a-f]+/ > 204'),
     ]
@@ -424,8 +432,11 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     assert r.status == 201, await r.text()
     print(foreign_server.app['request_log'])
     assert foreign_server.app['request_log'] == [
+        'GET /check-user-node/ > 200',
+        'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr(f'POST /create/{new_conv_key}/ > 204'),
+        'GET /check-user-node/ > 200',
         RegexStr(f'POST /{new_conv_key}/participant/add/new@foreign.com > 201'),
     ]
 

@@ -42,7 +42,10 @@ class Settings(BaseSettings):
     # time after which idle sessions expire
     auth_cookie_idle: timedelta = 7 * 86_400
     auth_bcrypt_work_factor = 13
-    auth_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
+    # TODO should be unique to each node
+    auth_node_secret = 'this should be a random string'
+    # TODO should be obtained from auth server by nodes and unique for each node
+    auth_session_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
     auth_invitation_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
     auth_server_url = 'https://auth.example.com'
     # address domains which are assumed to be local

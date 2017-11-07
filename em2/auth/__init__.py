@@ -11,7 +11,8 @@ from em2 import VERSION, Settings
 from em2.utils.web import (access_control_middleware, auth_middleware, db_conn_middleware, prepare_add_origin,
                            set_anon_views)
 from .sessions import activate_session
-from .view import AcceptInvitationView, AccountView, LoginView, LogoutView, SessionsView, UpdateSession
+from .view import (AcceptInvitationView, AccountView, CheckUserNodeView, LoginView, LogoutView, SessionsView,
+                   UpdateSession)
 
 logger = logging.getLogger('em2.auth')
 
@@ -56,15 +57,16 @@ def create_auth_app(settings: Settings):
 
     app.update(
         settings=settings,
-        session_fernet=Fernet(settings.auth_secret),
+        session_fernet=Fernet(settings.auth_session_secret),
         invitation_fernet=Fernet(settings.auth_invitation_secret),
         # used for password checks with address is invalid
         alt_pw_hash=bcrypt.hashpw('x'.encode(), bcrypt.gensalt(settings.auth_bcrypt_work_factor)).decode(),
-        anon_views=set_anon_views('index', 'login', 'accept-invitation'),
+        anon_views=set_anon_views('index', 'login', 'accept-invitation', 'check-user-node'),
         activate_session=activate_session,
     )
 
     app.router.add_get('/', index, name='index')
+    app.router.add_get('/check-user-node/', CheckUserNodeView.view(), name='check-user-node')
     app.router.add_route('*', '/update-session/', UpdateSession.view(), name='update-session')
     app.router.add_route('*', '/login/', LoginView.view(), name='login')
     app.router.add_post('/logout/', LogoutView.view(), name='logout')
