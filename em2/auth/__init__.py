@@ -42,7 +42,7 @@ async def app_cleanup(app):
 
 
 def create_auth_app(settings: Settings):
-    app = Application(middlewares=(access_control_middleware, auth_middleware, db_conn_middleware,))
+    app = Application(middlewares=(access_control_middleware, auth_middleware, db_conn_middleware))
     app.on_response_prepare.append(prepare_add_origin)
 
     app.on_startup.append(app_startup)
@@ -50,7 +50,7 @@ def create_auth_app(settings: Settings):
 
     app.update(
         settings=settings,
-        session_fernet=Fernet(settings.auth_session_secret),
+        session_fernet=Fernet(settings.auth_secret),
         invitation_fernet=Fernet(settings.auth_invitation_secret),
         # used for password checks with address is invalid
         alt_pw_hash=bcrypt.hashpw('x'.encode(), bcrypt.gensalt(settings.auth_bcrypt_work_factor)).decode(),

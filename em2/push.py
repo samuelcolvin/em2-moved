@@ -230,9 +230,6 @@ class Pusher(Actor):
         :return: node's domain or None if em2 is not enabled for this address
         """
         logger.info('looking for em2 node for "%s"', domain)
-        if self.settings.DEBUG and domain == 'localhost.example.com':
-            # special case for testing
-            return self.LOCAL
         async for host in self.dns.mx_hosts(domain):
             node = None
             if host == self.settings.EXTERNAL_DOMAIN:

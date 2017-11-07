@@ -2,6 +2,8 @@ DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 CREATE EXTENSION pgcrypto;
 
+-- TODO add reference to which node user is on together with available domains
+
 CREATE TYPE ACCOUNT_STATUS AS ENUM ('pending', 'active', 'suspended');
 
 CREATE TABLE auth_users (

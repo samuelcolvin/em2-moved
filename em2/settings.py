@@ -41,9 +41,9 @@ class Settings(BaseSettings):
     # time after which idle sessions expire
     auth_cookie_idle: timedelta = 7 * 86_400
     auth_bcrypt_work_factor = 13
-    auth_session_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
+    auth_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
     auth_invitation_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
-    auth_update_session_url = 'https://auth.example.com/update-session/'
+    auth_server_url = 'https://auth.example.com'
 
     cookie_name = 'em2session'
     # how long cookies should remain valid with main before they need checking with auth
@@ -73,7 +73,8 @@ class Settings(BaseSettings):
     # the domain at which other platforms connect to this node, eg. the "foreign" app's endpoint
     EXTERNAL_DOMAIN = 'em2-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
-    ORIGIN_DOMAIN = 'origin-domain'
+    # the domain and proto of the "front end" eg. the urls people log in to
+    ORIGIN_DOMAIN = 'https://localhost:3000'
 
     fallback_username: str = None
     fallback_password: str = None

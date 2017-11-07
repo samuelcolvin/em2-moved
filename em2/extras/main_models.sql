@@ -1,7 +1,7 @@
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 
--- TODO could store platforms here instead of in redis
+-- TODO add domains, organisations and teams, perhaps new db/app.
 
 CREATE TABLE recipients (
   id SERIAL PRIMARY KEY,

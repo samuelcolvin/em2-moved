@@ -58,7 +58,7 @@ async def activate_session(request, data):
                 redis.expireat(session_cache, expires_at),
             )
         else:
-            loc = request.app['settings'].auth_update_session_url + '?' + urlencode({'r': request.url})
+            loc = request.app['settings'].auth_server_url + '/update-session/?' + urlencode({'r': request.url})
             raise HTTPTemporaryRedirect(location=loc)
         request['session_args'] = recipient_id, user_address
 
@@ -72,7 +72,7 @@ def create_domestic_app(settings, app_name=None):
 
     app.update(
         settings=settings,
-        session_fernet=Fernet(settings.auth_session_secret),
+        session_fernet=Fernet(settings.auth_secret),
         name=app_name or gen_random('d'),
         anon_views=set_anon_views('index'),
         activate_session=activate_session,

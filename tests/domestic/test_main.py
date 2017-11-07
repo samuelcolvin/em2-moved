@@ -74,7 +74,7 @@ async def test_invalid_cookie(cli, url, settings):
 
 
 async def test_expired_cookie(cli, url, settings):
-    fernet = Fernet(settings.auth_session_secret)
+    fernet = Fernet(settings.auth_secret)
     data = f'123:{int(time()) - 3600}:foo@bar.com'
     cookies = {settings.cookie_name: fernet.encrypt(data.encode()).decode()}
     cli.session.cookie_jar.update_cookies(cookies)
