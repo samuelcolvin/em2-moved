@@ -4,6 +4,7 @@ from typing import List, NamedTuple
 
 from aiohttp import WSMsgType
 from aiohttp.web import WebSocketResponse
+from cryptography.fernet import InvalidToken
 from pydantic import EmailStr, constr
 
 from em2.core import ApplyAction, GetConv, create_missing_recipients, gen_random, generate_conv_key
@@ -178,24 +179,34 @@ class Publish(View):
         return json_response(key=conv_key)
 
 
-class Websocket(View):
+class Websocket(ViewMain):
     async def call(self, request):
-        logger.info('ws connection %s', self.session)
         ws = WebSocketResponse()
-        await ws.prepare(request)
-        await self.app['background'].add_recipient(self.session.recipient_id, ws)
+
+        cookie = request.cookies.get(request.app['settings'].cookie_name, '')
         try:
-            async for msg in ws:
-                # TODO process messages
-                if msg.tp == WSMsgType.TEXT:
-                    logger.info('ws message from %s: %s', self.session, msg.data)
-                elif msg.tp == WSMsgType.ERROR:
-                    pass
-                    logger.warning('ws connection closed with exception %s', ws.exception())
-                else:
-                    pass
-                    logger.warning('unknown websocket message type %r, data: %s', msg.tp, msg.data)
-        finally:
-            logger.info('ws disconnection %s', self.session)
-            await self.app['background'].remove_recipient(self.session.recipient_id)
+            token = request.app['session_fernet'].decrypt(cookie.encode())
+        except InvalidToken:
+            await ws.prepare(request)
+            await ws.close(code=4403)
+        else:
+            await request.app['activate_session'](request, token.decode())
+            session = Session(*request['session_args'])
+            logger.info('ws connection %s', session)
+            await ws.prepare(request)
+            await self.app['background'].add_recipient(session.recipient_id, ws)
+            try:
+                async for msg in ws:
+                    # TODO process messages
+                    if msg.tp == WSMsgType.TEXT:
+                        logger.info('ws message from %s: %s', session, msg.data)
+                    elif msg.tp == WSMsgType.ERROR:
+                        pass
+                        logger.warning('ws connection closed with exception %s', ws.exception())
+                    else:
+                        pass
+                        logger.warning('unknown websocket message type %r, data: %s', msg.tp, msg.data)
+            finally:
+                logger.info('ws disconnection %s', session)
+                await self.app['background'].remove_recipient(session.recipient_id)
         return ws

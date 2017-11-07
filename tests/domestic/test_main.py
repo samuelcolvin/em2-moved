@@ -459,7 +459,21 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, debug):
                 assert data['actor'] == conv.creator_address
                 got_message = True
                 break
+        assert not ws.closed
+        assert ws.close_code is None
         assert got_message
+
+
+async def test_ws_anon(cli):
+    cli.session.cookie_jar.clear()
+    async with cli.session.ws_connect(cli.make_url('/ws/')) as ws:
+        got_message = False
+        with timeout(0.5):
+            async for _ in ws:  # noqa (underscore is unused)
+                got_message = True
+        assert ws.closed
+        assert ws.close_code == 4403
+        assert got_message is False
 
 
 async def test_get_latest_conv(cli, create_conv, url, db_conn):

@@ -51,8 +51,13 @@ async def activate_session(request, data):
         if data:
             recipient_id = int(data)
         elif expires_at > time():
-            async with request.app['db'].acquire() as conn:
-                recipient_id = await get_create_recipient(conn, user_address)
+            # can be called from in views where a connection already exists
+            request_conn = request.get('conn')
+            if request_conn:
+                recipient_id = await get_create_recipient(request_conn, user_address)
+            else:
+                async with request.app['db'].acquire() as conn:
+                    recipient_id = await get_create_recipient(conn, user_address)
             await asyncio.gather(
                 redis.set(session_cache, str(recipient_id).encode()),
                 redis.expireat(session_cache, expires_at),
@@ -74,7 +79,8 @@ def create_domestic_app(settings, app_name=None):
         settings=settings,
         session_fernet=Fernet(settings.auth_session_secret),
         name=app_name or gen_random('d'),
-        anon_views=set_anon_views('index'),
+        # websocket is authenticated using websocket response codes
+        anon_views=set_anon_views('index', 'websocket'),
         activate_session=activate_session,
     )
 
