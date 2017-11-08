@@ -209,7 +209,7 @@ async def test_add_message(cli, conv, url, db_conn):
     data = {'body': 'hello', 'parent': parent_key}
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
-    assert r.status == 201, await r.text()
+    assert r.status == 200, await r.text()
     obj = await r.json()
     assert {
         'key': RegexStr('act-.*'),
@@ -281,7 +281,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
     data = {'body': 'reply', 'relationship': 'sibling', 'parent': parent_key}
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
-    assert r.status == 201, await r.text()
+    assert r.status == 200, await r.text()
 
     r = await cli.get(url('get', conv=new_conv_key))
     assert r.status == 200, await r.text()
@@ -349,7 +349,7 @@ async def test_add_part_get(cli, conv, url, db_conn):
     data = {'item': 'other@example.com'}
     url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
-    assert r.status == 201, await r.text()
+    assert r.status == 200, await r.text()
 
     r = await cli.get(url('get', conv=conv.key))
     assert r.status == 200, await r.text()
@@ -425,7 +425,7 @@ async def test_publish_conv(cli, conv, url, db_conn):
 async def test_publish_conv_foreign_part(cli, conv, url, db_conn, foreign_server):
     url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json={'item': 'other@foreign.com'})
-    assert r.status == 201, await r.text()
+    assert r.status == 200, await r.text()
 
     assert not await db_conn.fetchval('SELECT published FROM conversations')
 
@@ -445,7 +445,7 @@ async def test_publish_conv_foreign_part(cli, conv, url, db_conn, foreign_server
 async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
     url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json={'item': 'other@foreign.com'})
-    assert r.status == 201, await r.text()
+    assert r.status == 200, await r.text()
 
     r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
@@ -461,7 +461,7 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     parent = await db_conn.fetchval("SELECT key FROM actions where verb='publish'")
     r = await cli.post(url_, json={'parent': parent, 'body': 'hello'})
-    assert r.status == 201, await r.text()
+    assert r.status == 200, await r.text()
 
     assert foreign_server.app['request_log'] == [
         'GET /check-user-node/ > 200',
@@ -475,7 +475,7 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
 async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json={'item': 'other@foreign.com'})
-    assert r.status == 201, await r.text()
+    assert r.status == 200, await r.text()
 
     r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
@@ -490,7 +490,7 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     url_ = url('act', conv=new_conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json={'item': 'new@foreign.com'})
-    assert r.status == 201, await r.text()
+    assert r.status == 200, await r.text()
     print(foreign_server.app['request_log'])
     assert foreign_server.app['request_log'] == [
         'GET /check-user-node/ > 200',
@@ -522,6 +522,30 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, debug):
                 break
         assert not ws.closed
         assert ws.close_code is None
+        assert got_message
+
+
+async def test_not_published_domestic_push(cli, conv, url, db_conn):
+    async with cli.session.ws_connect(cli.make_url('/ws/')) as ws:
+        await cli.server.app['background'].ready.wait()
+        url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.MODIFY)
+        r = await cli.post(url_, json={
+            'body': 'different content',
+            'item': conv.first_msg_key,
+        })
+        assert r.status == 200, await r.text()
+        assert 'different content' == await db_conn.fetchval('SELECT body FROM messages')
+
+        got_message = False
+        with timeout(0.5):
+            async for msg in ws:
+                assert msg.tp == WSMsgType.text
+                data = json.loads(msg.data)
+                assert data['component'] == 'message'
+                assert data['verb'] == 'modify'
+                assert data['actor'] == conv.creator_address
+                got_message = True
+                break
         assert got_message
 
 

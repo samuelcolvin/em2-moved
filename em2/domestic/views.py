@@ -129,8 +129,7 @@ class Act(View):
         )
         await apply_action.run()
 
-        if conv_published:
-            await self.pusher.push(apply_action.action_id)
+        await self.pusher.push(apply_action.action_id, actor_only=not conv_published)
         return json_response(
             key=apply_action.data.action_key,
             conv_key=conv_key,
@@ -141,7 +140,6 @@ class Act(View):
             relationship=apply_action.data.relationship,
             body=apply_action.data.body,
             item=apply_action.item_key,
-            status_=201,
         )
 
 

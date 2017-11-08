@@ -104,6 +104,8 @@ class Pusher(Actor):
     WHERE a.id = $1
     """
 
+    action_recipient_id_sql = 'SELECT actor FROM actions WHERE id = $1'
+
     prts_sql = """
     SELECT r.id, r.address
     FROM participants AS p
@@ -112,11 +114,16 @@ class Pusher(Actor):
     """
 
     @concurrent
-    async def push(self, action_id, transmit=True):
+    async def push(self, action_id, transmit=True, actor_only=False):
         async with self.db.acquire() as conn:
             *args, message_key, prt_address = await conn.fetchrow(self.action_detail_sql, action_id)
             # TODO perhaps need to add other fields required to understand the action
             action = Action(action_id, *args, message_key or prt_address)
+
+            if actor_only:
+                actor_recipient_id = await conn.fetchval(self.action_recipient_id_sql, action_id)
+                await self.domestic_push({actor_recipient_id}, action)
+                return
 
             prts = await conn.fetch(self.prts_sql, action.conv_id)  # TODO more info e.g. bcc etc.
 
