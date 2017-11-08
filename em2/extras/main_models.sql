@@ -14,7 +14,8 @@ CREATE TABLE conversations (
   key VARCHAR(64) UNIQUE,
   published BOOL DEFAULT False,
   creator INT NOT NULL REFERENCES recipients ON DELETE RESTRICT,
-  timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   subject VARCHAR(255) NOT NULL,
   -- TODO expiry
   ref VARCHAR (255)
@@ -68,6 +69,16 @@ CREATE TABLE actions (
   UNIQUE (conv, key)
 );
 CREATE INDEX action_key ON actions USING btree (key);
+
+CREATE FUNCTION do_action_update() RETURNS trigger AS $do_action_update$
+  BEGIN
+    -- update the conversation timestamp on new actions
+    UPDATE conversations SET updated_ts=NEW.timestamp WHERE id=NEW.conv;
+    RETURN NULL;
+  END;
+$do_action_update$ LANGUAGE plpgsql;
+
+CREATE TRIGGER action_update AFTER INSERT ON actions FOR EACH ROW EXECUTE PROCEDURE do_action_update();
 
 -- see core.ActionStatuses enum which matches this
 CREATE TYPE ACTION_STATUS AS ENUM ('temporary_failure', 'failed', 'successful');

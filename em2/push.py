@@ -307,9 +307,10 @@ class Pusher(Actor):
 
         async with self.db.acquire() as conn:
             creator = CreateForeignConv(conn)
-            conv_id, action_id = await creator.run(trigger_action_key, data)
-            if not conv_id:
+            r = await creator.run(trigger_action_key, data)
+            if not r:
                 return 1
+            conv_id, action_id = r
         await self.push.direct(action_id, transmit=False)
         return 0
 

@@ -29,11 +29,11 @@ class VList(View):
     sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT c.key AS key, c.subject AS subject, c.timestamp AS ts, c.published AS published
+      SELECT c.key AS key, c.subject AS subject, c.created_ts AS ts, c.published AS published
       FROM conversations AS c
       LEFT JOIN participants ON c.id = participants.conv
       WHERE participants.recipient = $1
-      ORDER BY c.timestamp, c.id DESC LIMIT 50
+      ORDER BY c.created_ts, c.id DESC LIMIT 50
     ) t;
     """
 
@@ -103,7 +103,7 @@ class Act(View):
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     WHERE c.key LIKE $1 AND p.recipient = $2
-    ORDER BY c.timestamp, c.id DESC
+    ORDER BY c.created_ts, c.id DESC
     LIMIT 1
     """
 
@@ -149,11 +149,11 @@ class Publish(View):
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
     WHERE c.published = False AND c.key LIKE $1 AND c.creator = $2 AND p.recipient = $2
-    ORDER BY c.timestamp, c.id DESC
+    ORDER BY c.created_ts, c.id DESC
     LIMIT 1
     """
     update_conv_sql = """
-    UPDATE conversations SET key = $1, timestamp = $2, published = True
+    UPDATE conversations SET key = $1, created_ts = $2, updated_ts = $2, published = True
     WHERE id = $3
     """
     delete_actions_sql = 'DELETE FROM actions WHERE conv = $1'

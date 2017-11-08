@@ -1,4 +1,5 @@
 import pytest
+from pydantic.datetime_parse import parse_datetime
 
 from ..conftest import CloseToNow
 
@@ -245,3 +246,16 @@ class TestAct:
         r = await self.cli.post(url_, data='foobar', headers=self.act_headers(msg_format=None))
         assert r.status == 400, await r.text()
         assert 'parent may not be null when adding a message' == await r.text()
+
+    async def test_ts_updated(self, db_conn):
+        updated_ts1 = await db_conn.fetchval('SELECT updated_ts FROM conversations')
+        second_msg_key = 'msg-secondmessagekey'
+        url_ = self.url('act', conv=self.conv.key, component='message', verb='add', item=second_msg_key)
+        r = await self.cli.post(url_, data='foobar', headers=self.act_headers(
+            parent='pub-add-message-1234',
+            timestamp='2000000000',
+        ))
+        assert r.status == 201, await r.text()
+        updated_ts2 = await db_conn.fetchval('SELECT updated_ts FROM conversations')
+        assert updated_ts1 < updated_ts2
+        assert updated_ts2.year == 2033

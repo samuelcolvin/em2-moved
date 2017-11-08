@@ -384,14 +384,14 @@ class GetConv(FetchOr404Mixin):
     JOIN participants AS p ON c.id = p.conv
     JOIN recipients AS r ON p.recipient = r.id
     WHERE r.address = $1 AND c.key LIKE $2
-    ORDER BY c.timestamp, c.id DESC
+    ORDER BY c.created_ts, c.id DESC
     LIMIT 1
     """
 
     conv_details_sql = """
     SELECT row_to_json(t)
     FROM (
-      SELECT c.key AS key, c.subject AS subject, c.timestamp AS ts, r.address AS creator, c.published AS published
+      SELECT c.key AS key, c.subject AS subject, c.created_ts AS ts, r.address AS creator, c.published AS published
       FROM conversations AS c
       JOIN recipients AS r ON c.creator = r.id
       WHERE c.id = $1
@@ -516,7 +516,7 @@ class FullConv(BaseModel):
 
 class CreateForeignConv:
     create_conv_sql = """
-    INSERT INTO conversations (key, creator, subject, timestamp, published)
+    INSERT INTO conversations (key, creator, subject, created_ts, published)
     VALUES ($1, $2, $3, $4, TRUE) RETURNING id
     """
     add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'

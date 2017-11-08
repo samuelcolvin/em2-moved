@@ -21,10 +21,10 @@ async def test_publish(cli, url, foreign_server, get_conv, debug):
     ]
 
 
-async def test_add_participant(cli, url, foreign_server, get_conv):
+async def test_add_participant(cli, url, foreign_server, get_conv, db_conn):
     assert foreign_server.app['request_log'] == []
     url_ = url('act', conv='key12345678', component='participant', verb='add', item='testing@local.com')
-    r = await cli.post(url_, data='foobar', headers={
+    r = await cli.post(url_, headers={
         'em2-auth': 'already-authenticated.com:123:whatever',
         'em2-actor': 'test@already-authenticated.com',
         'em2-timestamp': '1',
@@ -75,6 +75,8 @@ async def test_add_participant(cli, url, foreign_server, get_conv):
         'GET /check-user-node/ > 200',
         'GET /check-user-node/ > 200',
     ]
+    updated_ts = await db_conn.fetchval('SELECT to_json(updated_ts) FROM conversations')
+    assert updated_ts == '"2032-06-01T13:00:00.12345"'
 
 
 async def test_conv_missing(cli, url, foreign_server):

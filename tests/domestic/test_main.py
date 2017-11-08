@@ -393,12 +393,12 @@ async def test_add_part_get(cli, conv, url, db_conn):
 
 
 async def test_publish_conv(cli, conv, url, db_conn):
-    published, ts1 = await db_conn.fetchrow('SELECT published, timestamp FROM conversations')
+    published, ts1 = await db_conn.fetchrow('SELECT published, created_ts FROM conversations')
     assert not published
     await sleep(0.01)
     r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
-    new_conv_key, published, ts2 = await db_conn.fetchrow('SELECT key, published, timestamp FROM conversations')
+    new_conv_key, published, ts2 = await db_conn.fetchrow('SELECT key, published, created_ts FROM conversations')
     assert {'key': new_conv_key} == await r.json()
     assert new_conv_key != conv.key
     assert published
