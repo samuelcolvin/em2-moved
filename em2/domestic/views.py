@@ -29,7 +29,7 @@ class VList(View):
     sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT c.key AS key, c.subject AS subject, c.created_ts AS ts, c.published AS published
+      SELECT c.key AS key, c.subject AS subject, c.created_ts AS ts, c.published AS published, c.snippet as snippet
       FROM conversations AS c
       LEFT JOIN participants ON c.id = participants.conv
       WHERE participants.recipient = $1

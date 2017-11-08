@@ -17,8 +17,8 @@ CREATE TABLE conversations (
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   subject VARCHAR(255) NOT NULL,
-  -- TODO expiry
-  ref VARCHAR (255)
+  snippet JSONB
+  -- TODO expiry, ref?
 );
 
 CREATE TABLE participants (
@@ -70,13 +70,31 @@ CREATE TABLE actions (
 );
 CREATE INDEX action_key ON actions USING btree (key);
 
-CREATE FUNCTION do_action_update() RETURNS trigger AS $do_action_update$
+CREATE FUNCTION do_action_update() RETURNS trigger AS $$
+  DECLARE
+    snippet_ JSONB;
+    actor_address_ VARCHAR(255);
+    prt_count_ INT;
+    msg_count_ INT;
   BEGIN
-    -- update the conversation timestamp on new actions
-    UPDATE conversations SET updated_ts=NEW.timestamp WHERE id=NEW.conv;
+    -- could replace this with plv8
+    -- TODO add actor name when we have it
+    SELECT address into actor_address_ FROM recipients WHERE id=NEW.actor;
+    SELECT COUNT(id) into prt_count_ FROM participants WHERE conv=NEW.conv;
+    SELECT COUNT(id) into msg_count_ FROM messages WHERE conv=NEW.conv;
+    snippet_ := json_build_object(
+      'comp', NEW.component,
+      'verb', NEW.verb,
+      'addr', actor_address_,
+      'body', left(NEW.body, 20),
+      'prts', prt_count_,
+      'msgs', msg_count_
+    );
+    -- update the conversation timestamp and snippet on new actions
+    UPDATE conversations SET updated_ts=NEW.timestamp, snippet=snippet_ WHERE id=NEW.conv;
     RETURN NULL;
   END;
-$do_action_update$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER action_update AFTER INSERT ON actions FOR EACH ROW EXECUTE PROCEDURE do_action_update();
 

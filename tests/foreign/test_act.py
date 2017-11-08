@@ -1,5 +1,4 @@
 import pytest
-from pydantic.datetime_parse import parse_datetime
 
 from ..conftest import CloseToNow
 
