@@ -69,20 +69,20 @@ async def test_post_invitation_invalid_address(cli, url, inv_token):
 
 
 async def test_user_exists(cli, url, inv_token, auth_db_conn):
-    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
+    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_users')
     url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))
     r = await cli.post(url_, json={'password': 'thisissecure'})
     assert r.status == 201, await r.text()
-    assert 1 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
+    assert 1 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_users')
 
     r = await cli.post(url_, json={'password': 'thisissecure'})
     assert r.status == 409, await r.text()
-    assert 1 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
+    assert 1 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_users')
 
 
 async def test_password_not_secure1(cli, url, inv_token, auth_db_conn):
     assert len(cli.session.cookie_jar) == 0
-    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
+    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_users')
     url_ = url('accept-invitation', query=dict(token=inv_token(first_name='foobar')))
     r = await cli.post(url_, json={'password': 'testing'})
     assert r.status == 400, await r.text()
@@ -93,7 +93,7 @@ async def test_password_not_secure1(cli, url, inv_token, auth_db_conn):
 
 
 async def test_password_not_secure2(cli, url, inv_token, auth_db_conn):
-    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(id) FROM auth_users')
+    assert 0 == await auth_db_conn.fetchval('SELECT COUNT(*) FROM auth_users')
     url_ = url('accept-invitation', query=dict(token=inv_token(first_name='samuel')))
     r = await cli.post(url_, json={'password': 'samuel'})
     assert r.status == 400, await r.text()

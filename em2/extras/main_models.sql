@@ -71,25 +71,18 @@ CREATE TABLE actions (
 CREATE INDEX action_key ON actions USING btree (key);
 
 CREATE FUNCTION do_action_update() RETURNS trigger AS $$
+  -- could replace all this with plv8
   DECLARE
-    snippet_ JSONB;
-    actor_address_ VARCHAR(255);
-    prt_count_ INT;
-    msg_count_ INT;
-  BEGIN
-    -- could replace this with plv8
-    -- TODO add actor name when we have it
-    SELECT address into actor_address_ FROM recipients WHERE id=NEW.actor;
-    SELECT COUNT(id) into prt_count_ FROM participants WHERE conv=NEW.conv;
-    SELECT COUNT(id) into msg_count_ FROM messages WHERE conv=NEW.conv;
-    snippet_ := json_build_object(
+    -- TODO add actor name when we have it, could add attachment count etc. here too
+    snippet_ JSONB = json_build_object(
       'comp', NEW.component,
       'verb', NEW.verb,
-      'addr', actor_address_,
+      'addr', (SELECT address FROM recipients WHERE id=NEW.actor),
       'body', left(NEW.body, 20),
-      'prts', prt_count_,
-      'msgs', msg_count_
+      'prts', (SELECT COUNT(*) FROM participants WHERE conv=NEW.conv),
+      'msgs', (SELECT COUNT(*) FROM messages WHERE conv=NEW.conv)
     );
+  BEGIN
     -- update the conversation timestamp and snippet on new actions
     UPDATE conversations SET updated_ts=NEW.timestamp, snippet=snippet_ WHERE id=NEW.conv;
     RETURN NULL;

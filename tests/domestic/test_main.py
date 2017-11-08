@@ -383,7 +383,8 @@ async def test_add_message_get(cli, conv, url, db_conn):
     } == obj
 
 
-async def test_add_part_get(cli, conv, url, db_conn):
+async def test_add_prt_get(cli, conv, url, db_conn):
+    assert None is await db_conn.fetchval('SELECT snippet FROM conversations')
     data = {'item': 'other@example.com'}
     url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
@@ -428,6 +429,14 @@ async def test_add_part_get(cli, conv, url, db_conn):
             {'address': 'other@example.com'}
         ]
     } == obj
+    assert {
+        'addr': 'testing@example.com',
+        'body': None,
+        'comp': 'participant',
+        'msgs': 1,
+        'prts': 2,
+        'verb': 'add',
+    } == json.loads(await db_conn.fetchval('SELECT snippet FROM conversations'))
 
 
 async def test_publish_conv(cli, conv, url, db_conn):

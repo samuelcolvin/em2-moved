@@ -125,7 +125,7 @@ def create_message(in_reply_to):
 async def test_smtp_reply(cli, url, db_conn, conv):
     await add_recipient(conv, db_conn)
 
-    assert 1 == await db_conn.fetchval('SELECT count(*) FROM messages')
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM messages')
 
     msg = create_message('<testing-message-id>')
     msg.set_content('This is a plain test')
@@ -133,7 +133,7 @@ async def test_smtp_reply(cli, url, db_conn, conv):
 
     r = await cli.post(url('fallback-webhook'), data=msg.as_string())
     assert r.status == 204, await r.text()
-    assert 2 == await db_conn.fetchval('SELECT count(*) FROM messages')
+    assert 2 == await db_conn.fetchval('SELECT COUNT(*) FROM messages')
 
     msg = await db_conn.fetchrow('SELECT relationship, position, body FROM messages ORDER BY id DESC LIMIT 1')
     assert {
@@ -144,14 +144,14 @@ async def test_smtp_reply(cli, url, db_conn, conv):
 
 
 async def test_smtp_create(cli, url, db_conn):
-    assert 0 == await db_conn.fetchval('SELECT count(*) FROM conversations')
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM conversations')
 
     msg = create_message(None)
     msg.set_content('hello EM2, this is SMTP')
 
     r = await cli.post(url('fallback-webhook'), data=msg.as_string())
     assert r.status == 204, await r.text()
-    assert 1 == await db_conn.fetchval('SELECT count(*) FROM conversations')
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM conversations')
     conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     json_str = await GetConv(db_conn).run(conv_key, 'testing@example.com', inc_states=True)
     conv_data = json.loads(json_str)
@@ -231,7 +231,7 @@ async def test_gmail_smtp_reply(cli, url, db_conn, conv):
     msg_id, message_key = await add_message(conv, db_conn)
     await add_message(conv, db_conn, key_no=2)
 
-    assert 3 == await db_conn.fetchval('SELECT count(*) FROM messages')
+    assert 3 == await db_conn.fetchval('SELECT COUNT(*) FROM messages')
 
     msg = create_message(f'<{msg_id}>')
     msg.add_alternative("""
@@ -245,7 +245,7 @@ async def test_gmail_smtp_reply(cli, url, db_conn, conv):
 
     r = await cli.post(url('fallback-webhook'), data=msg_str)
     assert r.status == 204, await r.text()
-    assert 4 == await db_conn.fetchval('SELECT count(*) FROM messages')
+    assert 4 == await db_conn.fetchval('SELECT COUNT(*) FROM messages')
 
     msg = await db_conn.fetchrow("""
     SELECT m1.relationship AS relationship, m1.position AS position, m1.body AS body, m2.key AS after
@@ -264,7 +264,7 @@ async def test_gmail_smtp_reply(cli, url, db_conn, conv):
 async def test_smtp_em2_too(cli, url, db_conn, conv):
     await add_recipient(conv, db_conn)
 
-    assert 1 == await db_conn.fetchval('SELECT count(*) FROM messages')
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM messages')
 
     msg = create_message('<testing-message-id>')
     msg['EM2-ID'] = 'foobar'
@@ -272,7 +272,7 @@ async def test_smtp_em2_too(cli, url, db_conn, conv):
 
     r = await cli.post(url('fallback-webhook'), data=msg.as_string())
     assert r.status == 204, await r.text()
-    assert 1 == await db_conn.fetchval('SELECT count(*) FROM messages')
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM messages')
 
 
 class MockRequest:
