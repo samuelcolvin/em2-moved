@@ -4,11 +4,12 @@ from typing import List, NamedTuple
 
 from aiohttp import WSMsgType
 from aiohttp.web import WebSocketResponse
+from asyncpg import UniqueViolationError
 from cryptography.fernet import InvalidToken
-from pydantic import EmailStr, constr
+from pydantic import EmailStr, constr, validator
 
 from em2.core import ApplyAction, GetConv, create_missing_recipients, gen_random, generate_conv_key
-from em2.utils.web import ViewMain, WebModel, json_response, raw_json_response
+from em2.utils.web import JsonError, ViewMain, WebModel, json_response, raw_json_response
 
 logger = logging.getLogger('em2.d.views')
 
@@ -61,6 +62,22 @@ class Create(View):
         subject: constr(max_length=255) = ...
         message: str = ...
         participants: List[EmailStr] = []
+        conv_key: str = None
+        msg_key: str = None
+
+        @validator('conv_key', 'msg_key', always=True, pre=True)
+        def set_default_key(cls, v, field, **kw):
+            prefix = 'dft' if field.name == 'conv_key' else 'msg'
+            return v or gen_random(prefix)
+
+        @validator('conv_key', 'msg_key')
+        def validate_keys(cls, v, field, **kw):
+            prefix = 'dft' if field.name == 'conv_key' else 'msg'
+            if not v.startswith(prefix + '-') or len(v) != 20:
+                raise ValueError('invalid key')
+            if v != v.lower():
+                raise ValueError('key must be lower case')
+            return v
 
     async def call(self, request):
         conv = self.ConvModel(**await self.request_json())
@@ -69,12 +86,15 @@ class Create(View):
         recip_ids = await create_missing_recipients(self.conn, participants)
         recip_ids = set(recip_ids.values())
 
-        key = gen_random('dft')
-        conv_id = await self.conn.fetchval(self.create_conv_sql, key, self.session.recipient_id, conv.subject)
-        await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
-        await self.conn.execute(self.add_message_sql, conv_id, gen_random('msg'), conv.message)
-
-        return json_response(key=key, status_=201)
+        async with self.conn.transaction():
+            try:
+                conv_id = await self.conn.fetchval(self.create_conv_sql,
+                                                   conv.conv_key, self.session.recipient_id, conv.subject)
+            except UniqueViolationError:
+                raise JsonError.HTTPConflict(error='key conflicts with existing conversation')
+            await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
+            await self.conn.execute(self.add_message_sql, conv_id, conv.msg_key, conv.message)
+        return json_response(key=conv.conv_key, status_=201)
 
 
 class Act(View):

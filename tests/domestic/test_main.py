@@ -132,6 +132,67 @@ async def test_create_conv(cli, url, db_conn):
     assert {r['address'] for r in v} == {'testing@example.com', 'other@example.com'}
 
 
+async def test_create_conv_custom_keys(cli, url, db_conn):
+    data = {
+        'subject': 'Test Subject',
+        'message': 'this is a message',
+        'participants': [
+            'other@example.com',
+        ],
+        'conv_key': 'dft-0123456789abcefg',
+        'msg_key': 'msg-0123456789abcefg',
+    }
+    r = await cli.post(url('create'), json=data)
+    assert r.status == 201, await r.text()
+    conv_key = await db_conn.fetchval('SELECT key FROM conversations')
+    assert {'key': 'dft-0123456789abcefg'} == await r.json()
+    assert conv_key == 'dft-0123456789abcefg'
+    msg_key = await db_conn.fetchval('SELECT key FROM messages')
+    assert msg_key == 'msg-0123456789abcefg'
+
+
+async def test_create_conv_custom_keys_wrong(cli, url):
+    data = {
+        'subject': 'Test Subject',
+        'message': 'this is a message',
+        'participants': [
+            'other@example.com',
+        ],
+        'conv_key': 'dft-123',
+        'msg_key': 'msg-0123456789abcefG',
+    }
+    r = await cli.post(url('create'), json=data)
+    assert r.status == 400, await r.text()
+    assert {
+        'conv_key': {
+            'error_msg': 'invalid key',
+            'error_type': 'ValueError',
+            'track': 'str'
+        },
+        'msg_key': {
+            'error_msg': 'key must be lower case',
+            'error_type': 'ValueError',
+            'track': 'str'
+        },
+    } == await r.json()
+
+
+async def test_create_conv_repeat_keys(cli, url):
+    data = {
+        'subject': 'Test Subject',
+        'message': 'this is a message',
+        'participants': [
+            'other@example.com',
+        ],
+        'conv_key': 'dft-0123456789abcefg',
+        'msg_key': 'msg-0123456789abcefg',
+    }
+    r = await cli.post(url('create'), json=data)
+    assert r.status == 201, await r.text()
+    r = await cli.post(url('create'), json=data)
+    assert r.status == 409, await r.text()
+
+
 async def test_add_message_not_published(cli, conv, url):
     data = {'body': 'hello'}
     url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
