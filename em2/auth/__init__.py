@@ -22,7 +22,10 @@ async def index(request):
     return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} auth interface\n')
 
 
-CREATE_NODE_SQL = 'INSERT INTO auth_nodes (domain) VALUES ($1) RETURNING id'
+CREATE_NODE_SQL = """
+  INSERT INTO auth_nodes (domain) VALUES ($1)
+  ON CONFLICT (domain) DO UPDATE SET domain=EXCLUDED.domain RETURNING id
+"""
 
 
 async def app_startup(app):

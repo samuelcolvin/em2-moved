@@ -24,7 +24,7 @@ ENV EM2_COMMIT ${EM2_COMMIT}
 
 ADD ./private.pem /home/root/
 ENV EM2_PRIVATE_DOMAIN_KEY_FILE /home/root/private.pem
-
+ENV PYTHONUNBUFFERED 1
 WORKDIR /home/root
 HEALTHCHECK --interval=20s --timeout=10s --retries=2 CMD em2check
 ENTRYPOINT ["em2run"]

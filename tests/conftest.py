@@ -31,6 +31,7 @@ def pytest_addoption(parser):
 def full_scope_settings():
     return Settings(
         auth_bcrypt_work_factor=5,  # make tests faster
+        auth_local_domains={'example.com'},
         easy_login_attempts=4,
         client_ip_header=None,
         secure_cookies=False,

@@ -80,6 +80,7 @@ def gen_dns_keys(ctx):
 def create_account(ctx):
     fernet = Fernet(ctx.obj['auth_invitation_secret'].encode())
     data = dict(address=ctx.obj['address'], last_name='testing')
+    print(f'creating account: {data}')
     token = fernet.encrypt(msgpack.packb(data, use_bin_type=True)).decode()
     session = requests.Session()
     url_ = url(ctx, '/accept-invitation/', auth=True) + f'?token={token}'
