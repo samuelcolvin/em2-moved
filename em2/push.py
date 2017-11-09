@@ -61,7 +61,7 @@ class Pusher(Actor):
         kwargs['redis_settings'] = self.settings.redis
         super().__init__(**kwargs)
         logger.debug('initialising pusher %s', self)
-        self.auth_check_url = settings.auth_server_url + '/check-user-node/'
+        self.auth_check_url = settings.auth_server_sys_url + '/check-user-node/'
         self.auth_check_headers = {'Authorization': settings.auth_node_secret}
 
     async def startup(self):

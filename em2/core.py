@@ -258,7 +258,8 @@ class ApplyAction(FetchOr404Mixin):
             raise HTTPBadRequest(text='body can not be empty when adding a message')
 
         after_id, deleted, position, parent_id = await self.fetchrow404(self._find_msg_by_action_sql,
-                                                                        self.data.conv, self.data.parent)
+                                                                        self.data.conv, self.data.parent,
+                                                                        msg='msg action not found on conversation')
         if deleted:
             raise HTTPBadRequest(text='you cannot add messages after a deleted message')
 

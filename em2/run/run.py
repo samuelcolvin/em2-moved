@@ -29,7 +29,7 @@ def web(settings: Settings):
     wait_for_services(settings, loop=loop)
     loop.run_until_complete(_prepare_database(settings, overwrite_existing=False))
 
-    logger.info('starting server...')
+    logger.info('starting main server')
     app = create_app(settings)
     try:
         run_app(app, port=settings.web_port, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
@@ -92,7 +92,7 @@ def auth(settings: Settings):
     wait_for_services(settings, loop=loop)
     loop.run_until_complete(_prepare_database(settings, overwrite_existing=False))
 
-    logger.info('starting auth server...')
+    logger.info('starting auth server')
     app = create_auth_app(settings)
     try:
         run_app(app, port=settings.web_port, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)

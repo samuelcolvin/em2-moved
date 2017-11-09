@@ -60,6 +60,7 @@ services:
       EM2_EXTERNAL_DOMAIN: ${EM2_EXTERNAL_DOMAIN}
       EM2_AUTH_SESSION_SECRET: ${EM2_AUTH_SESSION_SECRET}
       EM2_AUTH_SERVER_URL: 'http://localhost:8000/auth'
+      EM2_AUTH_SERVER_SYS_URL: 'http://nginx/auth'
       EM2_COMMS_PROTO: ${EM2_COMMS_PROTO}
       EM2_SECURE_COOKIES: 'false'
       EM2_FALLBACK_USERNAME: ${EM2_FALLBACK_USERNAME}
@@ -94,6 +95,7 @@ services:
       EM2_FALLBACK_CLS: ${EM2_FALLBACK_CLS}
       EM2_AUTH_LOCAL_DOMAINS: ${EM2_AUTH_LOCAL_DOMAINS}
       EM2_AUTH_SERVER_URL: 'http://localhost:8000/auth'
+      EM2_AUTH_SERVER_SYS_URL: 'http://nginx/auth'
     restart: always
     depends_on:
     - postgres
@@ -116,6 +118,7 @@ services:
       EM2_ORIGIN_DOMAIN: ${EM2_ORIGIN_DOMAIN}
       EM2_AUTH_LOCAL_DOMAINS: ${EM2_AUTH_LOCAL_DOMAINS}
       EM2_AUTH_SERVER_URL: 'http://localhost:8000/auth'
+      EM2_AUTH_SERVER_SYS_URL: 'http://nginx/auth'
     restart: always
     networks:
       default:

@@ -38,6 +38,7 @@ def full_scope_settings():
         pg_main_name='em2_test',
         pg_auth_name='em2_auth_test',
         auth_server_url='http://auth.example.com',
+        auth_server_sys_url='http://auth.example.com',
         EXTERNAL_DOMAIN='em2.platform.example.com',
         ORIGIN_DOMAIN='https://frontend.example.com',
         authenticator_cls='tests.fixture_classes.SimpleAuthenticator',
@@ -58,7 +59,7 @@ def _foreign_server(loop, test_server):
 
 @pytest.fixture
 def settings(full_scope_settings, _foreign_server):
-    return full_scope_settings.copy(update={'auth_server_url': f'http://localhost:{_foreign_server.port}'})
+    return full_scope_settings.copy(update={'auth_server_sys_url': f'http://localhost:{_foreign_server.port}'})
 
 
 @pytest.fixture(scope='session')

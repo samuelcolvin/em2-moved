@@ -149,8 +149,8 @@ async def _fetch404(func, sql, *args, msg=None):
     if not val:
         # TODO add debug
         msg = msg or 'unable to find value in db'
-        tb = ''.join(traceback.format_stack())
-        logger.error('%s\nsql:\n%s\ntraceback:%s', msg, sql, tb)
+        tb = ''.join(traceback.format_stack()[:-1])
+        logger.error('%s\nsql:\n%s\nargs:\n  %s\ntraceback:\n%s', msg, sql, args, tb)
         raise web_exceptions.HTTPNotFound(text=msg)
     return val
 

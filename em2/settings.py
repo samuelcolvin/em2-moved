@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     auth_session_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
     auth_invitation_secret = b'you need to replace me with a real Fernet keyxxxxxxx='
     auth_server_url = 'https://auth.example.com'
+    auth_server_sys_url = 'https://auth.example.com'
     # address domains which are assumed to be local
     # FIXME replace with a proper model for domains in auth
     auth_local_domains: Set[str] = {'example.com'}
