@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from typing import List, NamedTuple
@@ -52,8 +53,8 @@ class Get(View):
 
 class Create(View):
     create_conv_sql = """
-    INSERT INTO conversations (key, creator, subject)
-    VALUES ($1, $2, $3) RETURNING id
+    INSERT INTO conversations (key, creator, subject, snippet)
+    VALUES ($1, $2, $3, $4) RETURNING id
     """
     add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
     add_message_sql = 'INSERT INTO messages (conv, key, body) VALUES ($1, $2, $3)'
@@ -85,11 +86,18 @@ class Create(View):
         participants.add(self.session.address)
         recip_ids = await create_missing_recipients(self.conn, participants)
         recip_ids = set(recip_ids.values())
+        snippet = json.dumps({
+            'verb': 'created',
+            'addr': self.session.address,
+            'body': conv.message[:20],
+            'prts': len(participants),
+            'msgs': 1,
+        })
 
         async with self.conn.transaction():
             try:
                 conv_id = await self.conn.fetchval(self.create_conv_sql,
-                                                   conv.conv_key, self.session.recipient_id, conv.subject)
+                                                   conv.conv_key, self.session.recipient_id, conv.subject, snippet)
             except UniqueViolationError:
                 raise JsonError.HTTPConflict(error='key conflicts with existing conversation')
             await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})

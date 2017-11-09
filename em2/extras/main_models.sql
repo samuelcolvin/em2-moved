@@ -70,7 +70,7 @@ CREATE TABLE actions (
 );
 CREATE INDEX action_key ON actions USING btree (key);
 
-CREATE FUNCTION do_action_update() RETURNS trigger AS $$
+CREATE FUNCTION action_inserted() RETURNS trigger AS $$
   -- could replace all this with plv8
   DECLARE
     -- TODO add actor name when we have it, could add attachment count etc. here too
@@ -89,7 +89,7 @@ CREATE FUNCTION do_action_update() RETURNS trigger AS $$
   END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER action_update AFTER INSERT ON actions FOR EACH ROW EXECUTE PROCEDURE do_action_update();
+CREATE TRIGGER action_insert AFTER INSERT ON actions FOR EACH ROW EXECUTE PROCEDURE action_inserted();
 
 -- see core.ActionStatuses enum which matches this
 CREATE TYPE ACTION_STATUS AS ENUM ('temporary_failure', 'failed', 'successful');
