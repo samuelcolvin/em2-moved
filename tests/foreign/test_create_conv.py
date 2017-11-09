@@ -52,7 +52,7 @@ async def test_add_participant(cli, url, foreign_server, get_conv, db_conn):
             'key': 'key12345678',
             'published': True,
             'subject': 'Test Conversation',
-            'ts': '2032-06-01T12:00:00.12345'
+            'created_ts': '2032-06-01T12:00:00.12345',
         },
         'messages': [
             {

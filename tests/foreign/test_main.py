@@ -25,7 +25,7 @@ async def test_get_conv(cli, conv, url):
             'key': 'key12345678',
             'published': False,
             'subject': 'Test Conversation',
-            'ts': CloseToNow(),
+            'created_ts': CloseToNow(),
         },
         'messages': [
             {
@@ -112,7 +112,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
             'key': pub_conv.key,
             'published': True,
             'subject': 'Test Conversation',
-            'ts': CloseToNow()
+            'created_ts': CloseToNow()
         },
         'messages': [
             {

@@ -159,7 +159,7 @@ async def test_smtp_create(cli, url, db_conn):
         'details': {
             'key': conv_key,
             'subject': 'testing',
-            'ts': CloseToNow(),
+            'created_ts': CloseToNow(),
             'creator': 'testing@other.com',
             'published': True,
         },

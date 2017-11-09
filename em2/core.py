@@ -391,7 +391,19 @@ class GetConv(FetchOr404Mixin):
     conv_details_sql = """
     SELECT row_to_json(t)
     FROM (
-      SELECT c.key AS key, c.subject AS subject, c.created_ts AS ts, r.address AS creator, c.published AS published
+      SELECT c.key AS key, c.subject AS subject, c.created_ts AS created_ts, r.address AS creator,
+        c.published AS published
+      FROM conversations AS c
+      JOIN recipients AS r ON c.creator = r.id
+      WHERE c.id = $1
+    ) t;
+    """
+
+    conv_details_inc_summary_sql = """
+    SELECT row_to_json(t)
+    FROM (
+      SELECT c.key AS key, c.subject AS subject, c.created_ts AS created_ts, c.updated_ts as updated_ts,
+        r.address AS creator, c.published AS published, c.snippet AS snippet
       FROM conversations AS c
       JOIN recipients AS r ON c.creator = r.id
       WHERE c.id = $1
@@ -402,7 +414,7 @@ class GetConv(FetchOr404Mixin):
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
       SELECT m1.key AS key, m2.key AS after, m1.relationship AS relationship, m1.body AS body, m1.format AS format,
-      m1.deleted AS deleted
+        m1.deleted AS deleted
       FROM messages AS m1
       LEFT JOIN messages AS m2 ON m1.after = m2.id
       WHERE m1.conv = $1
@@ -455,15 +467,16 @@ class GetConv(FetchOr404Mixin):
     def __init__(self, conn):
         self.conn = conn
 
-    async def run(self, conv_key, participant_address, inc_states=False):
+    async def run(self, conv_key, participant_address, inc_summary=False, inc_states=False):
         conv_id = await self.fetchval404(
             self.get_conv_id_sql,
             participant_address,
             conv_key + '%',
             msg=f'conversation {conv_key} not found'
         )
+        conv_details_sql = self.conv_details_inc_summary_sql if inc_summary else self.conv_details_sql
         fields = [
-            ('details', await self.conn.fetchval(self.conv_details_sql, conv_id)),
+            ('details', await self.conn.fetchval(conv_details_sql, conv_id)),
             ('messages', await self.conn.fetchval(self.messages_sql, conv_id)),
             ('participants', await self.conn.fetchval(self.participants_sql, conv_id)),
             ('actions', await self.conn.fetchval(self.actions_sql, conv_id)),

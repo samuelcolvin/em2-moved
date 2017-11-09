@@ -93,6 +93,7 @@ services:
       EM2_FALLBACK_ENDPOINT: ${EM2_FALLBACK_ENDPOINT}
       EM2_FALLBACK_CLS: ${EM2_FALLBACK_CLS}
       EM2_AUTH_LOCAL_DOMAINS: ${EM2_AUTH_LOCAL_DOMAINS}
+      EM2_AUTH_SERVER_URL: 'http://localhost:8000/auth'
     restart: always
     depends_on:
     - postgres
@@ -114,6 +115,7 @@ services:
       EM2_SECURE_COOKIES: 'false'
       EM2_ORIGIN_DOMAIN: ${EM2_ORIGIN_DOMAIN}
       EM2_AUTH_LOCAL_DOMAINS: ${EM2_AUTH_LOCAL_DOMAINS}
+      EM2_AUTH_SERVER_URL: 'http://localhost:8000/auth'
     restart: always
     networks:
       default:

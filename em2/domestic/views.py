@@ -30,7 +30,8 @@ class VList(View):
     sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT c.key AS key, c.subject AS subject, c.created_ts AS ts, c.published AS published, c.snippet as snippet
+      SELECT c.key AS key, c.subject AS subject, c.created_ts AS created_ts, c.updated_ts as updated_ts,
+        c.published AS published, c.snippet as snippet
       FROM conversations AS c
       LEFT JOIN participants ON c.id = participants.conv
       WHERE participants.recipient = $1
@@ -47,7 +48,7 @@ class Get(View):
     async def call(self, request):
         conv_key = request.match_info['conv']
         inc_states = bool(request.query.get('states'))
-        json_str = await GetConv(self.conn).run(conv_key, self.session.address, inc_states=inc_states)
+        json_str = await GetConv(self.conn).run(conv_key, self.session.address, inc_summary=True, inc_states=inc_states)
         return raw_json_response(json_str)
 
 

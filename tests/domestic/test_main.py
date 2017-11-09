@@ -22,7 +22,8 @@ async def test_valid_cookie_list_convs(cli, conv, url, db_conn):
         'key': conv.key,
         'subject': 'Test Conversation',
         'published': False,
-        'ts': CloseToNow(),
+        'created_ts': CloseToNow(),
+        'updated_ts': CloseToNow(),
         'snippet': None,
     }] == obj
 
@@ -272,7 +273,8 @@ async def test_list_with_snippet(cli, conv, url, db_conn):
         'key': await db_conn.fetchval('SELECT key from conversations'),
         'subject': 'Test Conversation',
         'published': True,
-        'ts': CloseToNow(),
+        'created_ts': CloseToNow(),
+        'updated_ts': CloseToNow(),
         'snippet': {
             'addr': 'testing@example.com',
             'body': 'hello',
@@ -362,7 +364,16 @@ async def test_add_message_get(cli, conv, url, db_conn):
             'key': new_conv_key,
             'published': True,
             'subject': 'Test Conversation',
-            'ts': CloseToNow()
+            'created_ts': CloseToNow(),
+            'updated_ts': CloseToNow(),
+            'snippet': {
+                'addr': 'testing@example.com',
+                'body': 'reply',
+                'comp': 'message',
+                'msgs': 2,
+                'prts': 1,
+                'verb': 'add',
+            },
         },
         'messages': [
             {
@@ -419,7 +430,17 @@ async def test_add_prt_get(cli, conv, url, db_conn):
             'key': 'key12345678',
             'published': False,
             'subject': 'Test Conversation',
-            'ts': CloseToNow()
+            'created_ts': CloseToNow(),
+            'updated_ts': CloseToNow(),
+            'snippet': {
+                'addr': 'testing@example.com',
+                'body': None,
+                'comp': 'participant',
+                'msgs': 1,
+                'prts': 2,
+                'verb': 'add',
+            },
+
         },
         'messages': [
             {

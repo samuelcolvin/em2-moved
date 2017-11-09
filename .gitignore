@@ -17,4 +17,4 @@ docker/tmp/
 em2-private.pem
 em2-cookie-*
 sandbox/
-TODO.txt
+/TODO.*
