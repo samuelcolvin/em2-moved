@@ -636,6 +636,23 @@ async def test_ws_anon(cli):
         assert got_message is False
 
 
+async def test_ws_expired(cli, settings):
+    fernet = Fernet(settings.auth_session_secret)
+    data = f'123:{int(time()) - 3600}:foo@bar.com'
+    cookies = {settings.cookie_name: fernet.encrypt(data.encode()).decode()}
+    cli.session.cookie_jar.update_cookies(cookies)
+    async with cli.session.ws_connect(cli.make_url('/ws/')) as ws:
+        got_message = False
+        with timeout(0.5):
+            async for msg in ws:
+                assert msg.tp == WSMsgType.text
+                assert msg.data == '{"auth_url": "http://auth.example.com/update-session/"}'
+                got_message = True
+        assert ws.closed
+        assert ws.close_code == 4401
+        assert got_message
+
+
 async def test_get_latest_conv(cli, create_conv, url, db_conn):
     # times will be identical here as CURRENT_TIMESTAMP doesn't change within a transaction, ordering will be on id
     await create_conv(key='xxxxxxxxxxa', subject='conv1')

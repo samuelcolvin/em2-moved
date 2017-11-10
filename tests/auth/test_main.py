@@ -260,7 +260,7 @@ async def test_update_session(cli, url, authenticate):
 
 async def test_update_session_no_redirect(cli, url, authenticate):
     r = await cli.get(url('update-session'), allow_redirects=False)
-    assert r.status == 400, await r.text()
+    assert r.status == 200, await r.text()
 
 
 async def test_logout(cli, url, authenticate):

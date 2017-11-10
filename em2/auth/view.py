@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 
 import bcrypt
 from aiohttp.hdrs import METH_POST
-from aiohttp.web import HTTPTemporaryRedirect
+from aiohttp.web import HTTPTemporaryRedirect, Response
 from cryptography.fernet import InvalidToken
 from pydantic import EmailStr, constr, validator
 from zxcvbn import zxcvbn
@@ -130,15 +130,12 @@ class LoginView(View):
 
 class UpdateSession(View):
     async def call(self, request):
-        try:
-            redirect_to = request.query['r']
-        except KeyError:
-            raise JsonError.HTTPBadRequest(error='redirect value "r" missing')
         token, user_address = request['session_token'], request['user_address']
         cookie = self.app['session_fernet'].encrypt(f'{token}:{int(time())}:{user_address}'.encode()).decode()
-        r = HTTPTemporaryRedirect(location=redirect_to)
+        redirect_to = request.query.get('r')
+        r = HTTPTemporaryRedirect(location=redirect_to) if redirect_to else Response(text='ok')
         r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
-        raise r
+        return r
 
 
 class LogoutView(View):

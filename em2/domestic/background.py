@@ -74,6 +74,7 @@ class Background:
         data = msg_decode(raw_data)
         logger.info('processing action with %d recipients, %d current ws connections',
                     len(data['recipients']), len(self.connections))
+        data['action'].pop('id')
         send_data = json.dumps(data['action'], cls=Em2JsonEncoder)
         for recipient_id in data['recipients']:
             ws = self.connections.get(recipient_id)
