@@ -23,12 +23,12 @@ class Background:
         self.task = loop.create_task(self._process_actions())
         self.recipients_key = self.settings.FRONTEND_RECIPIENTS_BASE.format(self.app['name'])
         self._last_added_recipient = 0
-        self.connections = {}
+        self.connections = []
 
     async def add_recipient(self, id, ws=None):
         await self.up.wait()
         if ws:
-            self.connections[id] = ws
+            self.connections.append((id, ws))
         async with self.redis_pool.get() as redis:
             await asyncio.gather(
                 redis.sadd(self.recipients_key, id),
@@ -36,10 +36,12 @@ class Background:
             )
         self._last_added_recipient = time()
 
-    async def remove_recipient(self, id):
-        self.connections.pop(id)
+    async def remove_recipient(self, recipient_id):
+        for id, ws in self.connections:
+            if id == recipient_id:
+                self.connections.remove((id, ws))
         async with self.redis_pool.get() as redis:
-            await redis.srem(self.recipients_key, id)
+            await redis.srem(self.recipients_key, recipient_id)
 
     async def close(self):
         logger.info('closing frontend background task, done: %r', self.task.done())
@@ -77,8 +79,10 @@ class Background:
         data['action'].pop('id')
         send_data = json.dumps(data['action'], cls=Em2JsonEncoder)
         for recipient_id in data['recipients']:
-            ws = self.connections.get(recipient_id)
-            if ws:
-                ws.send_str(send_data)
-            else:
-                logger.warning('no ws connection for %d', recipient_id)
+            for id, ws in self.connections:
+                if id == recipient_id:
+                    try:
+                        ws.send_str(send_data)
+                    except (RuntimeError, AttributeError) as e:
+                        logger.info('recipient %d, ws "%s" closed, removing', recipient_id, ws)
+                        self.connections.remove((id, ws))

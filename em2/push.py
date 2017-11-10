@@ -45,8 +45,8 @@ class Pusher(Actor):
     B_LOCAL = LOCAL.encode()
     FALLBACK = 'F'
 
-    # prefix for hashes of address domain -> node (platform) domain
-    domain_node_prefix = b'dn:'
+    # prefix for hashes of address -> node (platform) domain
+    address_prefix = b'an:'
     # prefix for strings containing auth tokens foreach node
     auth_token_prefix = b'ak:'
 
@@ -133,7 +133,7 @@ class Pusher(Actor):
             known_local = set()
             async with await self.get_redis_conn() as redis:
                 for recipient_id, address in prts:
-                    node_b = await redis.get(self.domain_node_prefix + address.encode())
+                    node_b = await redis.get(self.address_prefix + address.encode())
                     if node_b == self.B_LOCAL:
                         known_local.add((recipient_id, address))
 
@@ -282,7 +282,7 @@ class Pusher(Actor):
             # sorted is a bodge to avoid ordering errors in tests, could be removed
             for recipient_id, address in sorted(prts):
 
-                key = self.domain_node_prefix + address.encode()
+                key = self.address_prefix + address.encode()
                 node_b = await redis.get(key)
                 if node_b:
                     node = node_b.decode()
@@ -365,7 +365,7 @@ class Pusher(Actor):
                        headers=None,
                        read: Optional[ReadMethod] = None,
                        expected_statuses: Set[int]={200},
-                       retry_delay=2.0) -> Tuple[Response, Union[str, dict]]:
+                       retry_delay=1.0) -> Tuple[Response, Union[str, dict]]:
         exc = response_data = None
         if json_data:
             data = json.dumps(json_data)
