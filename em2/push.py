@@ -125,13 +125,28 @@ class Pusher(Actor):
                 await self.domestic_push({actor_recipient_id}, action)
                 return
 
-            prts = await conn.fetch(self.prts_sql, action.conv_id)  # TODO more info e.g. bcc etc.
+            prts = set(await conn.fetch(self.prts_sql, action.conv_id))  # TODO more info e.g. bcc etc.
+            prts_count = len(prts)
 
-            remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(*prts)
+            # get known local recipients and push to them first to avoid delay during DSN queries and em2 auth
+            # in categorise_addresses
+            known_local = set()
+            async with await self.get_redis_conn() as redis:
+                for recipient_id, address in prts:
+                    node_b = await redis.get(self.domain_node_prefix + address.encode())
+                    if node_b == self.B_LOCAL:
+                        known_local.add((recipient_id, address))
 
+            if known_local:
+                prts.difference_update(known_local)
+                await self.domestic_push({rid for rid, _ in known_local}, action)
+
+            remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(prts)
+
+            loc_count = len(known_local) + len(local_recipients)
             logger.info('%s.%s %.6s to %d participants: %d em2 nodes, local %d, fallback %d',
                         action.component or 'conv', action.verb, action.conv_key,
-                        len(prts), len(remote_nodes), len(local_recipients), len(fallback_addresses))
+                        prts_count, len(remote_nodes), loc_count, len(fallback_addresses))
 
             if local_recipients:
                 await self.domestic_push(local_recipients, action)
@@ -258,28 +273,24 @@ class Pusher(Actor):
         logger.info('no em2 node found for %s, falling back', domain)
         return self.FALLBACK
 
-    async def categorise_addresses(self, *parts: str) -> Tuple[Dict[str, Set[str]], Set[int], Set[str]]:
+    async def categorise_addresses(self, prts: Set[str]) -> Tuple[Dict[str, Set[str]], Set[int], Set[str]]:
         remote_nodes = {}
         local_recipients = set()
         fallback_addresses = set()
 
-        local_cache = {}
-
         async with await self.get_redis_conn() as redis:
-            for recipient_id, address in parts:
+            # sorted is a bodge to avoid ordering errors in tests, could be removed
+            for recipient_id, address in sorted(prts):
 
-                node = local_cache.get(address)
-                if not node:
-                    key = self.domain_node_prefix + address.encode()
-                    node_b = await redis.get(key)
-                    if node_b:
-                        node = node_b.decode()
-                        logger.info('found cached node %s -> %s', address, node)
-                    else:
-                        node = await self.get_node(address)
-                        logger.info('got node for %s -> %s', address, node)
-                        await redis.setex(key, self.settings.COMMS_DNS_CACHE_EXPIRY, node.encode())
-                    local_cache[address] = node
+                key = self.domain_node_prefix + address.encode()
+                node_b = await redis.get(key)
+                if node_b:
+                    node = node_b.decode()
+                    logger.info('found cached node %s -> %s', address, node)
+                else:
+                    node = await self.get_node(address)
+                    logger.info('got node for %s -> %s', address, node)
+                    await redis.setex(key, self.settings.COMMS_DNS_CACHE_EXPIRY, node.encode())
 
                 if node == self.LOCAL:
                     local_recipients.add(recipient_id)
@@ -368,7 +379,7 @@ class Pusher(Actor):
                         response_data = await r.text()
                     elif read == ReadMethod.json:
                         response_data = await r.json()
-            except (aiohttp.ClientError, aiohttp.ClientConnectionError, ValueError) as e:
+            except (aiohttp.ClientError, aiohttp.ClientConnectionError, ValueError, asyncio.TimeoutError) as e:
                 exc = f'{e.__class__.__name__}: {e}'
             else:
                 if r.status in expected_statuses:

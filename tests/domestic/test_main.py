@@ -514,7 +514,7 @@ async def test_publish_conv_foreign_part(cli, conv, url, db_conn, foreign_server
         'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr('POST /create/[0-9a-f]+/ > 204'),
-    ]
+    ], foreign_server.app['request_log']
 
 
 async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
@@ -530,7 +530,7 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
         'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr('POST /create/[0-9a-f]+/ > 204'),
-    ]
+    ], foreign_server.app['request_log']
 
     new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
@@ -544,7 +544,7 @@ async def test_publish_add_msg_conv(cli, conv, url, db_conn, foreign_server):
         'POST /auth/ > 201',
         RegexStr(f'POST /create/{new_conv_key}/ > 204'),
         RegexStr(f'POST /{new_conv_key}/message/add/msg-[0-9a-z]+ > 201'),
-    ]
+    ], foreign_server.app['request_log']
 
 
 async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
@@ -560,13 +560,12 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
         'GET /check-user-node/ > 200',
         'POST /auth/ > 201',
         RegexStr('POST /create/[0-9a-f]+/ > 204'),
-    ]
+    ], foreign_server.app['request_log']
 
     new_conv_key = await db_conn.fetchval('SELECT key FROM conversations')
     url_ = url('act', conv=new_conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
     r = await cli.post(url_, json={'item': 'new@foreign.com'})
     assert r.status == 200, await r.text()
-    print(foreign_server.app['request_log'])
     assert foreign_server.app['request_log'] == [
         'GET /check-user-node/ > 200',
         'GET /check-user-node/ > 200',
@@ -574,7 +573,7 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
         RegexStr(f'POST /create/{new_conv_key}/ > 204'),
         'GET /check-user-node/ > 200',
         RegexStr(f'POST /{new_conv_key}/participant/add/new@foreign.com > 201'),
-    ]
+    ], foreign_server.app['request_log']
 
 
 async def test_publish_domestic_push(cli, conv, url, db_conn, debug):
