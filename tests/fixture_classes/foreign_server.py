@@ -1,7 +1,6 @@
 import re
 
-from aiohttp.web import Application, Response, json_response, middleware
-from aiohttp.web_exceptions import HTTPNotFound
+from aiohttp.web import Application, HTTPException, HTTPNotFound, Response, json_response, middleware
 
 
 async def auth(request):
@@ -90,11 +89,10 @@ async def check_user_node(request):
 async def logging_middleware(request, handler):
     try:
         r = await handler(request)
-    except Exception as exc:
+    except HTTPException as exc:
         request.app['request_log'].append(f'{request.method} {request.path_qs} > {exc.status}')
         raise
     else:
-        # print(msg)
         request.app['request_log'].append(f'{request.method} {request.path_qs} > {r.status}')
         return r
 
@@ -110,7 +108,5 @@ def create_test_app(loop):
     app.router.add_route('*', '/status/{status:\d+}/', status)
     app.router.add_get('/check-user-node/', check_user_node)
 
-    app.update(
-        request_log=[]
-    )
+    app['request_log'] = []
     return app

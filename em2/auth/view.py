@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 
 import bcrypt
 from aiohttp.hdrs import METH_POST
-from aiohttp.web import HTTPTemporaryRedirect, Response
+from aiohttp.web import HTTPOk, HTTPTemporaryRedirect
 from cryptography.fernet import InvalidToken
 from pydantic import EmailStr, constr, validator
 from zxcvbn import zxcvbn
@@ -43,12 +43,15 @@ class View(_View):
             hashb = bcrypt.hashpw(password.encode(), bcrypt.gensalt(self.settings.auth_bcrypt_work_factor))
             return hashb.decode()
 
+    def set_cookie(self, response, cookie):
+        response.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
+
     async def response_create_session(self, user_id, user_address, action, **json_data):
         r = json_response(**json_data)
         token = await self.conn.fetchval(self.CREATE_SESSION_SQL, user_id, session_event(self.request, action))
         expires = int(time())
         cookie = self.app['session_fernet'].encrypt(f'{token}:{expires}:{user_address}'.encode()).decode()
-        r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
+        self.set_cookie(r, cookie)
         return r
 
 
@@ -133,9 +136,9 @@ class UpdateSession(View):
         token, user_address = request['session_token'], request['user_address']
         cookie = self.app['session_fernet'].encrypt(f'{token}:{int(time())}:{user_address}'.encode()).decode()
         redirect_to = request.query.get('r')
-        r = HTTPTemporaryRedirect(location=redirect_to) if redirect_to else Response(text='ok')
-        r.set_cookie(self.settings.cookie_name, cookie, secure=self.settings.secure_cookies, httponly=True)
-        return r
+        r = HTTPTemporaryRedirect(location=redirect_to) if redirect_to else HTTPOk(text='ok')
+        self.set_cookie(r, cookie)
+        raise r
 
 
 class LogoutView(View):
