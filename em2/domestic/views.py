@@ -52,6 +52,26 @@ class Get(View):
         return raw_json_response(json_str)
 
 
+class ConvActions(View):
+    action_id_sql = 'SELECT id FROM actions WHERE conv = $1 AND key = $2'
+
+    async def call(self, request):
+        conv_key = request.match_info['conv']
+        conv_id = await self.fetchval404(
+            GetConv.get_conv_id_sql,
+            self.session.address,
+            conv_key + '%',
+            msg=f'conversation {conv_key} not found'
+        )
+        since_action = request.query.get('since')
+        if since_action:
+            min_action_id = await self.fetchval404(self.action_id_sql, conv_id, since_action)
+        else:
+            min_action_id = 0
+        json_str = await self.conn.fetchval(GetConv.actions_sql, conv_id, min_action_id)
+        return raw_json_response(json_str)
+
+
 class Create(View):
     create_conv_sql = """
     INSERT INTO conversations (key, creator, subject, snippet)

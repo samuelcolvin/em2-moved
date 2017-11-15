@@ -467,6 +467,54 @@ async def test_add_prt_get(cli, conv, url, db_conn):
     } == json.loads(await db_conn.fetchval('SELECT snippet FROM conversations'))
 
 
+async def test_get_conv_actions(cli, conv, url, db_conn):
+    r = await cli.get(url('conv-actions', conv=conv.key))
+    assert r.status == 200, await r.text()
+    assert None is await r.json()
+
+    r = await cli.post(url('publish', conv=conv.key))
+    assert r.status == 200, await r.text()
+    new_conv_key = (await r.json())['key']
+    publish_act_key = await db_conn.fetchval("SELECT key FROM actions where verb='publish'")
+
+    r = await cli.get(url('conv-actions', conv=new_conv_key))
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    assert [
+        (publish_act_key, 'publish', None, None),
+    ] == [(a['key'], a['verb'], a['component'], a['body']) for a in actions], actions
+
+    add_url = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await cli.post(add_url, json={'body': 'hello', 'parent': publish_act_key})
+    assert r.status == 200, await r.text()
+    msg2_act_key = (await r.json())['key']
+    r = await cli.post(add_url, json={'body': 'hello again', 'parent': msg2_act_key})
+    assert r.status == 200, await r.text()
+    msg3_act_key = (await r.json())['key']
+
+    add_prt_url = url('act', conv=new_conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await cli.post(add_prt_url, json={'item': 'other@example.com'})
+    assert r.status == 200, await r.text()
+    prt_act_key = (await r.json())['key']
+
+    r = await cli.get(url('conv-actions', conv=new_conv_key))
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    # debug(actions)
+    assert [
+        (publish_act_key, 'publish', None, None),
+        (msg2_act_key, 'add', 'message', 'hello'),
+        (msg3_act_key, 'add', 'message', 'hello again'),
+        (prt_act_key, 'add', 'participant', None),
+    ] == [(a['key'], a['verb'], a['component'], a['body']) for a in actions], actions
+
+    r = await cli.get(url('conv-actions', conv=new_conv_key, query={'since': msg2_act_key}))
+    assert [
+        (msg3_act_key, 'add', 'message', 'hello again'),
+        (prt_act_key, 'add', 'participant', None),
+    ] == [(a['key'], a['verb'], a['component'], a['body']) for a in await r.json()], actions
+
+
 async def test_publish_conv(cli, conv, url, db_conn):
     published, ts1 = await db_conn.fetchrow('SELECT published, created_ts FROM conversations')
     assert not published
