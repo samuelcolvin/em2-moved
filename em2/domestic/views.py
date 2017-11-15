@@ -69,7 +69,7 @@ class ConvActions(View):
         else:
             min_action_id = 0
         json_str = await self.conn.fetchval(GetConv.actions_sql, conv_id, min_action_id)
-        return raw_json_response(json_str)
+        return raw_json_response(json_str or '[]')
 
 
 class Create(View):

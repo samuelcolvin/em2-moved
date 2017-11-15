@@ -470,7 +470,7 @@ async def test_add_prt_get(cli, conv, url, db_conn):
 async def test_get_conv_actions(cli, conv, url, db_conn):
     r = await cli.get(url('conv-actions', conv=conv.key))
     assert r.status == 200, await r.text()
-    assert None is await r.json()
+    assert [] == await r.json()
 
     r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()

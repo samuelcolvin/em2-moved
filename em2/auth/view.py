@@ -222,6 +222,7 @@ class AccountView(View):
     """
 
     async def call(self, request):
+        # TODO add other available accounts
         data = dict(await self.fetchrow404(self.user_details_sql, self.request['user_id']))
         data['otp_enabled'] = bool(data.pop('otp_secret'))
         return json_response(**data)
@@ -245,7 +246,7 @@ class SessionsView(View):
 
 class CheckUserNodeView(View):
     """
-    Internal only view for em2 nodes to check find out if an address is "local" to them.
+    Internal only view for em2 nodes to find out if an address is "local" to them.
 
     Note: this approach to resolving node for an address doesn't use DNS records, is this a good idea?
     It means local messaging should work without correct DNS records which is good, but it could cause other problems.
