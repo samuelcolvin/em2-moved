@@ -1,6 +1,6 @@
 aiodns==1.1.1
 aiohttp==2.3.2
-aioredis==0.3.4
+aioredis==0.3.5
 async-timeout==2.0.0
 arq==0.12
 beautifulsoup4==4.6.0
