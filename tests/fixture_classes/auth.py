@@ -13,8 +13,8 @@ class SimpleAuthenticator(Authenticator):
     async def _set_key(self):
         if not self.key_added:
             self.key_added = True
-            async with await self.get_redis_conn() as redis:
-                await redis.set('already-authenticated.com:123:whatever', 2461449700)
+            redis = await self.get_redis()
+            await redis.set('already-authenticated.com:123:whatever', 2461449700)
 
     async def validate_platform_token(self, token):
         # set the dummy key on the first validation

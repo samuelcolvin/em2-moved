@@ -23,5 +23,5 @@ class Worker(BaseWorker):
             settings=self.settings,
             worker=self,
             loop=self.loop,
-            existing_pool=await self.get_redis_pool(),
+            existing_redis=await self.get_redis(),
         )
