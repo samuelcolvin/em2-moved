@@ -46,7 +46,7 @@ async def activate_session(request, data):
     session_token, created_at, user_address = data.split(':', 2)
     session_cache = 's:{}'.format(session_token).encode()
     expires_at = int(created_at) + request.app['settings'].cookie_grace_time
-    async with await request.app['pusher'].get_redis_conn() as redis:
+    with await request.app['pusher'].redis as redis:
         data = await redis.get(session_cache)
         if data:
             recipient_id = int(data)

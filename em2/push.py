@@ -131,11 +131,11 @@ class Pusher(Actor):
             # get known local recipients and push to them first to avoid delay during DSN queries and em2 auth
             # in categorise_addresses
             known_local = set()
-            async with await self.get_redis_conn() as redis:
-                for recipient_id, address in prts:
-                    node_b = await redis.get(self.address_prefix + address.encode())
-                    if node_b == self.B_LOCAL:
-                        known_local.add((recipient_id, address))
+            for recipient_id, address in prts:
+                redis = await self.get_redis()
+                node_b = await redis.get(self.address_prefix + address.encode())
+                if node_b == self.B_LOCAL:
+                    known_local.add((recipient_id, address))
 
             if known_local:
                 prts.difference_update(known_local)
@@ -160,7 +160,7 @@ class Pusher(Actor):
             # TODO save actions_status
 
     async def domestic_push(self, recipient_ids: Set[int], action: Action):
-        async with await self.get_redis_conn() as redis:
+        with await self.redis as redis:
             recipient_ids_key = gen_random('rid')
             await asyncio.gather(
                 redis.sadd(recipient_ids_key, *recipient_ids),
@@ -277,8 +277,7 @@ class Pusher(Actor):
         remote_nodes = {}
         local_recipients = set()
         fallback_addresses = set()
-
-        async with await self.get_redis_conn() as redis:
+        with await self.redis as redis:
             # sorted is a bodge to avoid ordering errors in tests, could be removed
             for recipient_id, address in sorted(prts):
 
@@ -328,7 +327,7 @@ class Pusher(Actor):
     async def authenticate(self, node_domain: str) -> str:
         logger.debug('authenticating with %s', node_domain)
         token_key = self.auth_token_prefix + node_domain.encode()
-        async with await self.get_redis_conn() as redis:
+        with await self.redis as redis:
             token = await redis.get(token_key)
             if token:
                 token = token.decode()

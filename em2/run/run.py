@@ -50,9 +50,10 @@ def reset_database(settings: Settings):
 
 
 async def _flush_redis(settings: Settings, loop):
-    pool = await create_pool_lenient(settings.redis, loop=loop)
-    async with pool.get() as redis:
-        await redis.flushdb()
+    redis = await create_pool_lenient(settings.redis, loop=loop)
+    await redis.flushdb()
+    redis.close()
+    await redis.wait_closed()
 
 
 @command

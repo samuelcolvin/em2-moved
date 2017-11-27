@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import logging
 import os
@@ -58,9 +57,8 @@ class Authenticator(RedisMixin):
         return platform_token
 
     async def validate_platform_token(self, token):
-        async with await self.get_redis_conn() as redis:
-            if not await redis.exists(token.encode()):
-                raise HTTPForbidden(text='invalid token')
+        if not await self.redis.exists(token.encode()):
+            raise HTTPForbidden(text='invalid token')
         return token.split(':', 1)[0]
 
     async def check_domain_platform(self, domain, platform):
@@ -94,23 +92,23 @@ class Authenticator(RedisMixin):
         raise FailedInboundAuthentication('no "em2key" TXT dns record found')
 
     async def _store_platform_token(self, token: str, expires_at: int):
-        async with await self.get_redis_conn() as redis:
-            key = token.encode()
-            await asyncio.gather(
-                redis.set(key, self._dft_value),
-                redis.expireat(key, expires_at),
-            )
+        redis = await self.get_redis()
+        pipe = redis.pipeline()
+        key = token.encode()
+        pipe.set(key, self._dft_value)
+        pipe.expireat(key, expires_at)
+        await pipe.execute()
 
     async def _check_domain_uses_platform(self, domain: str, platform_domain: str):
         cache_key = b'pl:%s' % domain.encode()
-        async with await self.get_redis_conn() as redis:
-            cache_p = await redis.get(cache_key)
-            if cache_p and cache_p.decode() == platform_domain:
+        redis = await self.get_redis()
+        cache_p = await redis.get(cache_key)
+        if cache_p and cache_p.decode() == platform_domain:
+            return True
+        async for host in self.dns.mx_hosts(domain):
+            if host == platform_domain:
+                await self.redis.setex(cache_key, self.settings.COMMS_DOMAIN_CACHE_TIMEOUT, host.encode())
                 return True
-            async for host in self.dns.mx_hosts(domain):
-                if host == platform_domain:
-                    await redis.setex(cache_key, self.settings.COMMS_DOMAIN_CACHE_TIMEOUT, host.encode())
-                    return True
 
     def valid_signature(self, signed_message, signature, public_key):
         try:

@@ -45,7 +45,7 @@ async def activate_session(request, data):
 
 async def get_session_user(app, session_token, event_data):
     session_cache = SESSION_CACHE_TEMPLATE.format(session_token).encode()
-    async with app['redis_pool'].get() as redis:
+    with await app['redis'] as redis:
         d = await redis.get(session_cache)
         if d:
             return int(d)
@@ -72,5 +72,4 @@ async def logout(request):
     await request['conn'].execute(DEACTIVATE_SESSION_SQL, event_data, request['session_token'])
 
     session_cache = SESSION_CACHE_TEMPLATE.format(request['session_token']).encode()
-    async with request.app['redis_pool'].get() as redis:
-        await redis.delete(session_cache)
+    await request.app['redis'].delete(session_cache)

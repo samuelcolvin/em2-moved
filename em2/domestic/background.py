@@ -19,7 +19,7 @@ class Background:
         self.settings: Settings = app['settings']
         self.up = asyncio.Event(loop=self.loop)
         self.ready = asyncio.Event(loop=self.loop)
-        self.redis_pool = None  # set in _process_actions
+        self.redis = None  # set in _process_actions
         self.task = loop.create_task(self._process_actions())
         self.recipients_key = self.settings.FRONTEND_RECIPIENTS_BASE.format(self.app['name'])
         self._last_added_recipient = 0
@@ -29,10 +29,10 @@ class Background:
         await self.up.wait()
         if ws:
             self.connections.append((id, ws))
-        async with self.redis_pool.get() as redis:
+        with await self.redis as r:
             await asyncio.gather(
-                redis.sadd(self.recipients_key, id),
-                redis.expire(self.recipients_key, 60),
+                r.sadd(self.recipients_key, id),
+                r.expire(self.recipients_key, 60),
             )
         self._last_added_recipient = time()
 
@@ -40,26 +40,24 @@ class Background:
         for id, ws in self.connections:
             if id == recipient_id:
                 self.connections.remove((id, ws))
-        async with self.redis_pool.get() as redis:
-            await redis.srem(self.recipients_key, recipient_id)
+        await self.redis.srem(self.recipients_key, recipient_id)
 
     async def close(self):
         logger.info('closing frontend background task, done: %r', self.task.done())
-        if self.redis_pool:
-            async with self.redis_pool.get() as redis:
-                await redis.delete(self.recipients_key)
+        if self.redis:
+            await self.redis.delete(self.recipients_key)
         if self.task.done():
             self.task.result()
         self.task.cancel()
 
     async def _process_actions(self):
-        self.redis_pool = await self.app['pusher'].get_redis_pool()
+        self.redis = await self.app['pusher'].get_redis()
         jobs_key = self.settings.FRONTEND_JOBS_BASE.format(self.app['name'])
         self.up.set()
         await self.add_recipient(0)
         self.ready.set()
         drain = Drain(
-            redis_pool=self.redis_pool,
+            redis=self.redis,
             burst_mode=False,
             max_concurrent_tasks=5,
             raise_task_exception=True,

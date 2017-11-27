@@ -34,7 +34,7 @@ async def app_startup(app):
     app.update(
         db=settings.db_cls(settings=settings, loop=loop),
         session=ClientSession(loop=loop, read_timeout=5, conn_timeout=5),
-        redis_pool=await create_pool_lenient(settings.redis, loop),
+        redis=await create_pool_lenient(settings.redis, loop),
     )
     await app['db'].startup()
     async with app['db'].acquire() as conn:
@@ -46,9 +46,8 @@ async def app_cleanup(app):
     await app['db'].close()
     await app['session'].close()
 
-    app['redis_pool'].close()
-    await app['redis_pool'].wait_closed()
-    await app['redis_pool'].clear()
+    app['redis'].close()
+    await app['redis'].wait_closed()
 
 
 def create_auth_app(settings: Settings):

@@ -86,7 +86,7 @@ class LoginView(View):
     async def call(self, request):
         ip_address = get_ip(request)
         key = b'login:%s' % ip_address.encode()
-        async with self.app['redis_pool'].get() as redis:
+        with await self.app['redis'] as redis:
             if request.method == METH_POST:
                 login_attempts = int(await redis.incr(key))
                 if login_attempts == 1:
