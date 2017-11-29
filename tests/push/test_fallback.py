@@ -187,7 +187,7 @@ async def test_smtp_create(cli, url, db_conn):
                 'verb': 'publish',
                 'component': None,
                 'body': None,
-                'ts': CloseToNow(),
+                'timestamp': CloseToNow(),
                 'actor': 'testing@other.com',
                 'parent': None,
                 'message': RegexStr('msg-.*'),

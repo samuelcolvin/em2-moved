@@ -43,7 +43,7 @@ async def test_add_participant(cli, url, foreign_server, get_conv, db_conn):
                 'message': None,
                 'parent': None,
                 'participant': 'testing@local.com',
-                'ts': '2032-06-01T13:00:00.12345',
+                'timestamp': '2032-06-01T13:00:00.12345',
                 'verb': 'add'
             }
         ],

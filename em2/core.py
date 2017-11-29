@@ -436,7 +436,7 @@ class GetConv(FetchOr404Mixin):
     actions_sql = """
     SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
     FROM (
-      SELECT a.key AS key, a.verb AS verb, a.component AS component, a.body AS body, a.timestamp AS ts,
+      SELECT a.key AS key, a.verb AS verb, a.component AS component, a.body AS body, a.timestamp AS timestamp,
       actor_recipient.address AS actor,
       a_parent.key AS parent,
       m.key AS message,

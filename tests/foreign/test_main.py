@@ -81,7 +81,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'message': 'msg-firstmessagekeyx',
                 'parent': None,
                 'participant': None,
-                'ts': CloseToNow(),
+                'timestamp': CloseToNow(),
                 'verb': 'publish'
             },
             {
@@ -92,7 +92,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'message': 'msg-secondmessagekey',
                 'parent': 'pub-add-message-1234',
                 'participant': None,
-                'ts': CloseToNow(),
+                'timestamp': CloseToNow(),
                 'verb': 'add'
             },
             {
@@ -103,7 +103,7 @@ async def test_add_message_participant(cli, pub_conv, url, get_conv):
                 'message': None,
                 'parent': None,
                 'participant': 'foobar@example.com',
-                'ts': CloseToNow(),
+                'timestamp': CloseToNow(),
                 'verb': 'add'
             },
         ],

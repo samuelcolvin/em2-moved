@@ -48,7 +48,7 @@ class TestAct:
             'message': self.conv.first_msg_key,
             'parent': 'pub-add-message-1234',
             'participant': None,
-            'ts': CloseToNow(),
+            'timestamp': CloseToNow(),
             'verb': 'lock'
         } == obj['actions'][1]
 

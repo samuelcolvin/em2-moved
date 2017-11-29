@@ -344,7 +344,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
                 'message': 'msg-firstmessagekeyx',
                 'parent': None,
                 'participant': None,
-                'ts': CloseToNow(),
+                'timestamp': CloseToNow(),
                 'verb': 'publish'
             },
             {
@@ -355,7 +355,7 @@ async def test_add_message_get(cli, conv, url, db_conn):
                 'message': new_msg_key,
                 'parent': RegexStr('pub-.*'),
                 'participant': None,
-                'ts': CloseToNow(),
+                'timestamp': CloseToNow(),
                 'verb': 'add'
             }
         ],
@@ -421,7 +421,7 @@ async def test_add_prt_get(cli, conv, url, db_conn):
                 'message': None,
                 'parent': None,
                 'participant': 'other@example.com',
-                'ts': CloseToNow(),
+                'timestamp': CloseToNow(),
                 'verb': 'add'
             }
         ],
