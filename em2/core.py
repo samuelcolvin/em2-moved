@@ -106,7 +106,7 @@ class Database:
 
 class Action(NamedTuple):
     id: int
-    action_key: str
+    key: str
     conv_key: str
     conv_id: int
     verb: Verbs

@@ -666,6 +666,7 @@ async def test_not_published_domestic_push(cli, conv, url, db_conn):
                 assert data['component'] == 'message'
                 assert data['verb'] == 'modify'
                 assert data['actor'] == conv.creator_address
+                assert data['key'].startswith('act-')
                 got_message = True
                 break
         assert got_message

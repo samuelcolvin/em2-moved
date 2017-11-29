@@ -199,7 +199,7 @@ class Pusher(Actor):
             'content-type': 'application/em2',
             'em2-actor': action.actor,
             'em2-timestamp': str(to_unix_ms(action.timestamp)),
-            'em2-action-key': action.action_key,
+            'em2-action-key': action.key,
             'em2-parent': action.parent,
             'em2-relationship': action.relationship,
             'em2-msg-format': action.msg_format,
