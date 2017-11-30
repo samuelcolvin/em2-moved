@@ -261,11 +261,32 @@ async def test_list_with_snippet(cli, conv, url, db_conn):
     r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()
     new_conv_key = (await r.json())['key']
+
+    r = await cli.get(url('list'))
+    assert r.status == 200, await r.text()
+    obj = await r.json()
+    assert [{
+        'key': await db_conn.fetchval('SELECT key from conversations'),
+        'subject': 'Test Conversation',
+        'published': True,
+        'created_ts': CloseToNow(),
+        'updated_ts': CloseToNow(),
+        'snippet': {
+            'addr': 'testing@example.com',
+            'body': 'this is the message',
+            'comp': None,
+            'msgs': 1,
+            'prts': 1,
+            'verb': 'publish',
+        },
+    }] == obj
+
     parent_key = await db_conn.fetchval("SELECT key FROM actions where verb='publish'")
     data = {'body': 'hello', 'parent': parent_key}
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
     assert r.status == 200, await r.text()
+
     r = await cli.get(url('list'))
     assert r.status == 200, await r.text()
     obj = await r.json()

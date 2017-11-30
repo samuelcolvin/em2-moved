@@ -16,6 +16,7 @@ services:
     image: gliderlabs/logspout
     environment:
       SYSLOG_HOSTNAME: 'em2'
+    restart: always
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     ports:
