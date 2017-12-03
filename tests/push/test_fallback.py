@@ -1,9 +1,11 @@
 import os
 from datetime import datetime
+from email.message import EmailMessage
 
 import pytest
 
 from em2 import Settings
+from em2.core import ApplyAction
 from em2.fallback.aws import AwsFallbackHandler
 
 
@@ -71,3 +73,48 @@ async def test_aws_fallback_live(loop):
     )
     assert len(msg_id) == 60
     await fallback.shutdown()
+
+
+async def test_smtp_reply(cli, url, db_conn, conv):
+    apply_action = ApplyAction(
+        db_conn,
+        remote_action=False,
+        action_key='act-testing-add-prt-',
+        conv=conv.id,
+        published=True,
+        actor=await db_conn.fetchval('SELECT id FROM recipients'),
+        component='participant',
+        verb='add',
+        item='testing@other.com',
+    )
+    await apply_action.run()
+    await db_conn.execute("""
+    INSERT INTO action_states (action, ref, status) VALUES ($1, 'testing-message-id', 'successful')
+    """, apply_action.action_id)
+
+    assert 1 == await db_conn.fetchval('SELECT count(*) FROM messages')
+
+    msg = EmailMessage()
+    msg['Subject'] = 'testing'
+    msg['From'] = 'testing@other.com'
+    msg['To'] = 'testing@example.com'
+    msg['In-Reply-To'] = '<testing-message-id>'
+    msg['Date'] = 'Wed, 13 Sep 2017 09:07:28 +0100'
+    msg.set_content('This is a plain test')
+    msg.add_alternative('<p>This is a test</p>', subtype='html')
+
+    r = await cli.post(url('fallback-webhook'), data=msg.as_string())
+    assert r.status == 204, await r.text()
+    assert 2 == await db_conn.fetchval('SELECT count(*) FROM messages')
+
+    msg = dict(await db_conn.fetchrow("""
+    SELECT relationship, position, body 
+    FROM messages
+    ORDER BY id DESC 
+    LIMIT 1
+    """))
+    assert {
+        'relationship': 'sibling',
+        'position': [2],
+        'body': '<p>\n This is a test\n</p>'
+    } == msg

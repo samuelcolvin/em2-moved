@@ -131,15 +131,19 @@ class ConvInfo(NamedTuple):
 @pytest.fixture
 def create_conv(db_conn):
     async def create_conv_(*, creator='testing@example.com', key='key12345678',
-                           subject='Test Conversation', published=False):
-        recipient_id = await get_create_recipient(db_conn, creator)
-        args = key, recipient_id, subject, 'test-conv', published
+                           subject='Test Conversation', published=False, recipient=None):
+        creator_recip_id = await get_create_recipient(db_conn, creator)
+        args = key, creator_recip_id, subject, 'test-conv', published
         conv_id = await db_conn.fetchval('INSERT INTO conversations (key, creator, subject, ref, published) '
                                          'VALUES ($1, $2, $3, $4, $5) RETURNING id', *args)
-        await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, recipient_id)
+        await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, creator_recip_id)
         first_msg_key = 'msg-firstmessagekeyx'
         args = first_msg_key, conv_id, 'this is the message'
         await db_conn.execute('INSERT INTO messages (key, conv, body) VALUES ($1, $2, $3)', *args)
+        if recipient:
+            r_id = await get_create_recipient(db_conn, recipient)
+            await db_conn.execute('INSERT INTO participants (conv, recipient) VALUES ($1, $2)', conv_id, r_id)
+
         if published:
             await db_conn.execute("""
                 INSERT INTO actions (key, conv, actor, verb, message)
@@ -147,7 +151,7 @@ def create_conv(db_conn):
                 FROM messages as m
                 WHERE m.conv = $1
                 LIMIT 1
-                """, conv_id, recipient_id)
+                """, conv_id, creator_recip_id)
 
         return ConvInfo(id=conv_id, key=key, first_msg_key=first_msg_key, creator_address=creator)
     return create_conv_
