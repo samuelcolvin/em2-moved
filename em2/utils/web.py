@@ -152,8 +152,9 @@ async def _fetch404(func, sql, *args, msg=None, log_warning=True):
     if not val:
         # TODO add debug
         msg = msg or 'unable to find value in db'
-        tb = ''.join(t for t in traceback.format_stack()[:-1] if '/em2/em2/' in t)
-        log_warning and logger.warning('%s\nsql:\n%s\nargs:\n  %s\ntraceback:\n%s', msg, sql, args, tb)
+        if log_warning:
+            tb = ''.join(t for t in traceback.format_stack()[:-1] if '/em2/' in t)
+            logger.warning('%s\nsql:\n%s\nargs:\n %s\ntraceback:\n%s', msg, sql, args, tb)
         raise JsonError.HTTPNotFound(error=msg)
     return val
 

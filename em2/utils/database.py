@@ -35,6 +35,7 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
     :return: whether or not a database has been (re)created
     """
     conn = await lenient_pg_connection(settings)
+    # TODO need to kick off existing connections
     try:
         if not overwrite_existing:
             # this check is technically unnecessary but avoids an ugly postgres error log

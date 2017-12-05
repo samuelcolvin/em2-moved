@@ -311,7 +311,7 @@ class Publish(View):
             await self.conn.execute(self.delete_actions_sql, conv_id)
             parent_id = await self.conn.fetchval(
                 self.create_msg_action_sql,
-                gen_random('msg'),
+                gen_random('act'),
                 conv_id,
                 self.session.recipient_id,
             )
