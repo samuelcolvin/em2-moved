@@ -34,7 +34,7 @@ class VList(View):
         c.published AS published, c.snippet as snippet
       FROM conversations AS c
       LEFT JOIN participants ON c.id = participants.conv
-      WHERE participants.recipient = $1
+      WHERE participants.recipient=$1
       ORDER BY c.created_ts, c.id DESC LIMIT 50
     ) t;
     """
@@ -47,20 +47,20 @@ class VList(View):
 class ConvActions(View):
     get_conv_sql = """
     SELECT c.id, c.published, c.creator FROM conversations AS c
-    JOIN participants AS p ON c.id = p.conv
-    JOIN recipients AS r ON p.recipient = r.id
-    WHERE r.address = $1 AND c.key LIKE $2
+    JOIN participants AS p ON c.id=p.conv
+    JOIN recipients AS r ON p.recipient=r.id
+    WHERE r.address=$1 AND c.key=$2
     ORDER BY c.created_ts, c.id DESC
     LIMIT 1
     """
-    action_id_sql = 'SELECT id FROM actions WHERE conv = $1 AND key = $2'
+    action_id_sql = 'SELECT id FROM actions WHERE conv=$1 AND key=$2'
 
     async def call(self, request):
         conv_key = request.match_info['conv']
         conv_id, published, creator = await self.fetchrow404(
             self.get_conv_sql,
             self.session.address,
-            conv_key + '%',
+            conv_key,
             msg=f'conversation {conv_key} not found'
         )
         if not published and self.session.recipient_id != creator:
@@ -87,13 +87,13 @@ class Create(View):
     INSERT INTO actions (key, conv, actor, message, body,   component, verb)
     SELECT               $1,  $2,   $3,    m.id,    m.body, 'message', 'add'
     FROM messages as m
-    WHERE m.conv = $2
+    WHERE m.conv=$2
     LIMIT 1
     RETURNING id
     """
     create_prt_action_sql = """
     INSERT INTO actions (key, conv, actor, recipient, parent, component,     verb)
-    VALUES (             $1,  $2,   $3,    $4,        $5,     'participant', 'add')
+    VALUES              ($1,  $2,   $3,    $4,        $5,     'participant', 'add')
     RETURNING id
     """
 
@@ -175,7 +175,7 @@ class Act(View):
     SELECT c.id, c.published
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
-    WHERE c.key LIKE $1 AND p.recipient = $2
+    WHERE c.key=$1 AND p.recipient=$2
     ORDER BY c.created_ts, c.id DESC
     LIMIT 1
     """
@@ -184,7 +184,7 @@ class Act(View):
         conv_key = request.match_info['conv']
         conv_id, conv_published = await self.fetchrow404(
             self.get_conv_part_sql,
-            conv_key + '%',
+            conv_key,
             self.session.recipient_id,
             msg=f'conversation {conv_key} not found'
         )
@@ -221,20 +221,20 @@ class Publish(View):
     SELECT c.id, c.subject
     FROM conversations AS c
     JOIN participants AS p ON c.id = p.conv
-    WHERE c.published = False AND c.key LIKE $1 AND c.creator = $2 AND p.recipient = $2
+    WHERE c.published = False AND c.key LIKE $1 AND c.creator=$2 AND p.recipient=$2
     ORDER BY c.created_ts, c.id DESC
     LIMIT 1
     """
     update_conv_sql = """
-    UPDATE conversations SET key = $1, created_ts = $2, updated_ts = $2, published = True
-    WHERE id = $3
+    UPDATE conversations SET key=$1, created_ts=$2, updated_ts=$2, published = True
+    WHERE id=$3
     """
-    delete_actions_sql = 'DELETE FROM actions WHERE conv = $1'
+    delete_actions_sql = 'DELETE FROM actions WHERE conv=$1'
     create_msg_action_sql = """
     INSERT INTO actions (key, conv, actor, message, body,   component, verb)
     SELECT               $1,  $2,   $3,    m.id,    m.body, 'message', 'add'
     FROM messages as m
-    WHERE m.conv = $2
+    WHERE m.conv=$2
     LIMIT 1
     RETURNING id
     """
