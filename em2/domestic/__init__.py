@@ -12,7 +12,7 @@ from em2.core import Components, Verbs, gen_random, get_create_recipient
 from em2.utils.web import (access_control_middleware, auth_middleware, db_conn_middleware, prepare_add_origin,
                            set_anon_views)
 from .background import Background
-from .views import Act, ConvActions, Create, Get, Publish, VList, Websocket
+from .views import Act, ConvActions, Create, Publish, VList, Websocket
 
 logger = logging.getLogger('em2.domestic')
 
@@ -95,7 +95,6 @@ def create_domestic_app(settings, app_name=None):
     pattern = '/act/%s/{component:%s}/{verb:%s}/' % (conv_match, components, verbs)
     app.router.add_post(pattern, Act.view(), name='act')
 
-    app.router.add_get(r'/c/%s/' % conv_match, Get.view(), name='get')
-    app.router.add_get(r'/c/%s/actions/' % conv_match, ConvActions.view(), name='conv-actions')
+    app.router.add_get(r'/c/%s/' % conv_match, ConvActions.view(), name='get')
     app.router.add_get('/', index, name='index')
     return app

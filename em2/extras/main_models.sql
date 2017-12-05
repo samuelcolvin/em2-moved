@@ -48,7 +48,7 @@ CREATE TABLE messages (
 CREATE INDEX message_key ON messages USING btree (key);
 
 -- see core.Verbs enum which matches this
-CREATE TYPE VERB AS ENUM ('publish', 'add', 'modify', 'delete', 'recover', 'lock', 'unlock');
+CREATE TYPE VERB AS ENUM ('create', 'publish', 'add', 'modify', 'delete', 'recover', 'lock', 'unlock');
 -- see core.Components enum which matches this
 CREATE TYPE COMPONENT AS ENUM ('subject', 'expiry', 'label', 'message', 'participant', 'attachment');
 

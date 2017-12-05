@@ -54,6 +54,7 @@ class Verbs(str, Enum):
     """
     Verb types, used for both urls and in db ENUM see models.sql
     """
+    CREATE = 'create'
     PUBLISH = 'publish'
     ADD = 'add'
     MODIFY = 'modify'

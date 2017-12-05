@@ -44,25 +44,28 @@ class VList(View):
         return raw_json_response(raw_json or '[]')
 
 
-class Get(View):
-    async def call(self, request):
-        conv_key = request.match_info['conv']
-        inc_states = bool(request.query.get('states'))
-        json_str = await GetConv(self.conn).run(conv_key, self.session.address, inc_summary=True, inc_states=inc_states)
-        return raw_json_response(json_str)
-
-
 class ConvActions(View):
+    get_conv_sql = """
+    SELECT c.id, c.published, c.creator FROM conversations AS c
+    JOIN participants AS p ON c.id = p.conv
+    JOIN recipients AS r ON p.recipient = r.id
+    WHERE r.address = $1 AND c.key LIKE $2
+    ORDER BY c.created_ts, c.id DESC
+    LIMIT 1
+    """
     action_id_sql = 'SELECT id FROM actions WHERE conv = $1 AND key = $2'
 
     async def call(self, request):
         conv_key = request.match_info['conv']
-        conv_id = await self.fetchval404(
-            GetConv.get_conv_id_sql,
+        conv_id, published, creator = await self.fetchrow404(
+            self.get_conv_sql,
             self.session.address,
             conv_key + '%',
             msg=f'conversation {conv_key} not found'
         )
+        if not published and self.session.recipient_id != creator:
+            raise JsonError.HTTPForbidden(error='conversation is unpublished and you are not the creator')
+
         since_action = request.query.get('since')
         if since_action:
             min_action_id = await self.fetchval404(self.action_id_sql, conv_id, since_action)
@@ -74,11 +77,31 @@ class ConvActions(View):
 
 class Create(View):
     create_conv_sql = """
-    INSERT INTO conversations (key, creator, subject, snippet)
-    VALUES ($1, $2, $3, $4) RETURNING id
+    INSERT INTO conversations (key, creator, subject)
+    VALUES ($1, $2, $3) RETURNING id
     """
     add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
     add_message_sql = 'INSERT INTO messages (conv, key, body) VALUES ($1, $2, $3)'
+
+    create_msg_action_sql = """
+    INSERT INTO actions (key, conv, actor, message, body,   component, verb)
+    SELECT               $1,  $2,   $3,    m.id,    m.body, 'message', 'add'
+    FROM messages as m
+    WHERE m.conv = $2
+    LIMIT 1
+    RETURNING id
+    """
+    create_prt_action_sql = """
+    INSERT INTO actions (key, conv, actor, recipient, parent, component,     verb)
+    VALUES (             $1,  $2,   $3,    $4,        $5,     'participant', 'add')
+    RETURNING id
+    """
+
+    create_action_sql = """
+    INSERT INTO actions (key, conv, actor, body, parent, verb)
+    VALUES ($1, $2, $3, $4, $5, 'create')
+    RETURNING id
+    """
 
     class ConvModel(WebModel):
         subject: constr(max_length=255) = ...
@@ -107,22 +130,43 @@ class Create(View):
         participants.add(self.session.address)
         recip_ids = await create_missing_recipients(self.conn, participants)
         recip_ids = set(recip_ids.values())
-        snippet = json.dumps({
-            'verb': 'created',
-            'addr': self.session.address,
-            'body': conv.message[:20],
-            'prts': len(participants),
-            'msgs': 1,
-        })
 
         async with self.conn.transaction():
             try:
                 conv_id = await self.conn.fetchval(self.create_conv_sql,
-                                                   conv.conv_key, self.session.recipient_id, conv.subject, snippet)
+                                                   conv.conv_key, self.session.recipient_id, conv.subject)
             except UniqueViolationError:
                 raise JsonError.HTTPConflict(error='key conflicts with existing conversation')
             await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
             await self.conn.execute(self.add_message_sql, conv_id, conv.msg_key, conv.message)
+
+            parent_id = await self.conn.fetchval(
+                self.create_msg_action_sql,
+                gen_random('act'),
+                conv_id,
+                self.session.recipient_id,
+            )
+
+            for prt in recip_ids:
+                parent_id = await self.conn.fetchval(
+                    self.create_prt_action_sql,
+                    gen_random('act'),
+                    conv_id,
+                    self.session.recipient_id,
+                    prt,
+                    parent_id,
+                )
+
+            create_action_id = await self.conn.fetchval(
+                self.create_action_sql,
+                gen_random('cre'),
+                conv_id,
+                self.session.recipient_id,
+                conv.subject,
+                parent_id,
+            )
+
+        await self.pusher.push(create_action_id, actor_only=True)
         return json_response(key=conv.conv_key, status_=201)
 
 
@@ -197,7 +241,7 @@ class Publish(View):
     get_recipients_sql = 'SELECT recipient FROM participants WHERE conv=$1'
     create_prt_action_sql = """
     INSERT INTO actions (key, conv, actor, recipient, parent, component,     verb)
-    values (             $1,  $2,   $3,    $4,        $5,     'participant', 'add')
+    VALUES (             $1,  $2,   $3,    $4,        $5,     'participant', 'add')
     RETURNING id
     """
     create_pub_action_sql = """
@@ -230,13 +274,13 @@ class Publish(View):
                 self.session.recipient_id,
             )
 
-            for prt, *_ in await self.conn.fetch(self.get_recipients_sql, conv_id):
+            for recipient, *_ in await self.conn.fetch(self.get_recipients_sql, conv_id):
                 parent_id = await self.conn.fetchval(
                     self.create_prt_action_sql,
                     gen_random('act'),
                     conv_id,
                     self.session.recipient_id,
-                    prt,
+                    recipient,
                     parent_id,
                 )
 
