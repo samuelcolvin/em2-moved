@@ -837,6 +837,29 @@ async def test_prts_publish(cli, conv, url, db_conn):
     ] == actions
 
 
+async def test_view_unpublished(cli, conv, url, extra_cli):
+    cli2 = await extra_cli('another@example.com')
+
+    r = await cli2.get(url('get', conv=conv.key))
+    assert r.status == 404, await r.text()
+
+    data = {'item': 'another@example.com'}
+    url_ = url('act', conv=conv.key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
+    assert r.status == 200, await r.text()
+
+    r = await cli2.get(url('get', conv=conv.key))
+    assert r.status == 403, await r.text()
+    assert 'conversation is unpublished' in await r.text()
+
+    r = await cli.post(url('publish', conv=conv.key))
+    assert r.status == 200, await r.text()
+    new_conv_key = (await r.json())['key']
+
+    r = await cli2.get(url('get', conv=new_conv_key))
+    assert r.status == 200, await r.text()
+
+
 async def test_view_when_deleted(cli, conv, url, extra_cli):
     r = await cli.post(url('publish', conv=conv.key))
     assert r.status == 200, await r.text()

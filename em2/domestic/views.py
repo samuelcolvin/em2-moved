@@ -365,14 +365,8 @@ class Websocket(ViewMain):
         try:
             async for msg in ws:
                 # TODO process messages
-                if msg.tp == WSMsgType.TEXT:
-                    logger.info('ws message from %s: %s', session, msg.data)
-                elif msg.tp == WSMsgType.ERROR:
-                    pass
+                if msg.tp == WSMsgType.ERROR:
                     logger.warning('ws connection closed with exception %s', ws.exception())
-                else:
-                    pass
-                    logger.warning('unknown websocket message type %r, data: %s', msg.tp, msg.data)
         finally:
             logger.info('ws disconnection %s', session)
             await self.app['background'].remove_recipient(session.recipient_id)
