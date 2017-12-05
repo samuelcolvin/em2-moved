@@ -144,7 +144,7 @@ def raw_json_response(text: str, *, status_=200):
     )
 
 
-async def _fetch404(func, sql, *args, msg=None):
+async def _fetch404(func, sql, *args, msg=None, log_warning=True):
     """
     fetch from the db, raise not found if the value is doesn't exist
     """
@@ -153,17 +153,17 @@ async def _fetch404(func, sql, *args, msg=None):
         # TODO add debug
         msg = msg or 'unable to find value in db'
         tb = ''.join(t for t in traceback.format_stack()[:-1] if '/em2/em2/' in t)
-        logger.error('%s\nsql:\n%s\nargs:\n  %s\ntraceback:\n%s', msg, sql, args, tb)
+        log_warning and logger.warning('%s\nsql:\n%s\nargs:\n  %s\ntraceback:\n%s', msg, sql, args, tb)
         raise JsonError.HTTPNotFound(error=msg)
     return val
 
 
 class FetchOr404Mixin:
-    async def fetchval404(self, sql, *args, msg=None):
-        return await _fetch404(self.conn.fetchval, sql, *args, msg=msg)
+    async def fetchval404(self, sql, *args, msg=None, log_warning=True):
+        return await _fetch404(self.conn.fetchval, sql, *args, msg=msg, log_warning=log_warning)
 
-    async def fetchrow404(self, sql, *args, msg=None):
-        return await _fetch404(self.conn.fetchrow, sql, *args, msg=msg)
+    async def fetchrow404(self, sql, *args, msg=None, log_warning=True):
+        return await _fetch404(self.conn.fetchrow, sql, *args, msg=msg, log_warning=log_warning)
 
 
 class View(FetchOr404Mixin):

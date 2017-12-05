@@ -450,7 +450,7 @@ class GetConv(FetchOr404Mixin):
       JOIN recipients AS actor_recipient ON a.actor = actor_recipient.id
 
       LEFT JOIN recipients AS prt_recipient ON a.recipient = prt_recipient.id
-      WHERE a.conv = $1 AND a.id > $2
+      WHERE a.conv = $1
       ORDER BY a.id
     ) t;
     """
@@ -481,7 +481,7 @@ class GetConv(FetchOr404Mixin):
             ('details', await self.conn.fetchval(conv_details_sql, conv_id)),
             ('messages', await self.conn.fetchval(self.messages_sql, conv_id)),
             ('participants', await self.conn.fetchval(self.participants_sql, conv_id)),
-            ('actions', await self.conn.fetchval(self.actions_sql, conv_id, 0)),
+            ('actions', await self.conn.fetchval(self.actions_sql, conv_id)),
         ]
         if inc_states:
             fields.append(

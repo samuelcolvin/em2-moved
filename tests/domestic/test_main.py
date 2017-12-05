@@ -252,6 +252,10 @@ async def test_get_draft_conv(cli, url, db_conn):
             'participant': None,
         },
     ] == actions
+    r = await cli.get(url('get', conv=f'{conv_key[:10]}'))
+    assert r.status == 200, await r.text()
+    actions2 = await r.json()
+    assert actions == actions2
 
 
 async def test_add_message_not_published(cli, conv, url):
@@ -585,6 +589,7 @@ async def test_get_conv_actions(cli, conv, url, db_conn):
     ] == [(a['key'], a['verb'], a['component'], a['body']) for a in actions], actions
 
     r = await cli.get(url('get', conv=new_conv_key, query={'since': msg2_act_key}))
+    assert r.status == 200, await r.text()
     assert [
         (msg3_act_key, 'add', 'message', 'hello again'),
         (prt2_act_key, 'add', 'participant', None),
@@ -830,3 +835,56 @@ async def test_prts_publish(cli, conv, url, db_conn):
             'participant': None,
         },
     ] == actions
+
+
+async def test_view_when_deleted(cli, conv, url, extra_cli):
+    r = await cli.post(url('publish', conv=conv.key))
+    assert r.status == 200, await r.text()
+    new_conv_key = (await r.json())['key']
+    get_url = url('get', conv=new_conv_key)
+
+    cli2 = await extra_cli('another@example.com')
+
+    r = await cli2.get(get_url)
+    assert r.status == 404, await r.text()  # not yet added
+
+    data = {'item': 'another@example.com'}
+    url_ = url('act', conv=new_conv_key, component=Components.PARTICIPANT, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
+    assert r.status == 200, await r.text()
+
+    r = await cli2.get(get_url)
+    assert r.status == 200, await r.text()  # now added to conv
+    actions = await r.json()
+    assert len(actions) == 4, actions
+
+    data = {'item': 'another@example.com'}
+    url_ = url('act', conv=new_conv_key, component=Components.PARTICIPANT, verb=Verbs.DELETE)
+    r = await cli.post(url_, json=data)
+    assert r.status == 200, await r.text()
+
+    r = await cli2.get(get_url)
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    assert len(actions) == 5, actions
+
+    data = {'body': 'hello', 'parent': actions[0]['key']}
+    url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
+    r = await cli.post(url_, json=data)
+    assert r.status == 200, await r.text()
+
+    r = await cli.get(get_url)
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    assert len(actions) == 6, actions
+
+    r = await cli2.get(get_url)
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    assert len(actions) == 5, actions
+
+    # both since and deleted limit
+    r = await cli2.get(url('get', conv=new_conv_key, query={'since': actions[1]['key']}))
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    assert len(actions) == 3, actions

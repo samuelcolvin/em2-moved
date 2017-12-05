@@ -9,7 +9,7 @@ from asyncpg import UniqueViolationError
 from cryptography.fernet import InvalidToken
 from pydantic import EmailStr, constr, validator
 
-from em2.core import ApplyAction, GetConv, create_missing_recipients, gen_random, generate_conv_key
+from em2.core import ApplyAction, create_missing_recipients, gen_random, generate_conv_key
 from em2.utils.web import JsonError, ViewMain, WebModel, json_response, raw_json_response
 
 logger = logging.getLogger('em2.d.views')
@@ -48,30 +48,72 @@ class ConvActions(View):
     get_conv_sql = """
     SELECT c.id, c.published, c.creator FROM conversations AS c
     JOIN participants AS p ON c.id=p.conv
-    JOIN recipients AS r ON p.recipient=r.id
-    WHERE r.address=$1 AND c.key=$2
+    WHERE p.recipient=$1 AND c.key LIKE $2
     ORDER BY c.created_ts, c.id DESC
     LIMIT 1
     """
+    deleted_action_sql = """
+    SELECT c.id, c.published, c.creator, a.id FROM actions AS a
+    JOIN conversations c ON a.conv = c.id
+    WHERE a.recipient=$1 AND c.key LIKE $2 AND a.component='participant' AND a.verb='delete'
+    ORDER BY c.created_ts, c.id DESC, a.id DESC
+    LIMIT 1
+    """
+
+    actions_sql = """
+    SELECT array_to_json(array_agg(row_to_json(t)), TRUE)
+    FROM (
+      SELECT a.key AS key, a.verb AS verb, a.component AS component, a.body AS body, a.timestamp AS timestamp,
+      actor_recipient.address AS actor,
+      a_parent.key AS parent,
+      m.key AS message,
+      prt_recipient.address AS participant
+      FROM actions AS a
+
+      LEFT JOIN actions AS a_parent ON a.parent = a_parent.id
+      LEFT JOIN messages AS m ON a.message = m.id
+
+      JOIN recipients AS actor_recipient ON a.actor = actor_recipient.id
+
+      LEFT JOIN recipients AS prt_recipient ON a.recipient = prt_recipient.id
+      WHERE {where_clause}
+      ORDER BY a.id
+    ) t;
+    """
+
     action_id_sql = 'SELECT id FROM actions WHERE conv=$1 AND key=$2'
 
     async def call(self, request):
         conv_key = request.match_info['conv']
-        conv_id, published, creator = await self.fetchrow404(
-            self.get_conv_sql,
-            self.session.address,
-            conv_key,
-            msg=f'conversation {conv_key} not found'
-        )
+        where_filter = []
+        try:
+            conv_id, published, creator = await self.fetchrow404(
+                self.get_conv_sql,
+                self.session.recipient_id,
+                conv_key + '%',
+                log_warning=False,
+            )
+        except JsonError.HTTPNotFound:
+            # can happen legitimately when they were deleted from the conversation
+            conv_id, published, creator, last_action = await self.fetchrow404(
+                self.deleted_action_sql,
+                self.session.recipient_id,
+                conv_key + '%',
+                msg=f'conversation {conv_key} not found'
+            )
+            where_filter.append(('a.id <= ${arg}', last_action))
+
         if not published and self.session.recipient_id != creator:
             raise JsonError.HTTPForbidden(error='conversation is unpublished and you are not the creator')
 
         since_action = request.query.get('since')
         if since_action:
-            min_action_id = await self.fetchval404(self.action_id_sql, conv_id, since_action)
-        else:
-            min_action_id = 0
-        json_str = await self.conn.fetchval(GetConv.actions_sql, conv_id, min_action_id)
+            first_action_id = await self.fetchval404(self.action_id_sql, conv_id, since_action)
+            where_filter.append(('a.id > ${arg}', first_action_id))
+        where_filter.append(('a.conv=${arg}', conv_id))
+        where_clause = ' AND '.join(f[0].format(arg=i + 1) for i, f in enumerate(where_filter))
+        args = [f[1] for f in where_filter]
+        json_str = await self.conn.fetchval(self.actions_sql.format(where_clause=where_clause), *args)
         return raw_json_response(json_str or '[]')
 
 

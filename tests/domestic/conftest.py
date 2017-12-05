@@ -25,5 +25,15 @@ def cli(loop, settings, db_conn, test_client, redis):
 
 
 @pytest.fixture
+def extra_cli(loop, settings, test_client, cli):
+    async def _create(address):
+        fernet = Fernet(settings.auth_session_secret)
+        data = f'{hash(address)}:{int(time()) + settings.cookie_grace_time}:{address}'
+        cookies = {settings.cookie_name: fernet.encrypt(data.encode()).decode()}
+        return await test_client(cli.server, cookies=cookies)
+    return _create
+
+
+@pytest.fixture
 def conv(loop, create_conv):
     return loop.run_until_complete(create_conv(creator=test_addr))
