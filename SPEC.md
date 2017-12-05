@@ -304,3 +304,28 @@ TODO: public profiles
 
 Multiple simultaneous logins are achieve by multiple cookies: `em2session1`, `em2session2`. If js is making a request
 for a session other than default it includes some kind of reference to the cookie it's authenticated by.
+
+
+----------------------------------
+
+# Forks and deleting participants from conversations
+
+Forks are copies of existing conversations that can "go differently" to the forked conversation.
+
+When a participant is removed from a conversation the 'participant' is deleted but the person can still see the 
+conversation in "deleted conversations", this does a query for actions where 
+'prt__recipient=me, component=prt action=delete' and reconstructs conversations up to the point of deletion.
+
+People can create forks of deleted conversations but not rejoin them.
+
+
+----------------------------------
+
+# Changes to publishing
+
+* old actions deleted
+* publish action created
+* add message action
+* add attachments etc...
+* add prt action for each prt
+* publish action pushed

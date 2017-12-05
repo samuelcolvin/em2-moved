@@ -186,13 +186,24 @@ class Publish(View):
     WHERE id = $3
     """
     delete_actions_sql = 'DELETE FROM actions WHERE conv = $1'
-    create_action_sql = """
-    INSERT INTO actions (key, conv, actor, verb, message)
-    SELECT $1, $2, $3, 'publish', m.id
+    create_pub_action_sql = """
+    INSERT INTO actions (key, conv, actor, body, verb)
+    VALUES ($1, $2, $3, $4, 'publish')
+    RETURNING id
+    """
+    create_msg_action_sql = """
+    INSERT INTO actions (key, conv, actor, parent, message, body,   component, verb)
+    SELECT               $1,  $2,   $3,    $4,     m.id,    m.body, 'message', 'add'
     FROM messages as m
     WHERE m.conv = $2
     LIMIT 1
-    RETURNING id, timestamp
+    RETURNING id
+    """
+    get_recipients_sql = 'SELECT recipient FROM participants WHERE conv=$1'
+    create_prt_action_sql = """
+    INSERT INTO actions (key, conv, actor, recipient, parent, component,     verb)
+    values (             $1,  $2,   $3,    $4,        $5,     'participant', 'add')
+    RETURNING id
     """
 
     async def call(self, request):
@@ -211,16 +222,34 @@ class Publish(View):
                 new_ts,
                 conv_id,
             )
-            # might need to not delete these actions, just mark them as draft somehow
             await self.conn.execute(self.delete_actions_sql, conv_id)
 
-            action_key = gen_random('pub')
-            action_id, action_timestamp = await self.conn.fetchrow(
-                self.create_action_sql,
-                action_key,
+            pub_action_key = gen_random('pub')
+            action_id = await self.conn.fetchval(
+                self.create_pub_action_sql,
+                pub_action_key,
                 conv_id,
                 self.session.recipient_id,
+                subject
             )
+            parent_id = await self.conn.fetchval(
+                self.create_msg_action_sql,
+                gen_random('msg'),
+                conv_id,
+                self.session.recipient_id,
+                action_id,
+            )
+
+            for prt, *_ in await self.conn.fetch(self.get_recipients_sql, conv_id):
+                parent_id = await self.conn.fetchval(
+                    self.create_prt_action_sql,
+                    gen_random('act'),
+                    conv_id,
+                    self.session.recipient_id,
+                    prt,
+                    parent_id,
+                )
+
         logger.info('published %s, old key %s', conv_key, old_conv_key)
         await self.pusher.push(action_id)
         return json_response(key=conv_key)
