@@ -79,10 +79,10 @@ CREATE FUNCTION action_inserted() RETURNS trigger AS $$
       'verb', NEW.verb,
       'addr', (SELECT address FROM recipients WHERE id=NEW.actor),
       'body', left(
-          CASE WHEN NEW.verb='publish' THEN
-            (SELECT body FROM messages WHERE conv=NEW.conv LIMIT 1)
-          ELSE
+          CASE WHEN NEW.component='message' AND NEW.body IS NOT NULL THEN
             NEW.body
+          ELSE
+            (SELECT body FROM messages WHERE conv=NEW.conv LIMIT 1)
           END, 20
       ),
       'prts', (SELECT COUNT(*) FROM participants WHERE conv=NEW.conv),

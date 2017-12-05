@@ -223,45 +223,47 @@ async def test_publish_conv(cli, conv, url, db_conn):
     assert ts2 > ts1
     actions = [dict(r) for r in await db_conn.fetch('SELECT * FROM actions')]
     actor_id = await db_conn.fetchval('SELECT id FROM recipients')
+    msg_action_id = await db_conn.fetchval("SELECT id FROM actions where component='message'")
+    prt_action_id = await db_conn.fetchval("SELECT id FROM actions where component='participant'")
     assert [
         {
-            'id': AnyInt(),
-            'conv': conv.id,
-            'key': RegexStr(r'^pub-.*'),
-            'verb': 'publish',
-            'component': None,
-            'timestamp': CloseToNow(),
-            'actor': actor_id,
-            'parent': None,
-            'recipient': None,
-            'message': None,
-            'body': 'Test Conversation',
-        },
-        {
-            'id': AnyInt(),
+            'id': msg_action_id,
             'key': RegexStr(r'^msg-.*'),
             'conv': conv.id,
             'verb': 'add',
             'component': 'message',
             'actor': actor_id,
             'timestamp': CloseToNow(),
-            'parent': await db_conn.fetchval("SELECT id FROM actions where verb='publish'"),
+            'parent': None,
             'recipient': None,
             'message': await db_conn.fetchval('SELECT id FROM messages'),
             'body': 'this is the message',
         },
         {
-            'id': AnyInt(),
+            'id': prt_action_id,
             'key': RegexStr(r'^act-.*'),
             'conv': conv.id,
             'verb': 'add',
             'component': 'participant',
             'actor': actor_id,
             'timestamp': CloseToNow(),
-            'parent': await db_conn.fetchval("SELECT id FROM actions where component='message'"),
+            'parent': msg_action_id,
             'recipient': await db_conn.fetchval('SELECT id FROM recipients'),
             'message': None,
             'body': None,
+        },
+        {
+            'id': AnyInt(),
+            'conv': conv.id,
+            'key':  await db_conn.fetchval("SELECT key FROM actions where verb='publish'"),
+            'verb': 'publish',
+            'component': None,
+            'timestamp': CloseToNow(),
+            'actor': actor_id,
+            'parent': prt_action_id,
+            'recipient': None,
+            'message': None,
+            'body': 'Test Conversation',
         },
     ] == actions
 
@@ -329,11 +331,11 @@ async def test_list_with_snippet(cli, conv, url, db_conn):
         'updated_ts': CloseToNow(),
         'snippet': {
             'addr': 'testing@example.com',
-            'body': None,
-            'comp': 'participant',
+            'body': 'this is the message',
+            'comp': None,
             'msgs': 1,
             'prts': 1,
-            'verb': 'add',
+            'verb': 'publish',
         },
     }] == obj
 
@@ -411,22 +413,12 @@ async def test_add_message_get(cli, conv, url, db_conn):
     assert r.status == 200, await r.text()
     obj = await r.json()
     new_msg_key = await db_conn.fetchval("SELECT key FROM messages WHERE body = 'reply'")
-    pub_key = await db_conn.fetchval("SELECT key FROM actions WHERE verb='publish'")
+    prt_key = await db_conn.fetchval("SELECT key FROM actions WHERE component='participant'")
     msg1_key = await db_conn.fetchval("SELECT key FROM actions WHERE component='message' ORDER BY id LIMIT 1")
+    pub_key = await db_conn.fetchval("SELECT key FROM actions WHERE verb='publish'")
     msg2_key = await db_conn.fetchval("SELECT key FROM actions WHERE component='message' ORDER BY id DESC LIMIT 1")
     assert {
         'actions': [
-            {
-                'actor': 'testing@example.com',
-                'body': 'Test Conversation',
-                'component': None,
-                'key': pub_key,
-                'message': None,
-                'parent': None,
-                'participant': None,
-                'timestamp': CloseToNow(),
-                'verb': 'publish'
-            },
             {
                 'key': msg1_key,
                 'verb': 'add',
@@ -434,12 +426,12 @@ async def test_add_message_get(cli, conv, url, db_conn):
                 'body': 'this is the message',
                 'timestamp': CloseToNow(),
                 'actor': 'testing@example.com',
-                'parent': pub_key,
+                'parent': None,
                 'message': 'msg-firstmessagekeyx',
                 'participant': None,
             },
             {
-                'key': await db_conn.fetchval("SELECT key FROM actions WHERE component='participant'"),
+                'key': prt_key,
                 'verb': 'add',
                 'component': 'participant',
                 'body': None,
@@ -448,6 +440,17 @@ async def test_add_message_get(cli, conv, url, db_conn):
                 'parent': msg1_key,
                 'message': None,
                 'participant': 'testing@example.com',
+            },
+            {
+                'actor': 'testing@example.com',
+                'body': 'Test Conversation',
+                'component': None,
+                'key': pub_key,
+                'message': None,
+                'parent': prt_key,
+                'participant': None,
+                'timestamp': CloseToNow(),
+                'verb': 'publish'
             },
             {
                 'actor': conv.creator_address,
@@ -536,13 +539,12 @@ async def test_add_prt_get(cli, conv, url, db_conn):
             'updated_ts': CloseToNow(),
             'snippet': {
                 'addr': 'testing@example.com',
-                'body': None,
+                'body': 'this is the message',
                 'comp': 'participant',
                 'msgs': 1,
                 'prts': 2,
                 'verb': 'add',
             },
-
         },
         'messages': [
             {
@@ -561,7 +563,7 @@ async def test_add_prt_get(cli, conv, url, db_conn):
     } == obj
     assert {
         'addr': 'testing@example.com',
-        'body': None,
+        'body': 'this is the message',
         'comp': 'participant',
         'msgs': 1,
         'prts': 2,
@@ -585,9 +587,9 @@ async def test_get_conv_actions(cli, conv, url, db_conn):
     assert r.status == 200, await r.text()
     actions = await r.json()
     assert [
-        (pub_act_key, 'publish', None, 'Test Conversation'),
         (msg1_act_key, 'add', 'message', 'this is the message'),
         (prt1_act_key, 'add', 'participant', None),
+        (pub_act_key, 'publish', None, 'Test Conversation'),
     ] == [(a['key'], a['verb'], a['component'], a['body']) for a in actions], actions
 
     add_url = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
@@ -608,9 +610,9 @@ async def test_get_conv_actions(cli, conv, url, db_conn):
     actions = await r.json()
     # debug(actions)
     assert [
-        (pub_act_key, 'publish', None, 'Test Conversation'),
         (msg1_act_key, 'add', 'message', 'this is the message'),
         (prt1_act_key, 'add', 'participant', None),
+        (pub_act_key, 'publish', None, 'Test Conversation'),
         (msg2_act_key, 'add', 'message', 'hello'),
         (msg3_act_key, 'add', 'message', 'hello again'),
         (prt2_act_key, 'add', 'participant', None),
@@ -829,24 +831,13 @@ async def test_prts_publish(cli, conv, url, db_conn):
     prt2_key = await db_conn.fetchval("SELECT key FROM actions WHERE component='participant' ORDER BY id DESC LIMIT 1")
     assert [
         {
-            'key': pub_key,
-            'verb': 'publish',
-            'component': None,
-            'body': 'Test Conversation',
-            'timestamp': CloseToNow(),
-            'actor': 'testing@example.com',
-            'parent': None,
-            'message': None,
-            'participant': None,
-        },
-        {
             'key': msg_key,
             'verb': 'add',
             'component': 'message',
             'body': 'this is the message',
             'timestamp': CloseToNow(),
             'actor': 'testing@example.com',
-            'parent': pub_key,
+            'parent': None,
             'message': await db_conn.fetchval("SELECT key FROM messages"),
             'participant': None,
         },
@@ -871,5 +862,16 @@ async def test_prts_publish(cli, conv, url, db_conn):
             'parent': prt1_key,
             'message': None,
             'participant': 'other@example.com',
+        },
+        {
+            'key': pub_key,
+            'verb': 'publish',
+            'component': None,
+            'body': 'Test Conversation',
+            'timestamp': CloseToNow(),
+            'actor': 'testing@example.com',
+            'parent': prt2_key,
+            'message': None,
+            'participant': None,
         },
     ] == actions

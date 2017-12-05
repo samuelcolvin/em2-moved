@@ -324,8 +324,8 @@ People can create forks of deleted conversations but not rejoin them.
 # Changes to publishing
 
 * old actions deleted
-* publish action created
 * add message action
 * add attachments etc...
 * add prt action for each prt
+* publish action created
 * publish action pushed
