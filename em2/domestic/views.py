@@ -5,7 +5,6 @@ from typing import List, NamedTuple
 
 from aiohttp import WSMsgType
 from aiohttp.web import HTTPTemporaryRedirect, WebSocketResponse
-from asyncpg import UniqueViolationError
 from cryptography.fernet import InvalidToken
 from pydantic import EmailStr, constr, validator
 
@@ -133,7 +132,7 @@ class _PublishCreateView(View):
     """
     create_action_sql = """
     INSERT INTO actions (key, conv, actor, body, parent, verb)
-    VALUES              ($1,  $2,   $3,    $4,   $5,     $6)
+    VALUES              ($1,  $2,   $3,    $4,   $5,     $6  )
     RETURNING id
     """
 
@@ -144,7 +143,6 @@ class _PublishCreateView(View):
             conv_id,
             self.session.recipient_id,
         )
-
         for recipient in recip_ids:
             parent_id = await self.conn.fetchval(
                 self.create_prt_action_sql,
@@ -154,28 +152,23 @@ class _PublishCreateView(View):
                 recipient,
                 parent_id,
             )
-        if publish:
-            action_key = gen_random('pub')
-            verb = 'publish'
-        else:
-            action_key = gen_random('cre')
-            verb = 'create'
-
+        verb = 'publish' if publish else 'create'
         return await self.conn.fetchval(
             self.create_action_sql,
-            action_key,
+            gen_random(verb[:3]),
             conv_id,
             self.session.recipient_id,
             subject,
             parent_id,
-            verb
+            verb,
         )
 
 
 class Create(_PublishCreateView):
     create_conv_sql = """
     INSERT INTO conversations (key, creator, subject, published, created_ts, updated_ts)
-    VALUES                    ($1,  $2,      $3,      $4,        $5,         $5)
+    VALUES                    ($1,  $2,      $3,      $4,        $5,         $5        )
+    ON CONFLICT (key) DO NOTHING 
     RETURNING id
     """
     add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
@@ -215,10 +208,9 @@ class Create(_PublishCreateView):
             if conv.publish:
                 conv.conv_key = generate_conv_key(self.session.address, ts, conv.subject)
 
-            try:
-                conv_id = await self.conn.fetchval(self.create_conv_sql, conv.conv_key, self.session.recipient_id,
-                                                   conv.subject, conv.publish, ts)
-            except UniqueViolationError:
+            conv_id = await self.conn.fetchval(self.create_conv_sql, conv.conv_key, self.session.recipient_id,
+                                               conv.subject, conv.publish, ts)
+            if conv_id is None:
                 raise JsonError.HTTPConflict(error='key conflicts with existing conversation')
             await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
             await self.conn.execute(self.add_message_sql, conv_id, conv.msg_key, conv.message)
