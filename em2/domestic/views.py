@@ -168,7 +168,7 @@ class Create(_PublishCreateView):
     create_conv_sql = """
     INSERT INTO conversations (key, creator, subject, published, created_ts, updated_ts)
     VALUES                    ($1,  $2,      $3,      $4,        $5,         $5        )
-    ON CONFLICT (key) DO NOTHING 
+    ON CONFLICT (key) DO NOTHING
     RETURNING id
     """
     add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'

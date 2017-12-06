@@ -99,7 +99,7 @@ class FallbackHandler:
     VALUES ($1, $2, 'successful')
     """
 
-    async def push(self, action: Action, participants: Set[str], conn: PGConnection):
+    async def push(self, action: Action, participants: Set[dict], conn: PGConnection):
         conv_subject = await conn.fetchval(self.conv_subject_sql, action.conv_id)
         if action.verb == Verbs.PUBLISH:
             # we need the message body to send

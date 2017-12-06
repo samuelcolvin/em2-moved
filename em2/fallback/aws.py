@@ -116,6 +116,7 @@ class AwsFallbackHandler(FallbackHandler):
         }
 
     async def send_message(self, *, e_from: str, to: List[str], bcc: List[str], email_msg: EmailMessage):
+        assert e_from is not None, 'e_from should not be None'
         data = {
             'Action': 'SendRawEmail',
             'Source': e_from,
