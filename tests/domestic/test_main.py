@@ -111,9 +111,10 @@ async def test_create_conv(cli, url, db_conn):
     }
     r = await cli.post(url('create'), json=data)
     assert r.status == 201, await r.text()
-    conv_id, conv_key, snippet = await db_conn.fetchrow('SELECT id, key, snippet FROM conversations')
+    conv_id, conv_key, snippet, pub = await db_conn.fetchrow('SELECT id, key, snippet, published FROM conversations')
     assert {'key': conv_key} == await r.json()
     assert conv_key.startswith('dft-')
+    assert not pub
     assert {
         'addr': 'testing@example.com',
         'body': 'this is a message',
@@ -187,6 +188,39 @@ async def test_create_conv_repeat_keys(cli, url):
     assert r.status == 201, await r.text()
     r = await cli.post(url('create'), json=data)
     assert r.status == 409, await r.text()
+
+
+async def test_create_publish_conv(cli, url, db_conn):
+    data = {
+        'subject': 'Test Subject',
+        'message': 'this is a message',
+        'participants': [
+            'other@example.com',
+        ],
+        'publish': True
+    }
+    r = await cli.post(url('create'), json=data)
+    assert r.status == 201, await r.text()
+    conv_key, published = await db_conn.fetchrow('SELECT key, published FROM conversations')
+    assert {'key': conv_key} == await r.json()
+    assert published
+    assert not conv_key.startswith('dft-')
+
+    r = await cli.get(url('get', conv=conv_key))
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    assert len(actions) == 4
+    assert {
+        'key': await db_conn.fetchval("SELECT key FROM actions WHERE verb='publish'"),
+        'verb': 'publish',
+        'component': None,
+        'body': 'Test Subject',
+        'timestamp': CloseToNow(),
+        'actor': 'testing@example.com',
+        'parent': RegexStr('^act-.*'),
+        'message': None,
+        'participant': None,
+    } == actions[3]
 
 
 async def test_get_draft_conv(cli, url, db_conn):

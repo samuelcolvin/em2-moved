@@ -117,14 +117,7 @@ class ConvActions(View):
         return raw_json_response(json_str or '[]')
 
 
-class Create(View):
-    create_conv_sql = """
-    INSERT INTO conversations (key, creator, subject)
-    VALUES ($1, $2, $3) RETURNING id
-    """
-    add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
-    add_message_sql = 'INSERT INTO messages (conv, key, body) VALUES ($1, $2, $3)'
-
+class _PublishCreateView(View):
     create_msg_action_sql = """
     INSERT INTO actions (key, conv, actor, message, body,   component, verb)
     SELECT               $1,  $2,   $3,    m.id,    m.body, 'message', 'add'
@@ -138,12 +131,55 @@ class Create(View):
     VALUES              ($1,  $2,   $3,    $4,        $5,     'participant', 'add')
     RETURNING id
     """
-
     create_action_sql = """
     INSERT INTO actions (key, conv, actor, body, parent, verb)
-    VALUES ($1, $2, $3, $4, $5, 'create')
+    VALUES              ($1,  $2,   $3,    $4,   $5,     $6)
     RETURNING id
     """
+
+    async def publish_create(self, conv_id, subject, recip_ids, publish):
+        parent_id = await self.conn.fetchval(
+            self.create_msg_action_sql,
+            gen_random('act'),
+            conv_id,
+            self.session.recipient_id,
+        )
+
+        for recipient in recip_ids:
+            parent_id = await self.conn.fetchval(
+                self.create_prt_action_sql,
+                gen_random('act'),
+                conv_id,
+                self.session.recipient_id,
+                recipient,
+                parent_id,
+            )
+        if publish:
+            action_key = gen_random('pub')
+            verb = 'publish'
+        else:
+            action_key = gen_random('cre')
+            verb = 'create'
+
+        return await self.conn.fetchval(
+            self.create_action_sql,
+            action_key,
+            conv_id,
+            self.session.recipient_id,
+            subject,
+            parent_id,
+            verb
+        )
+
+
+class Create(_PublishCreateView):
+    create_conv_sql = """
+    INSERT INTO conversations (key, creator, subject, published, created_ts, updated_ts)
+    VALUES                    ($1,  $2,      $3,      $4,        $5,         $5)
+    RETURNING id
+    """
+    add_participants_sql = 'INSERT INTO participants (conv, recipient) VALUES ($1, $2)'
+    add_message_sql = 'INSERT INTO messages (conv, key, body) VALUES ($1, $2, $3)'
 
     class ConvModel(WebModel):
         subject: constr(max_length=255) = ...
@@ -151,6 +187,7 @@ class Create(View):
         participants: List[EmailStr] = []
         conv_key: str = None
         msg_key: str = None
+        publish = False
 
         @validator('conv_key', 'msg_key', always=True, pre=True)
         def set_default_key(cls, v, field, **kw):
@@ -174,39 +211,19 @@ class Create(View):
         recip_ids = set(recip_ids.values())
 
         async with self.conn.transaction():
+            ts = datetime.utcnow()
+            if conv.publish:
+                conv.conv_key = generate_conv_key(self.session.address, ts, conv.subject)
+
             try:
-                conv_id = await self.conn.fetchval(self.create_conv_sql,
-                                                   conv.conv_key, self.session.recipient_id, conv.subject)
+                conv_id = await self.conn.fetchval(self.create_conv_sql, conv.conv_key, self.session.recipient_id,
+                                                   conv.subject, conv.publish, ts)
             except UniqueViolationError:
                 raise JsonError.HTTPConflict(error='key conflicts with existing conversation')
             await self.conn.executemany(self.add_participants_sql, {(conv_id, rid) for rid in recip_ids})
             await self.conn.execute(self.add_message_sql, conv_id, conv.msg_key, conv.message)
 
-            parent_id = await self.conn.fetchval(
-                self.create_msg_action_sql,
-                gen_random('act'),
-                conv_id,
-                self.session.recipient_id,
-            )
-
-            for prt in recip_ids:
-                parent_id = await self.conn.fetchval(
-                    self.create_prt_action_sql,
-                    gen_random('act'),
-                    conv_id,
-                    self.session.recipient_id,
-                    prt,
-                    parent_id,
-                )
-
-            create_action_id = await self.conn.fetchval(
-                self.create_action_sql,
-                gen_random('cre'),
-                conv_id,
-                self.session.recipient_id,
-                conv.subject,
-                parent_id,
-            )
+            create_action_id = await self.publish_create(conv_id, conv.subject, recip_ids, conv.publish)
 
         await self.pusher.push(create_action_id, actor_only=True)
         return json_response(key=conv.conv_key, status_=201)
@@ -258,7 +275,7 @@ class Act(View):
         )
 
 
-class Publish(View):
+class Publish(_PublishCreateView):
     get_conv_sql = """
     SELECT c.id, c.subject
     FROM conversations AS c
@@ -272,25 +289,7 @@ class Publish(View):
     WHERE id=$3
     """
     delete_actions_sql = 'DELETE FROM actions WHERE conv=$1'
-    create_msg_action_sql = """
-    INSERT INTO actions (key, conv, actor, message, body,   component, verb)
-    SELECT               $1,  $2,   $3,    m.id,    m.body, 'message', 'add'
-    FROM messages as m
-    WHERE m.conv=$2
-    LIMIT 1
-    RETURNING id
-    """
     get_recipients_sql = 'SELECT recipient FROM participants WHERE conv=$1'
-    create_prt_action_sql = """
-    INSERT INTO actions (key, conv, actor, recipient, parent, component,     verb)
-    VALUES (             $1,  $2,   $3,    $4,        $5,     'participant', 'add')
-    RETURNING id
-    """
-    create_pub_action_sql = """
-    INSERT INTO actions (key, conv, actor, body, parent, verb)
-    VALUES ($1, $2, $3, $4, $5, 'publish')
-    RETURNING id
-    """
 
     async def call(self, request):
         old_conv_key = request.match_info['conv']
@@ -309,31 +308,8 @@ class Publish(View):
                 conv_id,
             )
             await self.conn.execute(self.delete_actions_sql, conv_id)
-            parent_id = await self.conn.fetchval(
-                self.create_msg_action_sql,
-                gen_random('act'),
-                conv_id,
-                self.session.recipient_id,
-            )
-
-            for recipient, *_ in await self.conn.fetch(self.get_recipients_sql, conv_id):
-                parent_id = await self.conn.fetchval(
-                    self.create_prt_action_sql,
-                    gen_random('act'),
-                    conv_id,
-                    self.session.recipient_id,
-                    recipient,
-                    parent_id,
-                )
-
-            pub_action_id = await self.conn.fetchval(
-                self.create_pub_action_sql,
-                gen_random('pub'),
-                conv_id,
-                self.session.recipient_id,
-                subject,
-                parent_id,
-            )
+            recip_ids = [r[0] for r in await self.conn.fetch(self.get_recipients_sql, conv_id)]
+            pub_action_id = await self.publish_create(conv_id, subject, recip_ids, True)
 
         logger.info('published %s, old key %s', conv_key, old_conv_key)
         await self.pusher.push(pub_action_id)
