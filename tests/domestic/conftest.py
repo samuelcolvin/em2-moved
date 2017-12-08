@@ -37,3 +37,14 @@ def extra_cli(loop, settings, test_client, cli):
 @pytest.fixture
 def conv(loop, create_conv):
     return loop.run_until_complete(create_conv(creator=test_addr))
+
+
+@pytest.fixture
+def post_create_conv(cli, url):
+    async def _create(subject='Test Subject', message='this is a message', publish=False):
+        data = {'subject': subject, 'message': message, 'publish': publish}
+        r = await cli.post(url('create'), json=data)
+        assert r.status == 201, await r.text()
+        return (await r.json())['key']
+
+    return _create

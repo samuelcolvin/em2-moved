@@ -945,3 +945,78 @@ async def test_view_when_deleted(cli, conv, url, extra_cli):
     assert r.status == 200, await r.text()
     actions = await r.json()
     assert len(actions) == 3, actions
+
+
+async def test_modify_subject(post_create_conv, cli, url, db_conn):
+    conv_key = await post_create_conv(publish=True)
+    r = await cli.get(url('get', conv=conv_key))
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    assert len(actions) == 3
+    assert 'Test Subject' == await db_conn.fetchval('SELECT subject FROM conversations')
+    pub_action_key = actions[-1]['key']
+
+    url_ = url('act', conv=conv_key, component=Components.SUBJECT, verb=Verbs.MODIFY)
+    r = await cli.post(url_, json={
+        'body': 'different subject',
+        'parent': actions[-1]['key'],
+    })
+    assert r.status == 200, await r.text()
+    assert 'different subject' == await db_conn.fetchval('SELECT subject FROM conversations')
+
+    r = await cli.get(url('get', conv=conv_key))
+    assert r.status == 200, await r.text()
+    actions = await r.json()
+    assert len(actions) == 4
+    new_action_key = await db_conn.fetchval("SELECT key FROM actions WHERE component='subject'")
+    assert {
+        'key': new_action_key,
+        'verb': 'modify',
+        'component': 'subject',
+        'body': 'different subject',
+        'timestamp': CloseToNow(),
+        'actor': 'testing@example.com',
+        'parent': pub_action_key,
+        'message': None,
+        'participant': None,
+    }
+
+
+async def test_modify_subject_repeat(post_create_conv, cli, url, db_conn):
+    conv_key = await post_create_conv()
+    url_ = url('act', conv=conv_key, component=Components.SUBJECT, verb=Verbs.MODIFY)
+    r = await cli.post(url_, json={
+        'body': 'subject 2',
+        'parent': await db_conn.fetchval("SELECT key FROM actions WHERE verb='create'"),
+    })
+    assert r.status == 200, await r.text()
+    assert 'subject 2' == await db_conn.fetchval('SELECT subject FROM conversations')
+
+    r = await cli.post(url_, json={
+        'body': 'subject 3',
+        'parent': await db_conn.fetchval("SELECT key FROM actions WHERE component='subject'"),
+    })
+    assert r.status == 200, await r.text()
+    assert 'subject 3' == await db_conn.fetchval('SELECT subject FROM conversations')
+
+
+async def test_modify_subject_wrong_key(post_create_conv, cli, url, db_conn):
+    conv_key = await post_create_conv()
+
+    url_ = url('act', conv=conv_key, component=Components.SUBJECT, verb=Verbs.MODIFY)
+    r = await cli.post(url_, json={
+        'body': 'different subject',
+        'parent': await db_conn.fetchval("SELECT key FROM actions WHERE component='message'"),
+    })
+    assert r.status == 400, await r.text()
+
+
+async def test_modify_subject_wrong_verb(post_create_conv, cli, url, db_conn):
+    conv_key = await post_create_conv()
+
+    url_ = url('act', conv=conv_key, component=Components.SUBJECT, verb=Verbs.ADD)
+    r = await cli.post(url_, json={
+        'body': 'different subject',
+        'parent': await db_conn.fetchval("SELECT key FROM actions WHERE verb='create'"),
+    })
+    assert r.status == 400, await r.text()

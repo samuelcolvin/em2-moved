@@ -195,10 +195,11 @@ class ApplyAction(FetchOr404Mixin):
 
     async def run(self):
         # TODO replace with method validation on Data
-        if self.data.verb == Verbs.MODIFY and not self.data.item:
-            raise HTTPBadRequest(text=f'item may not be null for modify actions')
-        if self._remote_action and not self.data.item:
-            raise HTTPBadRequest(text=f'item may not be null for remote actions')
+        if self.data.component not in {Components.SUBJECT}:
+            if self.data.verb == Verbs.MODIFY and not self.data.item:
+                raise HTTPBadRequest(text=f'item may not be null for modify actions')
+            if self._remote_action and not self.data.item:
+                raise HTTPBadRequest(text=f'item may not be null for remote actions')
 
         self.item_key, recipient_id, message_id, parent_id = None, None, None, None
         async with self.conn.transaction():
@@ -212,6 +213,9 @@ class ApplyAction(FetchOr404Mixin):
                     self.item_key, recipient_id = await self._add_participant()
                 else:
                     self.item_key, recipient_id = await self._mod_participant()
+            elif self.data.component is Components.SUBJECT:
+                parent_id = await self._mod_subject()
+
             else:
                 raise NotImplementedError()
 
@@ -378,6 +382,32 @@ class ApplyAction(FetchOr404Mixin):
         else:
             raise HTTPBadRequest(text=f'Invalid verb for participants, can only add, delete, recover or modify')
         return address, recipient_id
+
+    _latest_subject_action_sql = """
+    SELECT id, key
+    FROM actions
+    WHERE conv = $1 AND
+      (
+        (component IS NULL AND verb IN ('publish', 'create'))
+        OR
+        (component='subject' AND verb='modify')
+      )
+    ORDER BY id DESC
+    LIMIT 1
+    """
+    _mod_subject_sql = 'UPDATE conversations SET subject=$1 WHERE id=$2'
+
+    async def _mod_subject(self):
+        if self.data.verb != Verbs.MODIFY:
+            raise HTTPBadRequest(text=f'subject can only be modified, not {self.data.verb}')
+
+        parent_id, parent_key = await self.conn.fetchrow(self._latest_subject_action_sql, self.data.conv)
+        if self.data.parent != parent_key:
+            raise HTTPBadRequest(text=f'parent does not match latest subject action: {parent_key}')
+
+        self.body = self.data.body
+        await self.conn.execute(self._mod_subject_sql, self.body, self.data.conv)
+        return parent_id
 
 
 class GetConv(FetchOr404Mixin):

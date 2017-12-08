@@ -137,11 +137,14 @@ class Pusher(Actor):
                 if node_b == self.B_LOCAL:
                     known_local.add((recipient_id, address))
 
+            # TODO add test for known local still being passed to fallback
             if known_local:
-                prts.difference_update(known_local)
+                prts2 = prts.difference(known_local)
                 await self.domestic_push({rid for rid, _ in known_local}, action)
+            else:
+                prts2 = prts
 
-            remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(prts)
+            remote_nodes, local_recipients, fallback_addresses = await self.categorise_addresses(prts2)
 
             loc_count = len(known_local) + len(local_recipients)
             logger.info('%s.%s %.6s to %d participants: %d em2 nodes, local %d, fallback %d',
