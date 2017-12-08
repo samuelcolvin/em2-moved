@@ -268,5 +268,9 @@ class CheckUserNodeView(View):
             raise JsonError.HTTPForbidden(error='invalid auth header')
 
         m = self.NodeModel(**await self.request_json())
-        v = await self.conn.fetchval(self.GET_USER_SQL, m.address, m.domain)
-        return json_response(local=bool(v))
+        local = bool(await self.conn.fetchval(self.GET_USER_SQL, m.address, m.domain))
+
+        # FIXME this is a temporary fix to avoid sending to "local" users
+        # probably want a way of saying "we know the domain but this user doesn't exist"
+        local = local or get_domain(m.address) in self.settings.auth_local_domains
+        return json_response(local=local)

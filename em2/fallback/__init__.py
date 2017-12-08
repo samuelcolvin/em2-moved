@@ -101,6 +101,7 @@ class FallbackHandler:
 
     async def push(self, action: Action, participants: Set[dict], conn: PGConnection):
         conv_subject = await conn.fetchval(self.conv_subject_sql, action.conv_id)
+        body = ''
         if action.verb == Verbs.PUBLISH:
             # we need the message body to send
             body = await conn.fetchval(self.first_msg_sql, action.conv_id)
@@ -123,7 +124,7 @@ class FallbackHandler:
         e_msg['Subject'] = conv_subject
         e_msg['From'] = e_from
         e_msg['To'] = ','.join(to)
-        e_msg['EM2-ID'] = action.conv_key + ':' + action.item
+        e_msg['EM2-ID'] = action.conv_key + ':' + action.key
         msg_ids = await conn.fetch(self.conv_msg_ids_sql, action.conv_id)
         if msg_ids:
             msg_ids = [r[0] for r in msg_ids]

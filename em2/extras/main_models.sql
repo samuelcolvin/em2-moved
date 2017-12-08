@@ -70,7 +70,8 @@ CREATE TABLE actions (
 );
 CREATE INDEX action_key ON actions USING btree (key);
 
-CREATE FUNCTION action_inserted() RETURNS trigger AS $$
+-- this could be run on every "migration"
+CREATE OR REPLACE FUNCTION action_inserted() RETURNS trigger AS $$
   -- could replace all this with plv8
   DECLARE
     -- TODO add actor name when we have it, could add attachment count etc. here too
@@ -82,8 +83,8 @@ CREATE FUNCTION action_inserted() RETURNS trigger AS $$
           CASE WHEN NEW.component='message' AND NEW.body IS NOT NULL THEN
             NEW.body
           ELSE
-            (SELECT body FROM messages WHERE conv=NEW.conv LIMIT 1)
-          END, 20
+            (SELECT body FROM messages WHERE conv=NEW.conv ORDER BY id DESC LIMIT 1)
+          END, 100
       ),
       'prts', (SELECT COUNT(*) FROM participants WHERE conv=NEW.conv),
       'msgs', (SELECT COUNT(*) FROM messages WHERE conv=NEW.conv)
