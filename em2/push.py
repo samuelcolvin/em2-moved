@@ -268,6 +268,7 @@ class Pusher(Actor):
                     await self.authenticate(host)
                 except Em2ConnectionError:
                     # connection failed domain is probably not em2
+                    # maybe want to fail here instead of falling back to SMTP
                     pass
                 else:
                     # TODO query host to find associated node using address
