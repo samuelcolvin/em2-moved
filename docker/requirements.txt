@@ -1,2 +1,2 @@
 # ipython is useful during development and testing, obviously should be removed in prod.
-ipython==6.2.1
+ipython==7.1.1
