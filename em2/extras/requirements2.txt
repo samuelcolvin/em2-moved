@@ -11,4 +11,4 @@ pydantic==0.16
 zxcvbn-python==4.4.24
 
 # optionally used in logging
-raven==6.3.0
+raven==6.9.0
