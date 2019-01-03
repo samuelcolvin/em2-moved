@@ -27,7 +27,7 @@ class Background:
 
     async def add_recipient(self, id, ws=None):
         await self.up.wait()
-        if ws:
+        if ws is not None:
             self.connections.append((id, ws))
         with await self.redis as r:
             await asyncio.gather(
@@ -80,7 +80,7 @@ class Background:
             for id, ws in self.connections:
                 if id == recipient_id:
                     try:
-                        ws.send_str(send_data)
-                    except (RuntimeError, AttributeError) as e:
+                        await ws.send_str(send_data)
+                    except (RuntimeError, AttributeError):
                         logger.info('recipient %d, ws "%s" closed, removing', recipient_id, ws)
                         self.connections.remove((id, ws))

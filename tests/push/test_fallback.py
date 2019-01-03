@@ -276,7 +276,7 @@ async def test_smtp_em2_too(cli, url, db_conn, conv):
 
 
 class MockRequest:
-    def __init__(self, text, headers: dict=None):
+    def __init__(self, text, headers: dict = None):
         self._text = text
         self.headers = headers or {}
 

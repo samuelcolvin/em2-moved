@@ -70,7 +70,7 @@ def act_headers(request):
                 'em2-actor': self.dft_actor,
                 'em2-timestamp': datetime.now().strftime('%s'),
                 'em2-action-key': key,
-                'em2-msg-format': MsgFormat.markdown
+                'em2-msg-format': MsgFormat.markdown.value,
             }
             headers.update({f'em2-{k.replace("_", "-")}': v for k, v in kwargs.items()})
             headers = {k: v for k, v in headers.items() if v}

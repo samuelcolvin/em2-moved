@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import IntEnum
 from typing import Dict, Optional, Set, Tuple, Union
 
-from aiohttp import ClientSession, ClientTimeout, TCPConnector, DefaultResolver, ClientError, ClientConnectionError
+from aiohttp import ClientConnectionError, ClientError, ClientSession, ClientTimeout, DefaultResolver, TCPConnector
 from aiohttp.hdrs import METH_GET, METH_POST
 from aiohttp.web_response import Response
 from arq import Actor, concurrent, cron
@@ -367,7 +367,7 @@ class Pusher(Actor):
                        json_data=None,
                        headers=None,
                        read: Optional[ReadMethod] = None,
-                       expected_statuses: Set[int]={200},
+                       expected_statuses: Set[int] = {200},
                        retry_delay=1.0) -> Tuple[Response, Union[str, dict]]:
         exc = response_data = None
         if json_data:
@@ -427,7 +427,7 @@ class Pusher(Actor):
         http_pass, dns_pass = False, False
         foreign_app_url = f'{self.settings.COMMS_PROTO}://{self.settings.EXTERNAL_DOMAIN}/'
         try:
-            r, _ = await self._request(METH_GET, foreign_app_url, retry_delay=_retry_delay)
+            r, _ = await self._request(METH_GET, foreign_app_url, retry_delay=_retry_delay, read=ReadMethod.json)
         except Em2ConnectionError:
             pass
         else:

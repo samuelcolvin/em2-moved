@@ -57,7 +57,7 @@ class MockDNSResolver(DNSResolver):
         elif qtype == 'MX':
             return self.get_mx(host)
         else:
-            raise NotImplemented()
+            raise NotImplementedError()
 
     def get_txt(self, host):
         r = [TXTQueryResult(text=b'v=spf1 include:spf.example.com ?all')]

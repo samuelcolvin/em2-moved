@@ -26,7 +26,8 @@ async def setup_check_server(loop, aiohttp_server):
 
     app.router.add_get('/', _mock_index)
 
-    return await aiohttp_server(app)
+    server = await aiohttp_server(app)
+    return server
 
 
 @pytest.yield_fixture

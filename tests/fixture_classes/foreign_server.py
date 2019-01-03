@@ -68,7 +68,7 @@ async def create(request):
 
 async def act(request):
     key = request.headers['em2-action-key']
-    m = re.search('error(\d{3})', key)
+    m = re.search(r'error(\d{3})', key)
     if m:
         return Response(status=int(m.groups()[0]))
     else:
@@ -105,7 +105,7 @@ def create_test_app():
     app.router.add_get('/get/{conv:[a-z0-9]+}/', get)
     app.router.add_post('/{conv:[a-z0-9]+}/{component:[a-z]+}/{verb:[a-z]+}/{item:.*}', act)
     app.router.add_post('/create/{conv:[a-z0-9]+}/', create)
-    app.router.add_route('*', '/status/{status:\d+}/', status)
+    app.router.add_route('*', r'/status/{status:\d+}/', status)
     app.router.add_get('/check-user-node/', check_user_node)
 
     app['request_log'] = []

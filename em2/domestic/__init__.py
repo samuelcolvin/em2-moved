@@ -87,7 +87,7 @@ def create_domestic_app(settings, app_name=None):
     app.router.add_get('/list/', VList.view(), name='list')
     app.router.add_post('/create/', Create.view(), name='create')
     app.router.add_get('/ws/', Websocket.view(), name='websocket')
-    conv_match = '{conv:[a-z0-9\-]{8,}}'
+    conv_match = r'{conv:[a-z0-9\-]{8,}}'
     app.router.add_post('/publish/%s/' % conv_match, Publish.view(), name='publish')
 
     components = '|'.join(m.value for m in Components)

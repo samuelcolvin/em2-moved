@@ -7,11 +7,12 @@ async def test_setup_check_pass(settings, loop, setup_check_server):
     settings.EXTERNAL_DOMAIN = f'127.0.0.1:{setup_check_server.port}'
     pusher = DNSMockedPusher(settings, loop=loop, worker=True)
     await pusher.startup()
-    http_pass, dns_pass = await pusher.setup_check.direct()
-    assert http_pass
-    assert dns_pass
-
-    await pusher.shutdown()
+    try:
+        http_pass, dns_pass = await pusher.setup_check.direct()
+        assert http_pass
+        assert dns_pass
+    finally:
+        await pusher.shutdown()
 
 
 async def test_setup_check_fail(settings, loop, foreign_server):

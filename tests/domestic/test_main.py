@@ -160,18 +160,18 @@ async def test_create_conv_custom_keys_wrong(cli, url):
     }
     r = await cli.post(url('create'), json=data)
     assert r.status == 400, await r.text()
-    assert {
-        'conv_key': {
-            'error_msg': 'invalid key',
-            'error_type': 'ValueError',
-            'track': 'str'
+    assert [
+        {
+            'loc': ['conv_key'],
+            'msg': 'invalid key',
+            'type': 'value_error',
         },
-        'msg_key': {
-            'error_msg': 'key must be lower case',
-            'error_type': 'ValueError',
-            'track': 'str'
+        {
+            'loc': ['msg_key'],
+            'msg': 'key must be lower case',
+            'type': 'value_error',
         },
-    } == await r.json()
+    ] == await r.json()
 
 
 async def test_create_conv_repeat_keys(cli, url):
@@ -474,15 +474,17 @@ async def test_add_message_invalid_data_model_error(cli, conv, url):
     url_ = url('act', conv=conv.key, component=Components.MESSAGE, verb=Verbs.ADD)
     r = await cli.post(url_, json=data)
     assert r.status == 400, await r.text()
-    text = await r.text()
-    assert """\
-{
-  "parent": {
-    "error_msg": "length greater than maximum allowed: 20",
-    "error_type": "ValueError",
-    "track": "ConstrainedStrValue"
-  }
-}""" == text
+    data = await r.json()
+    assert [
+        {
+            'loc': ['parent'],
+            'msg': 'ensure this value has at most 20 characters',
+            'type': 'value_error.any_str.max_length',
+            'ctx': {
+                'limit_value': 20,
+            },
+        },
+    ] == data
 
 
 async def test_add_message_get(cli, conv, url, db_conn):
@@ -719,8 +721,11 @@ async def test_publish_domestic_push(cli, conv, url, db_conn):
         assert await db_conn.fetchval('SELECT published FROM conversations')
 
         got_message = False
+        print('*' * 80)
         with timeout(0.5):
+            print('*' * 80)
             async for msg in ws:
+                debug(msg)
                 assert msg.type == WSMsgType.text
                 data = json.loads(msg.data)
                 assert data['component'] is None
