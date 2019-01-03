@@ -361,7 +361,6 @@ async def test_add_message(cli, conv, url, db_conn):
     parent_key = await db_conn.fetchval("SELECT key FROM actions where component='message'")
     data = {'body': 'hello', 'parent': parent_key}
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
-    debug(url_)
     r = await cli.post(url_, json=data)
     assert r.status == 200, await r.text()
     obj = await r.json()
@@ -721,11 +720,8 @@ async def test_publish_domestic_push(cli, conv, url, db_conn):
         assert await db_conn.fetchval('SELECT published FROM conversations')
 
         got_message = False
-        print('*' * 80)
         with timeout(0.5):
-            print('*' * 80)
             async for msg in ws:
-                debug(msg)
                 assert msg.type == WSMsgType.text
                 data = json.loads(msg.data)
                 assert data['component'] is None

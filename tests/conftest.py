@@ -79,6 +79,7 @@ async def db_conn(loop, settings, clean_db, redis):
     yield conn
 
     await tr.rollback()
+    await conn.close()
 
 
 @pytest.fixture(scope='session')

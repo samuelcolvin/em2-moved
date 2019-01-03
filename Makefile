@@ -17,6 +17,7 @@ lint:
 	flake8 --version
 	flake8 em2/ tests/
 	pytest em2 -p no:sugar -q
+	./tests/check_debug.sh
 
 .PHONY: test
 test:
