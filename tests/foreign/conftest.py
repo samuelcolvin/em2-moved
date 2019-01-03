@@ -9,12 +9,12 @@ from ..conftest import ConvInfo, shutdown_modify_app, startup_modify_app
 
 
 @pytest.fixture
-def cli(loop, settings, db_conn, test_client, redis):
+async def cli(loop, settings, db_conn, aiohttp_client, redis):
     app = create_foreign_app(settings)
     app['_conn'] = db_conn
     app.on_startup.append(startup_modify_app)
     app.on_shutdown.append(shutdown_modify_app)
-    return loop.run_until_complete(test_client(app))
+    return await aiohttp_client(app)
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 
 
-async def test_publish(cli, url, foreign_server, get_conv, debug):
+async def test_publish(cli, url, foreign_server, get_conv):
     assert foreign_server.app['request_log'] == []
     url_ = url('create', conv='key12345678')
     r = await cli.post(url_, data='foobar', headers={
@@ -119,7 +119,7 @@ async def test_conv_wrong_address(cli, url, foreign_server):
     assert foreign_server.app['request_log'] == []
 
 
-async def test_publish_conv_exists(cli, url, foreign_server, get_conv, debug):
+async def test_publish_conv_exists(cli, url, foreign_server, get_conv):
     assert foreign_server.app['request_log'] == []
     url_ = url('create', conv='key12345678')
     headers = {

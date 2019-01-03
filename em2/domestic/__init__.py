@@ -24,7 +24,7 @@ async def index(request):
 
 async def app_startup(app):
     settings = app['settings']
-    loop = app.loop or asyncio.get_event_loop()
+    loop = asyncio.get_event_loop()
     app.update(
         db=settings.db_cls(settings=settings, loop=loop),
         pusher=settings.pusher_cls(settings=settings, loop=loop),

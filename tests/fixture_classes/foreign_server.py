@@ -97,7 +97,7 @@ async def logging_middleware(request, handler):
         return r
 
 
-def create_test_app(loop):
+def create_test_app():
     app = Application(middlewares=[logging_middleware])
 
     app.router.add_get('/', index)

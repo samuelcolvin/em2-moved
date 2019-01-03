@@ -28,7 +28,7 @@ async def test_setup_check_fail(settings, loop, foreign_server):
     await pusher.shutdown()
 
 
-async def test_setup_check_fail_client_error(settings, loop, debug):
+async def test_setup_check_fail_client_error(settings, loop):
     settings = settings.copy(update={
         'EXTERNAL_DOMAIN': f'localhost:123456',
         'authenticator_cls': Authenticator,

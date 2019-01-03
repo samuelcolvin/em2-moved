@@ -15,6 +15,7 @@ async def _wait_port_open(host, port, delay, loop):
     steps = int(delay / step_size)
     start = loop.time()
     for i in range(steps):
+        print(i, steps, step_size)
         try:
             with timeout(step_size, loop=loop):
                 await loop.create_connection(lambda: asyncio.Protocol(), host=host, port=port)
@@ -28,11 +29,11 @@ async def _wait_port_open(host, port, delay, loop):
     raise StartupException(f'Unable to connect to {host}:{port} after {loop.time() - start:0.2f}s')
 
 
-def wait_for_services(settings, *, delay=5, loop=None):
+def wait_for_services(settings, *, delay=5):
     """
     Wait for up to `delay` seconds for postgres and redis ports to be open
     """
-    loop = loop or asyncio.get_event_loop()
+    loop = asyncio.get_event_loop()
     coros = [
         _wait_port_open(settings.pg_host, settings.pg_port, delay, loop),
         _wait_port_open(settings.R_HOST, settings.R_PORT, delay, loop),

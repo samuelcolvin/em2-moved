@@ -1,7 +1,7 @@
 import asyncio
 import re
-from contextlib import contextmanager
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import NamedTuple
 from uuid import UUID
@@ -51,10 +51,9 @@ def full_scope_settings():
 
 
 @pytest.fixture
-def _foreign_server(loop, test_server):
-    app = create_test_app(loop)
-    server = loop.run_until_complete(test_server(app))
-    return server
+async def _foreign_server(loop, aiohttp_server):
+    app = create_test_app()
+    return await aiohttp_server(app)
 
 
 @pytest.fixture
@@ -71,16 +70,15 @@ def clean_db(request, full_scope_settings):
 
 
 @pytest.yield_fixture
-def db_conn(loop, settings, clean_db, redis):
-    await_ = loop.run_until_complete
-    conn = await_(asyncpg.connect(dsn=settings.pg_dsn, loop=loop))
+async def db_conn(loop, settings, clean_db, redis):
+    conn = await asyncpg.connect(dsn=settings.pg_dsn)
 
     tr = conn.transaction()
-    await_(tr.start())
+    await tr.start()
 
     yield conn
 
-    await_(tr.rollback())
+    await tr.rollback()
 
 
 @pytest.fixture(scope='session')
@@ -95,23 +93,29 @@ def auth_settings(full_scope_auth_settings):
 
 @pytest.fixture(scope='session')
 def auth_clean_db(request, full_scope_auth_settings):
-    # loop fixture has function scope so can't be used here.
     loop = asyncio.new_event_loop()
     loop.run_until_complete(prepare_database(full_scope_auth_settings, not request.config.getoption('--reuse-db')))
     teardown_test_loop(loop)
 
 
 @pytest.yield_fixture
-def auth_db_conn(loop, auth_settings, auth_clean_db):
-    await_ = loop.run_until_complete
-    conn = await_(asyncpg.connect(dsn=auth_settings.pg_dsn, loop=loop))
+async def auth_db_conn(loop, auth_settings, auth_clean_db):
+    conn = await asyncpg.connect(dsn=auth_settings.pg_dsn)
 
     tr = conn.transaction()
-    await_(tr.start())
+    await tr.start()
 
     yield conn
 
-    await_(tr.rollback())
+    await tr.rollback()
+    await conn.close()
+
+
+def _to_str(v):
+    if isinstance(v, Enum):
+        return v.value
+    else:
+        return str(v)
 
 
 @pytest.fixture
@@ -120,6 +124,7 @@ def url(request):
 
     def _url(name, **parts):
         query = parts.pop('query', None)
+        parts = {k: _to_str(v) for k, v in parts.items()}
         return client.server.app.router[name].url_for(**parts).with_query(query)
     return _url
 
@@ -166,33 +171,26 @@ def create_conv(db_conn):
     return create_conv_
 
 
-@contextmanager
-def get_clean_redis(loop, redis_db):
-    async def _redis():
-        redis = await create_redis(('localhost', 6379), db=redis_db)
-        await redis.flushdb()
-        return redis
-
-    redis = loop.run_until_complete(_redis())
+@pytest.yield_fixture
+async def redis(loop, settings):
+    redis = await create_redis(('localhost', 6379), db=settings.R_DATABASE)
+    await redis.flushdb()
 
     yield redis
 
-    async def _close():
-        redis.close()
-        await redis.wait_closed()
-    loop.run_until_complete(_close())
+    redis.close()
+    await redis.wait_closed()
 
 
 @pytest.yield_fixture
-def redis(loop, settings):
-    with get_clean_redis(loop, settings.R_DATABASE) as redis:
-        yield redis
+async def auth_redis(loop, auth_settings):
+    redis = await create_redis(('localhost', 6379), db=auth_settings.AUTH_R_DATABASE)
+    await redis.flushdb()
 
+    yield redis
 
-@pytest.yield_fixture
-def auth_redis(loop, auth_settings):
-    with get_clean_redis(loop, auth_settings.AUTH_R_DATABASE) as redis:
-        yield redis
+    redis.close()
+    await redis.wait_closed()
 
 
 async def startup_modify_app(app):

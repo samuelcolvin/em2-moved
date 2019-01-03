@@ -361,6 +361,7 @@ async def test_add_message(cli, conv, url, db_conn):
     parent_key = await db_conn.fetchval("SELECT key FROM actions where component='message'")
     data = {'body': 'hello', 'parent': parent_key}
     url_ = url('act', conv=new_conv_key, component=Components.MESSAGE, verb=Verbs.ADD)
+    debug(url_)
     r = await cli.post(url_, json=data)
     assert r.status == 200, await r.text()
     obj = await r.json()
@@ -709,7 +710,7 @@ async def test_publish_update_add_part(cli, conv, url, db_conn, foreign_server):
     ], foreign_server.app['request_log']
 
 
-async def test_publish_domestic_push(cli, conv, url, db_conn, debug):
+async def test_publish_domestic_push(cli, conv, url, db_conn):
     async with cli.session.ws_connect(cli.make_url('/ws/')) as ws:
         assert not await db_conn.fetchval('SELECT published FROM conversations')
         await cli.server.app['background'].ready.wait()
@@ -720,7 +721,7 @@ async def test_publish_domestic_push(cli, conv, url, db_conn, debug):
         got_message = False
         with timeout(0.5):
             async for msg in ws:
-                assert msg.tp == WSMsgType.text
+                assert msg.type == WSMsgType.text
                 data = json.loads(msg.data)
                 assert data['component'] is None
                 assert data['verb'] == 'publish'
@@ -746,7 +747,7 @@ async def test_not_published_domestic_push(cli, conv, url, db_conn):
         got_message = False
         with timeout(0.5):
             async for msg in ws:
-                assert msg.tp == WSMsgType.text
+                assert msg.type == WSMsgType.text
                 data = json.loads(msg.data)
                 assert data['component'] == 'message'
                 assert data['verb'] == 'modify'
@@ -778,7 +779,7 @@ async def test_ws_expired(cli, settings):
         got_message = False
         with timeout(0.5):
             async for msg in ws:
-                assert msg.tp == WSMsgType.text
+                assert msg.type == WSMsgType.text
                 assert msg.data == '{"auth_url": "http://auth.example.com/update-session/"}'
                 got_message = True
         assert ws.closed

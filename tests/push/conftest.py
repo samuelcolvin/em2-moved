@@ -9,16 +9,16 @@ test_addr = 'testing@example.com'
 
 
 @pytest.fixture
-def cli(loop, settings, db_conn, test_client, redis):
+async def cli(loop, settings, db_conn, aiohttp_client, redis):
     app = create_foreign_app(settings)
     app['_conn'] = db_conn
     app.on_startup.append(startup_modify_app)
     app.on_shutdown.append(shutdown_modify_app)
-    return loop.run_until_complete(test_client(app))
+    return await aiohttp_client(app)
 
 
 @pytest.fixture
-def setup_check_server(loop, test_server):
+async def setup_check_server(loop, aiohttp_server):
     app = Application()
 
     async def _mock_index(request):
@@ -26,8 +26,7 @@ def setup_check_server(loop, test_server):
 
     app.router.add_get('/', _mock_index)
 
-    server = loop.run_until_complete(test_server(app))
-    return server
+    return await aiohttp_server(app)
 
 
 @pytest.yield_fixture
