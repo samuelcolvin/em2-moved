@@ -197,7 +197,7 @@ async def auth_redis(loop, auth_settings):
 async def startup_modify_app(app):
     app['db'].conn = app['_conn']
     app['pusher']._concurrency_enabled = False
-    await  app['pusher'].startup()
+    await app['pusher'].startup()
     app['pusher'].db.conn = app['_conn']
 
 

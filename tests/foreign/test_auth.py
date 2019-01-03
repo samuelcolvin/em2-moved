@@ -31,7 +31,7 @@ async def test_invalid_key(settings, loop, redis):
     with pytest.raises(FailedInboundAuthentication) as exc_info:
         await auth.authenticate_platform('badkey2.com', TIMESTAMP, VALID_SIGNATURE)
     await auth.close()
-    assert exc_info.value.text == 'Authenticate failed: Incorrect padding'
+    assert exc_info.value.text.startswith('Authenticate failed: ')
 
 
 async def test_timstamp_wrong(settings, loop, redis):

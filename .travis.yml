@@ -1,19 +1,19 @@
 dist: trusty
 language: python
 cache: pip
+
 addons:
   postgresql: '9.6'
+
 services:
 - postgresql
 - redis-server
 
-python:
-- '3.6'
-- 'nightly'  # currently 3.7
-
 matrix:
-  allow_failures:
-  - python: 'nightly'
+  include:
+    - python: '3.7'
+      dist: xenial
+      sudo: required
 
 install:
 - make install
@@ -27,6 +27,4 @@ after_success:
 - ls -lha
 - bash <(curl -s https://codecov.io/bash)
 
-env:
-  global:
-    secure: "nX01/Q14/5/H+d23jnhm5w0vfJDyyQ3obN3cU0cabObJqh1Cpmq2VvzZnd7BrMF0DOIxT97AkB2hi/C8L8almSGaajy6XW9apDrlIzZEKRlUaeJ9EeG6GnW4z0Nxr9mLJJGifbIzk7rtzz/BQhyWckPkl6xu+x6U6zb1xskS0L/kS+rXLsPjyuLxqAOVrm+LsfABj+egPVIplC0tVQRRy3VHEqVZ3VH4vJ/6NvRk3bC33Iew9m9rNntNlxABeeFbt0IgrWfjH2vYfrdT8iuAwjh3oBwjReEfdN43xwpqIXBo6uS/kMrqw6SfjWbAFFYR2bkAb/TK7mEQIduoH6NKg+oKFTdOy++zvMLoEfG1xoCDfMFZjiy/OtMPHpUDyElFS1iIMRXIsDBTuHexKHVMceL3xfY0ztJ26TJUSL6askKf2QJjxEoxShyKUawQdrUSIqXCc8nKCFT/vGTpJksCoozimVCI7DY5WFhbCoyo5VLjm0bznFK+k+oERGik9B/DvBtvSv+0kW3qJFFRLznr3j9oZ+Q9NaBLf51wlrdtHm1VMpjEuWXQTOy1fQWe1AEc1LvU2fC6NJA0wWKkpm3kNm1+s6XK+2N1cRBLrLZCHiCTTC4LbsrcEXRsV2HInX2Dhn9rlgIv1xz2Y7YUS4t6gOxRq6E5LuthkHzhFSC/msk="
+# TODO add encrypted aws keys here for test_aws_fallback_live
