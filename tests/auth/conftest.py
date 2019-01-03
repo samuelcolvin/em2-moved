@@ -11,10 +11,10 @@ TEST_PASSWORD = 'valid-testing-password'
 
 
 @pytest.fixture
-def cli(loop, auth_settings, auth_db_conn, test_client, auth_redis):
+async def cli(loop, auth_settings, auth_db_conn, aiohttp_client, auth_redis):
     app = create_auth_app(auth_settings)
     app['settings']._test_conn = auth_db_conn
-    return loop.run_until_complete(test_client(app))
+    return await aiohttp_client(app)
 
 
 @pytest.fixture
@@ -27,18 +27,16 @@ def inv_token(settings):
 
 
 @pytest.fixture
-def user(loop, auth_settings, auth_db_conn, cli):
-    async def _create_user():
-        hashb = bcrypt.hashpw(TEST_PASSWORD.encode(), bcrypt.gensalt(auth_settings.auth_bcrypt_work_factor))
-        sql = 'INSERT INTO auth_users (address, password_hash, node) SELECT $1, $2, id FROM auth_nodes LIMIT 1'
-        await auth_db_conn.execute(sql, TEST_ADDRESS, hashb.decode())
+async def user(auth_settings, auth_db_conn, cli):
+    hashb = bcrypt.hashpw(TEST_PASSWORD.encode(), bcrypt.gensalt(auth_settings.auth_bcrypt_work_factor))
+    sql = 'INSERT INTO auth_users (address, password_hash, node) SELECT $1, $2, id FROM auth_nodes LIMIT 1'
+    await auth_db_conn.execute(sql, TEST_ADDRESS, hashb.decode())
 
-    loop.run_until_complete(_create_user())
     return TEST_ADDRESS, TEST_PASSWORD
 
 
 @pytest.fixture
-def g_recaptcha_server(loop, test_server, cli):
+async def g_recaptcha_server(aiohttp_server, cli):
     app = Application()
 
     async def _mock_verify(request):
@@ -47,20 +45,17 @@ def g_recaptcha_server(loop, test_server, cli):
 
     app.router.add_post('/mock_verify', _mock_verify)
 
-    server = loop.run_until_complete(test_server(app))
+    server = await aiohttp_server(app)
     cli.server.app['settings'].grecaptcha_url = f'http://localhost:{server.port}/mock_verify'
     return server
 
 
 @pytest.fixture
-def authenticate(loop, cli, url, inv_token):
-    async def _login():
-        url_ = url('accept-invitation', query=dict(token=inv_token(last_name='testing')))
-        r = await cli.post(url_, json={'password': 'thisissecure'})
-        assert r.status == 201, await r.text()
-        assert len(cli.session.cookie_jar) == 1
-
-    loop.run_until_complete(_login())
+async def authenticate(cli, url, inv_token):
+    url_ = url('accept-invitation', query=dict(token=inv_token(last_name='testing')))
+    r = await cli.post(url_, json={'password': 'thisissecure'})
+    assert r.status == 201, await r.text()
+    assert len(cli.session.cookie_jar) == 1
 
 
 @pytest.fixture

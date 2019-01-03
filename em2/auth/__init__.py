@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import bcrypt
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from aiohttp.web import Application, Response
 from arq import create_pool_lenient
 from cryptography.fernet import Fernet
@@ -30,10 +30,10 @@ CREATE_NODE_SQL = """
 
 async def app_startup(app):
     settings: Settings = app['settings']
-    loop = app.loop or asyncio.get_event_loop()
+    loop = asyncio.get_event_loop()
     app.update(
         db=settings.db_cls(settings=settings, loop=loop),
-        session=ClientSession(loop=loop, read_timeout=5, conn_timeout=5),
+        session=ClientSession(loop=loop, timeout=ClientTimeout(total=10)),
         redis=await create_pool_lenient(settings.redis, loop),
     )
     await app['db'].startup()

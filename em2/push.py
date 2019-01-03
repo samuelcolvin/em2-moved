@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import IntEnum
 from typing import Dict, Optional, Set, Tuple, Union
 
-import aiohttp
+from aiohttp import ClientConnectionError, ClientError, ClientSession, ClientTimeout, DefaultResolver, TCPConnector
 from aiohttp.hdrs import METH_GET, METH_POST
 from aiohttp.web_response import Response
 from arq import Actor, concurrent, cron
@@ -69,8 +69,8 @@ class Pusher(Actor):
         self.db = self.settings.db_cls(self.settings, self.loop)
 
         resolver = self._get_http_resolver()
-        connector = aiohttp.TCPConnector(resolver=resolver, verify_ssl=self.settings.COMMS_VERIFY_SSL)
-        self.session = aiohttp.ClientSession(loop=self.loop, connector=connector, read_timeout=10, conn_timeout=10)
+        connector = TCPConnector(resolver=resolver, verify_ssl=self.settings.COMMS_VERIFY_SSL)
+        self.session = ClientSession(loop=self.loop, connector=connector, timeout=ClientTimeout(total=10))
 
         self.fallback = self.settings.fallback_cls(settings=self.settings, loop=self.loop, db=self.db)
         await self.db.startup()
@@ -78,7 +78,7 @@ class Pusher(Actor):
 
     @classmethod
     def _get_http_resolver(cls):
-        return aiohttp.DefaultResolver()
+        return DefaultResolver()
 
     async def shutdown(self):
         if self.db:
@@ -367,7 +367,7 @@ class Pusher(Actor):
                        json_data=None,
                        headers=None,
                        read: Optional[ReadMethod] = None,
-                       expected_statuses: Set[int]={200},
+                       expected_statuses: Set[int] = {200},
                        retry_delay=1.0) -> Tuple[Response, Union[str, dict]]:
         exc = response_data = None
         if json_data:
@@ -382,7 +382,7 @@ class Pusher(Actor):
                         response_data = await r.text()
                     elif read == ReadMethod.json:
                         response_data = await r.json()
-            except (aiohttp.ClientError, aiohttp.ClientConnectionError, ValueError, asyncio.TimeoutError) as e:
+            except (ClientError, ClientConnectionError, ValueError, asyncio.TimeoutError) as e:
                 exc = f'{e.__class__.__name__}: {e}'
             else:
                 if r.status in expected_statuses:
@@ -427,7 +427,7 @@ class Pusher(Actor):
         http_pass, dns_pass = False, False
         foreign_app_url = f'{self.settings.COMMS_PROTO}://{self.settings.EXTERNAL_DOMAIN}/'
         try:
-            r, _ = await self._request(METH_GET, foreign_app_url, retry_delay=_retry_delay)
+            r, _ = await self._request(METH_GET, foreign_app_url, retry_delay=_retry_delay, read=ReadMethod.json)
         except Em2ConnectionError:
             pass
         else:

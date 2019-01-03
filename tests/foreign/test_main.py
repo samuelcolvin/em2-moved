@@ -214,7 +214,15 @@ async def test_authenticate_wrong_fields(cli, url):
     r = await cli.post(url('authenticate'), headers=headers)
     assert r.status == 400, await r.text()
     data = await r.json()
-    assert data['em2-signature']['error_msg'] == 'field required'
+    assert [
+        {
+            'loc': [
+                'em2-signature',
+            ],
+            'msg': 'field required',
+            'type': 'value_error.missing',
+        },
+    ] == data
 
 
 async def test_authenticate_failed(cli, url):

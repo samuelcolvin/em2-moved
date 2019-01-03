@@ -17,6 +17,7 @@ lint:
 	flake8 --version
 	flake8 em2/ tests/
 	pytest em2 -p no:sugar -q
+	./tests/check_debug.sh
 
 .PHONY: test
 test:
@@ -36,6 +37,7 @@ clean:
 	rm -f `find . -type f -name '*~' `
 	rm -f `find . -type f -name '.*~' `
 	rm -rf .cache
+	rm -rf .pytest_cache
 	rm -rf htmlcov
 	rm -rf *.egg-info
 	rm -f .coverage

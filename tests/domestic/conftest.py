@@ -11,7 +11,7 @@ test_addr = 'testing@example.com'
 
 
 @pytest.fixture
-def cli(loop, settings, db_conn, test_client, redis):
+def cli(loop, settings, db_conn, aiohttp_client, redis):
     fernet = Fernet(settings.auth_session_secret)
     data = f'123:{int(time()) + settings.cookie_grace_time}:{test_addr}'
     cookies = {
@@ -21,16 +21,16 @@ def cli(loop, settings, db_conn, test_client, redis):
     app['_conn'] = db_conn
     app.on_startup.append(startup_modify_app)
     app.on_shutdown.append(shutdown_modify_app)
-    return loop.run_until_complete(test_client(app, cookies=cookies))
+    return loop.run_until_complete(aiohttp_client(app, cookies=cookies))
 
 
 @pytest.fixture
-def extra_cli(loop, settings, test_client, cli):
+def extra_cli(loop, settings, aiohttp_client, cli):
     async def _create(address):
         fernet = Fernet(settings.auth_session_secret)
         data = f'{hash(address)}:{int(time()) + settings.cookie_grace_time}:{address}'
         cookies = {settings.cookie_name: fernet.encrypt(data.encode()).decode()}
-        return await test_client(cli.server, cookies=cookies)
+        return await aiohttp_client(cli.server, cookies=cookies)
     return _create
 
 

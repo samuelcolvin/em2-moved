@@ -12,8 +12,9 @@ from zxcvbn import zxcvbn
 
 from em2.utils import get_domain
 from em2.utils.encoding import msg_decode
+from em2.utils.web import JsonError
 from em2.utils.web import View as _View
-from em2.utils.web import JsonError, WebModel, get_ip, json_response, raw_json_response
+from em2.utils.web import WebModel, get_ip, json_response, raw_json_response
 
 from .sessions import logout, session_event
 

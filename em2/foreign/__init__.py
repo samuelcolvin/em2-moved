@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from aiohttp.web import Application, Response
@@ -23,12 +24,13 @@ async def index(request):
 
 async def app_startup(app):
     settings = app['settings']
-    db = settings.db_cls(settings=settings, loop=app.loop)
-    pusher = settings.pusher_cls(settings=settings, loop=app.loop)
-    fallback = settings.fallback_cls(settings=settings, loop=app.loop, db=db, pusher=pusher)
+    loop = asyncio.get_event_loop()
+    db = settings.db_cls(settings=settings, loop=loop)
+    pusher = settings.pusher_cls(settings=settings, loop=loop)
+    fallback = settings.fallback_cls(settings=settings, loop=loop, db=db, pusher=pusher)
     app.update(
         db=db,
-        authenticator=settings.authenticator_cls(settings=settings, loop=app.loop),
+        authenticator=settings.authenticator_cls(settings=settings, loop=loop),
         pusher=pusher,
         fallback=fallback,
     )

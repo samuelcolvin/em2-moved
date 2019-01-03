@@ -5,7 +5,7 @@ from .domestic import create_domestic_app
 from .foreign import create_foreign_app
 
 
-def create_app(settings: Settings=None):
+def create_app(settings: Settings = None):
     settings = settings or Settings()
     app = Application()
     app['settings'] = settings

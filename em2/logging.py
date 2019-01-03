@@ -50,7 +50,7 @@ def prepare_log_config(settings) -> dict:
     return v
 
 
-def setup_logging(settings, *, log_config: dict=None):
+def setup_logging(settings, *, log_config: dict = None):
     if log_config is None:
         log_config = prepare_log_config(settings)
     logging.config.dictConfig(log_config)
