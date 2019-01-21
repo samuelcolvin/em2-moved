@@ -6,9 +6,9 @@ import logging
 from aiohttp import web
 from aiohttp.web import HTTPBadRequest, HTTPConflict, HTTPForbidden, HTTPNotFound
 
-from em2.core import ApplyAction, Components, GetConv, Verbs
-from em2.utils import get_domain
-from em2.utils.web import ViewMain, WebModel, get_ip, raw_json_response
+from ..core import ApplyAction, Components, GetConv, Verbs
+from ..utils import get_domain
+from ..utils.web import ViewMain, WebModel, get_ip, raw_json_response
 
 logger = logging.getLogger('em2.f.views')
 

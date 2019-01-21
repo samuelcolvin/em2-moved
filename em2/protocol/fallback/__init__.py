@@ -9,11 +9,11 @@ from aiohttp.web_exceptions import HTTPForbidden
 from asyncpg.connection import Connection as PGConnection
 from bs4 import BeautifulSoup
 
-from em2 import Settings
-from em2.core import (Action, ApplyAction, Components, CreateForeignConv, Verbs, Relationships,
-                      create_missing_recipients, gen_random, generate_conv_key, MsgFormat)
-from em2.utils import to_utc_naive
-from em2.utils.markdown import markdown
+from ... import Settings
+from ...core import (Action, ApplyAction, Components, CreateForeignConv, Verbs, Relationships,
+                     create_missing_recipients, gen_random, generate_conv_key, MsgFormat)
+from ...utils import to_utc_naive
+from ...utils.markdown import markdown
 
 logger = logging.getLogger('em2.fallback')
 

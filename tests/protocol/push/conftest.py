@@ -1,7 +1,7 @@
 import pytest
 from aiohttp.web import Application, json_response
 
-from em2.foreign import create_foreign_app
+from em2.protocol import create_protocol_app
 from tests.conftest import shutdown_modify_app, startup_modify_app
 from tests.fixture_classes import DNSMockedPusher
 
@@ -10,7 +10,7 @@ test_addr = 'testing@example.com'
 
 @pytest.fixture
 async def cli(loop, settings, db_conn, aiohttp_client, redis):
-    app = create_foreign_app(settings)
+    app = create_protocol_app(settings)
     app['_conn'] = db_conn
     app.on_startup.append(startup_modify_app)
     app.on_shutdown.append(shutdown_modify_app)

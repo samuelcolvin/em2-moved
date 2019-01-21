@@ -1,5 +1,5 @@
-from em2.foreign.auth import Authenticator
-from em2.push import Pusher
+from em2.protocol.auth import Authenticator
+from em2.protocol.push import Pusher
 from tests.fixture_classes import DNSMockedPusher
 
 

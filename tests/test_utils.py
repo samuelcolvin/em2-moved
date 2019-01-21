@@ -8,7 +8,7 @@ from em2.utils import to_utc_naive
 from em2.utils.network import _wait_port_open, wait_for_services
 
 
-def test_wait_for_services():
+def test_wait_for_services(loop):
     settings = Settings()
     wait_for_services(settings)
 
@@ -33,7 +33,7 @@ async def test_create_app(settings, aiohttp_client):
     cli = await aiohttp_client(app)
     r = await cli.get('/f/')
     assert r.status == 200, await r.text()
-    assert 'em2 foreign interface' in await r.text()
+    assert 'em2 protocol interface' in await r.text()
     r = await cli.get('/d/')
     assert r.status == 200, await r.text()
-    assert 'domestic interface' in await r.text()
+    assert 'UI interface' in await r.text()

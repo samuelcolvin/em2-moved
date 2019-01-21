@@ -1,4 +1,4 @@
-from em2.fallback import LogFallbackHandler
+from em2.protocol.fallback import LogFallbackHandler
 
 
 class TestFallbackHandler(LogFallbackHandler):

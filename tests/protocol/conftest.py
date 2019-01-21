@@ -3,14 +3,14 @@ from datetime import datetime
 import pytest
 
 from em2.core import MsgFormat
-from em2.foreign import create_foreign_app
+from em2.protocol import create_protocol_app
 
 from ..conftest import ConvInfo, shutdown_modify_app, startup_modify_app
 
 
 @pytest.fixture
 async def cli(loop, settings, db_conn, aiohttp_client, redis):
-    app = create_foreign_app(settings)
+    app = create_protocol_app(settings)
     app['_conn'] = db_conn
     app.on_startup.append(startup_modify_app)
     app.on_shutdown.append(shutdown_modify_app)

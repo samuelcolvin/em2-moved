@@ -16,13 +16,13 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-from . import Settings
-from .core import Action, ActionStatuses, CreateForeignConv, Verbs, gen_random
+from .. import Settings
+from ..core import Action, ActionStatuses, CreateForeignConv, Verbs, gen_random
+from ..exceptions import Em2ConnectionError, FailedInboundAuthentication
+from ..utils import get_domain
+from ..utils.encoding import msg_encode, to_unix_ms
 from .dns import DNSResolver
-from .exceptions import Em2ConnectionError, FailedInboundAuthentication
 from .fallback import FallbackHandler
-from .utils import get_domain
-from .utils.encoding import msg_encode, to_unix_ms
 
 logger = logging.getLogger('em2.push')
 
@@ -122,7 +122,7 @@ class Pusher(Actor):
 
             if actor_only:
                 actor_recipient_id = await conn.fetchval(self.action_recipient_id_sql, action_id)
-                await self.domestic_push({actor_recipient_id}, action)
+                await self.internal_push({actor_recipient_id}, action)
                 return
 
             prts = set(await conn.fetch(self.prts_sql, action.conv_id))  # TODO more info e.g. bcc etc.
@@ -140,7 +140,7 @@ class Pusher(Actor):
             # TODO add test for known local still being passed to fallback
             if known_local:
                 prts2 = prts.difference(known_local)
-                await self.domestic_push({rid for rid, _ in known_local}, action)
+                await self.internal_push({rid for rid, _ in known_local}, action)
             else:
                 prts2 = prts
 
@@ -152,17 +152,17 @@ class Pusher(Actor):
                         prts_count, len(remote_nodes), loc_count, len(fallback_addresses))
 
             if local_recipients:
-                await self.domestic_push(local_recipients, action)
+                await self.internal_push(local_recipients, action)
 
             if transmit:
                 if remote_nodes:
-                    await self.foreign_push(remote_nodes, action, conn)
+                    await self.external_push(remote_nodes, action, conn)
 
                 if fallback_addresses:
                     await self.fallback.push(action, prts, conn)
             # TODO save actions_status
 
-    async def domestic_push(self, recipient_ids: Set[int], action: Action):
+    async def internal_push(self, recipient_ids: Set[int], action: Action):
         with await self.redis as redis:
             recipient_ids_key = gen_random('rid')
             await asyncio.gather(
@@ -189,7 +189,7 @@ class Pusher(Actor):
                 }
                 await redis.rpush(job_name, msg_encode(job_data))
 
-    async def foreign_push(self, node_lookup: Dict[str, Set[str]], action: Action, conn: PGConnection):
+    async def external_push(self, node_lookup: Dict[str, Set[str]], action: Action, conn: PGConnection):
         """
         Push action to participants on remote nodes.
         """

@@ -3,7 +3,7 @@ from time import time
 import pytest
 from cryptography.fernet import Fernet
 
-from em2.domestic import create_domestic_app
+from em2.ui import create_ui_app
 
 from ..conftest import shutdown_modify_app, startup_modify_app
 
@@ -17,7 +17,7 @@ def cli(loop, settings, db_conn, aiohttp_client, redis):
     cookies = {
         settings.cookie_name: fernet.encrypt(data.encode()).decode()
     }
-    app = create_domestic_app(settings, 'd-testing')
+    app = create_ui_app(settings, 'd-testing')
     app['_conn'] = db_conn
     app.on_startup.append(startup_modify_app)
     app.on_shutdown.append(shutdown_modify_app)

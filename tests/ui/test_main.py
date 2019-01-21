@@ -793,13 +793,13 @@ async def test_index_anon(cli, url):
     r = await cli.get(url('index'))
     assert r.headers['Access-Control-Allow-Origin'] == 'https://frontend.example.com'
     assert r.status == 200, await r.text()
-    assert f'em2 v{VERSION}:- domestic interface\n' == await r.text()
+    assert f'em2 v{VERSION}:- UI interface\n' == await r.text()
 
 
 async def test_index_auth(cli, url):
     r = await cli.get(url('index'))
     assert r.status == 200, await r.text()
-    assert f'em2 v{VERSION}:- domestic interface\n' == await r.text()
+    assert f'em2 v{VERSION}:- UI interface\n' == await r.text()
 
 
 async def test_missing_url(cli):

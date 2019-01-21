@@ -1,8 +1,8 @@
 from aiohttp.web import Application
 
 from . import Settings
-from .domestic import create_domestic_app
-from .foreign import create_foreign_app
+from .protocol import create_protocol_app
+from .ui import create_ui_app
 
 
 def create_app(settings: Settings = None):
@@ -11,11 +11,11 @@ def create_app(settings: Settings = None):
     app['settings'] = settings
 
     # TODO deal with domain routing, perhaps nginx is enough
-    foreign_app = create_foreign_app(settings)
-    app.add_subapp('/f/', foreign_app)
-    app['fapp'] = foreign_app
+    ui_app = create_protocol_app(settings)
+    app.add_subapp('/f/', ui_app)
+    app['fapp'] = ui_app
 
-    domestic_app = create_domestic_app(settings)
-    app.add_subapp('/d/', domestic_app)
-    app['dapp'] = domestic_app
+    ui_app = create_ui_app(settings)
+    app.add_subapp('/d/', ui_app)
+    app['dapp'] = ui_app
     return app

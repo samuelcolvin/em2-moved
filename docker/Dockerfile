@@ -8,8 +8,6 @@ RUN apk --update --no-cache add postgresql-dev gcc g++ musl-dev libuv make libff
  && rm -rf /var/cache/apk/*
 
 RUN pip install -U pip setuptools
-ADD ./docker-requirements.txt /home/root/
-RUN pip install -r /home/root/docker-requirements.txt
 
 ADD ./em2/extras/requirements1.txt /home/root/em2-requirements1.txt
 RUN pip install -r /home/root/em2-requirements1.txt

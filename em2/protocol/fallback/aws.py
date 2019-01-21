@@ -15,9 +15,8 @@ from urllib.parse import urlencode
 import aiohttp
 from aiohttp.web_exceptions import HTTPUnauthorized
 
-from em2.exceptions import ConfigException, FallbackPushError
-
 from . import FallbackHandler
+from ...exceptions import ConfigException, FallbackPushError
 
 logger = logging.getLogger('em2.fallback.aws')
 

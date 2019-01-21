@@ -1,5 +1,7 @@
 from aiohttp.web import HTTPBadRequest
 
+# FIXME: remove me and move exceptions to where they apply
+
 
 class Em2Exception(Exception):
     pass

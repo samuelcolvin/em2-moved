@@ -1,12 +1,16 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 import asyncio
+import logging
 import os
 
+import uvloop
+
+from atoolbox.logs import setup_logging
 from em2 import Settings
 from em2.exceptions import ConfigException
-from em2.logging import logger, setup_logging
 
 command_lookup = {}
+logger = logging.getLogger('em2.main')
 
 
 def command(func):
@@ -35,15 +39,21 @@ def worker_check(settings):
 
 
 def execute(command_):
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     settings = Settings()
-    setup_logging(settings)
-
-    func = command_lookup.get(command_)
-    if func is None:
-        options = ', '.join(sorted(command_lookup.keys()))
-        raise ConfigException(f'invalid command "{command_}", options are: {options}')
-    logger.info('running %s...', func.__name__)
-    func(settings)
+    logging_client = setup_logging(debug=settings.DEBUG, main_logger_name='em2')
+    try:
+        func = command_lookup.get(command_)
+        if func is None:
+            options = ', '.join(sorted(command_lookup.keys()))
+            raise ConfigException(f'invalid command "{command_}", options are: {options}')
+        logger.info('running %s...', func.__name__)
+        func(settings)
+    finally:
+        loop = asyncio.get_event_loop()
+        if logging_client and not loop.is_closed():
+            transport = logging_client.remote.get_transport()
+            transport and loop.run_until_complete(transport.close())
 
 
 def main():

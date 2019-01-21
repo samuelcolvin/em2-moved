@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 import asyncio
 import os
 import sys
@@ -26,13 +26,13 @@ def web(settings: Settings):
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     loop = asyncio.get_event_loop()
 
-    wait_for_services(settings, loop=loop)
+    wait_for_services(settings)
     loop.run_until_complete(_prepare_database(settings, overwrite_existing=False))
 
     logger.info('starting main server')
     app = create_app(settings)
     try:
-        run_app(app, port=settings.web_port, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
+        run_app(app, port=settings.web_port, print=lambda v: None, access_log=None, shutdown_timeout=5)
     finally:
         logger.info('server shutdown')
         sleep(0.01)  # time for the log message to propagate
@@ -72,7 +72,7 @@ def worker(settings: Settings):
     from arq import RunWorkerProcess
 
     loop = asyncio.get_event_loop()
-    wait_for_services(settings, loop=loop)
+    wait_for_services(settings)
     loop.run_until_complete(_prepare_database(settings, overwrite_existing=False))
 
     RunWorkerProcess('em2.worker', 'Worker')
@@ -90,13 +90,13 @@ def auth(settings: Settings):
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     loop = asyncio.get_event_loop()
 
-    wait_for_services(settings, loop=loop)
+    wait_for_services(settings)
     loop.run_until_complete(_prepare_database(settings, overwrite_existing=False))
 
     logger.info('starting auth server')
     app = create_auth_app(settings)
     try:
-        run_app(app, port=settings.web_port, loop=loop, print=lambda v: None, access_log=None, shutdown_timeout=5)
+        run_app(app, port=settings.web_port, print=lambda v: None, access_log=None, shutdown_timeout=5)
     finally:
         logger.info('auth server shutdown')
         sleep(0.01)  # time for the log message to propagate
@@ -117,37 +117,6 @@ def info(settings: Settings):
     main pg db:    {settings.pg_main_name}
     auth pg db:    {settings.pg_auth_name}
     redis db:      {settings.R_DATABASE}""")
-
-
-@command
-def shell(settings: Settings):
-    """
-    Basic replica of django-extensions shell, ugly but very useful in development
-    """
-    EXEC_LINES = [
-        'import asyncio, os, re, sys',
-        'from datetime import datetime, timedelta, timezone',
-        'from pathlib import Path',
-        '',
-        'from em2 import Settings',
-        '',
-        'loop = asyncio.get_event_loop()',
-        'await_ = loop.run_until_complete',
-        'settings = Settings()',
-    ]
-    EXEC_LINES += (
-        ['print("\\n    Python {v.major}.{v.minor}.{v.micro}\\n".format(v=sys.version_info))'] +
-        [f'print("    {l}")' for l in EXEC_LINES]
-    )
-
-    from IPython import start_ipython
-    from IPython.terminal.ipapp import load_default_config
-    c = load_default_config()
-
-    c.TerminalIPythonApp.display_banner = False
-    c.TerminalInteractiveShell.confirm_exit = False
-    c.InteractiveShellApp.exec_lines = EXEC_LINES
-    start_ipython(argv=(), config=c)
 
 
 def main():

@@ -525,7 +525,7 @@ class _ConvDetails(BaseModel):
     creator: EmailStr
     subject: constr(max_length=255)
     ts: datetime  # TODO check this is less than now
-    published: bool = True  # not actually used, in foreign -> create conv, assumed true
+    published: bool = True  # not actually used, in protocol -> create conv, assumed true
 
 
 class _Participant(BaseModel):

@@ -1,4 +1,4 @@
-from em2.foreign.auth import Authenticator
+from em2.protocol.auth import Authenticator
 
 from .dns_resolver import TIMESTAMP, MockDNSResolver, get_public_key
 

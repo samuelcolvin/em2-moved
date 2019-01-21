@@ -11,10 +11,10 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-from em2 import Settings
-from em2.dns import DNSResolver
-from em2.exceptions import FailedInboundAuthentication
-from em2.utils.encoding import to_unix_ms
+from .. import Settings
+from ..exceptions import FailedInboundAuthentication
+from ..utils.encoding import to_unix_ms
+from .dns import DNSResolver
 
 logger = logging.getLogger('em2.f.auth')
 

@@ -58,10 +58,10 @@ class Settings(BaseSettings):
     cookie_grace_time = 600
     secure_cookies = True  # only ever change these during testing!!!
 
-    pusher_cls: PyObject = 'em2.push.Pusher'
-    fallback_cls: PyObject = 'em2.fallback.LogFallbackHandler'
+    pusher_cls: PyObject = 'em2.protocol.push.Pusher'
+    fallback_cls: PyObject = 'em2.protocol.fallback.LogFallbackHandler'
     db_cls: PyObject = 'em2.core.Database'
-    authenticator_cls: PyObject = 'em2.foreign.auth.Authenticator'
+    authenticator_cls: PyObject = 'em2.protocol.auth.Authenticator'
 
     web_port = 8000
 
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     pg_pool_minsize = 1
     pg_pool_maxsize = 10
 
-    # the domain at which other platforms connect to this node, eg. the "foreign" app's endpoint
+    # the domain at which other platforms connect to this node, eg. the "protocol" app's endpoint
     EXTERNAL_DOMAIN = 'em2-domain-set'
     PRIVATE_DOMAIN_KEY_FILE = 'no-key-file-set'
     # the domain and proto of the "front end" eg. the urls people log in to

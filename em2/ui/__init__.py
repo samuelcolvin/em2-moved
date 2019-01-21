@@ -14,12 +14,12 @@ from em2.utils.web import (access_control_middleware, auth_middleware, db_conn_m
 from .background import Background
 from .views import Act, ConvActions, Create, Publish, VList, Websocket
 
-logger = logging.getLogger('em2.domestic')
+logger = logging.getLogger('em2.ui')
 
 
 async def index(request):
     s = request.app['settings']
-    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} domestic interface\n')
+    return Response(text=f'em2 v{VERSION}:{s.COMMIT or "-"} UI interface\n')
 
 
 async def app_startup(app):
@@ -68,7 +68,7 @@ async def activate_session(request, data):
         request['session_args'] = recipient_id, user_address
 
 
-def create_domestic_app(settings, app_name=None):
+def create_ui_app(settings, app_name=None):
     app = Application(middlewares=(access_control_middleware, auth_middleware, db_conn_middleware))
     app.on_response_prepare.append(prepare_add_origin)
 

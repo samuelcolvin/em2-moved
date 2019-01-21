@@ -11,7 +11,7 @@ from aiohttp.web_exceptions import HTTPUnauthorized
 
 from em2 import Settings
 from em2.core import ApplyAction, GetConv
-from em2.fallback.aws import AwsFallbackHandler
+from em2.protocol.fallback.aws import AwsFallbackHandler
 from tests.conftest import CloseToNow, RegexStr
 
 

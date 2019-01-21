@@ -4,7 +4,7 @@ import logging
 import aiodns
 from async_timeout import timeout
 
-from . import Settings
+from .. import Settings
 
 logger = logging.getLogger('em2.dns')
 

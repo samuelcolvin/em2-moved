@@ -207,5 +207,5 @@ class View(FetchOr404Mixin):
 class ViewMain(View):
     def __init__(self, request):
         super().__init__(request)
-        from em2.push import Pusher
+        from em2.protocol.push import Pusher
         self.pusher: Pusher = self.app['pusher']

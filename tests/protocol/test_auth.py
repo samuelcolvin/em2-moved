@@ -1,10 +1,9 @@
-
 import pytest
 from aiohttp.web_exceptions import HTTPForbidden
 
 from em2.exceptions import FailedInboundAuthentication
-from em2.foreign.auth import Authenticator
-from em2.push import Pusher
+from em2.protocol.auth import Authenticator
+from em2.protocol.push import Pusher
 from tests.fixture_classes import DNSMockedPusher
 from tests.fixture_classes.auth import TIMESTAMP, DnsMockAuthenticator, FixedDnsMockAuthenticator, get_public_key
 from tests.fixture_classes.dns_resolver import VALID_SIGNATURE

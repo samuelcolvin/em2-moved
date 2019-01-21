@@ -2,7 +2,7 @@ import socket
 
 from aiohttp import AsyncResolver
 
-from em2.push import Pusher
+from em2.protocol.push import Pusher
 
 from .dns_resolver import MockDNSResolver
 

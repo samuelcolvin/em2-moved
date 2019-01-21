@@ -17,12 +17,13 @@ async def _wait_port_open(host, port, delay, loop):
     for i in range(steps):
         try:
             with timeout(step_size, loop=loop):
-                await loop.create_connection(lambda: asyncio.Protocol(), host=host, port=port)
+                transport, proto = await loop.create_connection(lambda: asyncio.Protocol(), host=host, port=port)
         except asyncio.TimeoutError:
             pass
         except OSError:
             await asyncio.sleep(step_size, loop=loop)
         else:
+            transport.close()
             logger.debug('Connected successfully to %s:%s after %0.2fs', host, port, loop.time() - start)
             return
     raise StartupException(f'Unable to connect to {host}:{port} after {loop.time() - start:0.2f}s')

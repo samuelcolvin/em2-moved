@@ -7,13 +7,13 @@ from em2 import VERSION
 from em2.utils.web import JSON_CONTENT_TYPE, db_conn_middleware
 from .views import Act, Authenticate, Create, FallbackWebhook, Get
 
-logger = logging.getLogger('em2.foreign')
+logger = logging.getLogger('em2.protocol')
 
 
 async def index(request):
     s = request.app['settings']
     data = dict(
-        description='em2 foreign interface',
+        description='em2 protocol interface',
         version=f'v{VERSION}',
         commit=s.COMMIT,
         interface='external',
@@ -46,7 +46,7 @@ async def app_cleanup(app):
     await app['pusher'].close()
 
 
-def create_foreign_app(settings):
+def create_protocol_app(settings):
     app = Application(middlewares=(db_conn_middleware,))
     app['settings'] = settings
 

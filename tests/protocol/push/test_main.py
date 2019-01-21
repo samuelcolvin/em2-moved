@@ -1,7 +1,7 @@
 import json
 
 from em2.core import ApplyAction, GetConv
-from em2.fallback import get_email_body
+from em2.protocol.fallback import get_email_body
 from tests.conftest import CloseToNow, RegexStr
 
 

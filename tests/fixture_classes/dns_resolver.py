@@ -7,7 +7,7 @@ from aiodns.error import DNSError
 # to generate public and private keys
 # openssl genrsa -out private.pem 4096
 # openssl rsa -in private.pem -pubout > public.pem
-from em2.dns import DNSResolver
+from em2.protocol.dns import DNSResolver
 
 KEY_DIR = (Path(__file__).parent / 'keys').absolute()
 
