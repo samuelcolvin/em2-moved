@@ -58,7 +58,7 @@ class Pusher(Actor):
         self.session = None
         self.fallback: FallbackHandler = None
         self.dns = DNSResolver(self.settings, self.loop)
-        kwargs['redis_settings'] = self.settings.redis
+        kwargs['redis_settings'] = self.settings.redis_settings
         super().__init__(**kwargs)
         logger.debug('initialising pusher %s', self)
         self.auth_check_url = settings.auth_server_sys_url + '/check-user-node/'

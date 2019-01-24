@@ -46,8 +46,8 @@ class Background:
         logger.info('closing frontend background task, done: %r', self.task.done())
         if self.redis:
             await self.redis.delete(self.recipients_key)
-        if self.task.done():
-            self.task.result()
+        assert self.task.done(), '_process_actions task not cancelled'
+        self.task.result()
         self.task.cancel()
 
     async def _process_actions(self):
@@ -62,13 +62,16 @@ class Background:
             max_concurrent_tasks=5,
             raise_task_exception=True,
         )
-        async with drain:
-            logger.info('starting background drain loop')
-            async for _, raw_data in drain.iter(jobs_key, pop_timeout=30):
-                if raw_data:
-                    drain.add(self._send_action, raw_data)
-                if (time() - self._last_added_recipient) >= 20:
-                    await self.add_recipient(0)
+        try:
+            async with drain:
+                logger.info('starting background drain loop')
+                async for _, raw_data in drain.iter(jobs_key, pop_timeout=1):
+                    if raw_data:
+                        drain.add(self._send_action, raw_data)
+                    if (time() - self._last_added_recipient) >= 20:
+                        await self.add_recipient(0)
+        except asyncio.CancelledError:
+            pass
 
     async def _send_action(self, raw_data):
         data = msg_decode(raw_data)

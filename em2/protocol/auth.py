@@ -26,7 +26,7 @@ class Authenticator(RedisMixin):
     def __init__(self, settings: Settings, *, loop=None, **kwargs):
         self.settings = settings
         self.loop = loop
-        self.redis_settings = self.settings.redis
+        self.redis_settings = self.settings.redis_settings
         super().__init__(**kwargs)
         self._resolver = None
         self._past_ts_limit, self._future_ts_limit = self.settings.COMMS_AUTHENTICATION_TS_LENIENCY

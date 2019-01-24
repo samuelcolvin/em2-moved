@@ -1,10 +1,11 @@
 from datetime import timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Set
+from typing import Optional, Set
 
 from arq import RedisSettings
-from pydantic import BaseSettings, NoneStr, PyObject
+from atoolbox import BaseSettings
+from pydantic import PyObject
 from pydantic.utils import make_dsn
 
 THIS_DIR = Path(__file__).resolve().parent
@@ -33,7 +34,7 @@ class Settings(BaseSettings):
     COMMS_DNS_IPS = ['8.8.8.8', '8.8.4.4']
 
     # set to None to use peername
-    client_ip_header: NoneStr = 'X-Forwarded-For'
+    client_ip_header: Optional[str] = 'X-Forwarded-For'
     grecaptcha_secret: str = None
     grecaptcha_url = 'https://www.google.com/recaptcha/api/siteverify'
     # attempts before captcha is required
@@ -63,14 +64,11 @@ class Settings(BaseSettings):
     db_cls: PyObject = 'em2.core.Database'
     authenticator_cls: PyObject = 'em2.protocol.auth.Authenticator'
 
-    web_port = 8000
+    create_app: str = 'em2.main.create_app'
 
-    pg_host = 'localhost'
-    pg_port = '5432'
-    pg_user = 'postgres'
-    pg_password = ''
-    pg_main_name = 'em2'
-    pg_auth_name = 'em2_auth'
+    web_port = 8000
+    pg_dsn: Optional[str] = 'postgres://postgres@localhost:5432/em2'
+    pg_dsn_auth: Optional[str] = 'postgres://postgres@localhost:5432/em2_auth'
 
     mode = Mode.main
     run_setup_check = True
@@ -89,12 +87,6 @@ class Settings(BaseSettings):
     fallback_endpoint: str = None
     fallback_webhook_auth: bytes = None
 
-    R_HOST = 'localhost'
-    R_PORT = 6379
-    R_PASSWORD: str = None
-    R_DATABASE = 0
-    AUTH_R_DATABASE = 1
-
     FRONTEND_RECIPIENTS_BASE = 'frontend:recipients:{}'
     FRONTEND_JOBS_BASE = 'frontend:jobs:{}'
 
@@ -110,11 +102,6 @@ class Settings(BaseSettings):
     @property
     def pg_name(self):
         return self.pg_main_name if self.mode == Mode.main else self.pg_auth_name
-
-    @property
-    def pg_dsn(self):
-        kwargs = {f: getattr(self, f'pg_{f}') for f in ('name', 'password', 'host', 'port', 'user')}
-        return make_dsn(driver='postgres', **kwargs)
 
     @property
     def models_sql(self):

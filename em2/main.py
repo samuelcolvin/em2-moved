@@ -10,7 +10,6 @@ def create_app(settings: Settings = None):
     app = Application()
     app['settings'] = settings
 
-    # TODO deal with domain routing, perhaps nginx is enough
     ui_app = create_protocol_app(settings)
     app.add_subapp('/f/', ui_app)
     app['fapp'] = ui_app
