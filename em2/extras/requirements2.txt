@@ -1,4 +1,4 @@
-aiodns==1.1.1
+aiodns==2.0.0
 aiohttp==3.5.1
 aioredis==1.2.0
 async-timeout==3.0.1
